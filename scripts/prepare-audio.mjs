@@ -15,3 +15,4 @@ await cp(
   'public/audio/DEEPFILTER-LICENSE.txt',
 );
 await cp('scripts/deepfilter-worker.mjs', 'public/audio/deepfilter-worker.js');
+await cp('lib/voice-restoration.mjs', 'public/audio/voice-restoration.js');

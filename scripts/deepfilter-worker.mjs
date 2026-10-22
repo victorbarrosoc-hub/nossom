@@ -1,4 +1,5 @@
 import { DeepFilter } from './deepfilter.js';
+import { restoreNatural } from './voice-restoration.js';
 // Bundled DF3: FFT 960, hop 480, look-ahead 2. Total algorithmic delay: 1440 samples.
 self.onmessage = async ({ data }) => {
   try {
@@ -6,7 +7,7 @@ self.onmessage = async ({ data }) => {
     for (let c = 0; c < data.channels.length; c++) {
       const filter = await DeepFilter.create({
         wasmUrl: new URL('./df_bg.wasm', import.meta.url).href,
-        attenuationLimit: data.attenuation ?? 60,
+        attenuationLimit: 100,
       });
       const size = filter.frameLength,
         delay = 1440;
@@ -27,7 +28,7 @@ self.onmessage = async ({ data }) => {
           if (f % 50 === 0)
             self.postMessage({
               type: 'progress',
-              value: Math.round(((c + f / total) / data.channels.length) * 100),
+              value: Math.round(((c + f / total) / data.channels.length) * 80),
             });
         }
       } finally {
@@ -35,8 +36,14 @@ self.onmessage = async ({ data }) => {
       }
       channels.push(result);
     }
+    const result = restoreNatural(data.channels, channels, {
+      automatic: data.automatic,
+      attenuation: data.attenuation,
+      progress: (value) =>
+        self.postMessage({ type: 'progress', value: 80 + Math.round(value * 0.2) }),
+    });
     self.postMessage(
-      { type: 'result', channels },
+      { type: 'result', ...result },
       channels.map((c) => c.buffer),
     );
   } catch (error) {

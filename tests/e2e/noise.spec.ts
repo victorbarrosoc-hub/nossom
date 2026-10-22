@@ -35,7 +35,7 @@ test('neural speech cleanup reduces measured background noise while preserving v
       source.offset + i * 2,
     );
   }
-  await page.goto('/studio');
+  await page.goto('/studio/limpeza');
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles({ name: 'fala-com-ruido.wav', mimeType: 'audio/wav', buffer: noisy });
@@ -44,6 +44,7 @@ test('neural speech cleanup reduces measured background noise while preserving v
   ).toBeVisible({
     timeout: 90000,
   });
+  await page.getByRole('button', { name: 'Ajustar manualmente', exact: true }).click();
   const slider = page.getByRole('slider', { name: 'Intensidade do tratamento', exact: true });
   await slider.fill('0');
   await page.getByRole('button', { name: 'Aplicar tratamento', exact: true }).click();

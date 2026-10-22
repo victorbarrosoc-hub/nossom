@@ -1,5 +1,6 @@
 import type { Operation } from './presets';
 export const toolSlugs: Record<Operation, string> = {
+  auto: 'automatico',
   denoise: 'limpeza',
   clarity: 'voz',
   eq: 'equalizacao',

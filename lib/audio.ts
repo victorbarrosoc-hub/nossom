@@ -8,7 +8,8 @@ import {
   type FilterSettings,
 } from './presets';
 import { estimateNoiseFloor } from './noise-profile';
-import { denoiseVoice, cancelNeural } from './neural';
+import { denoiseVoice, cancelNeural, type RestorationAnalysis } from './neural';
+import { freshBroadcast } from './broadcast';
 export const MAX_BYTES = 100 * 1024 * 1024;
 export const MAX_DURATION = 600;
 export type Measurements = { lufs: number | null; truePeak: number | null; lra: number | null };
@@ -311,28 +312,55 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
     const source = await decode(blob);
     checkCancellation(epoch);
     const profile = estimateNoiseFloor(source.getChannelData(0), source.sampleRate);
-    const strength = strengthValue(options.intensity);
+    const automatic =
+      options.operation === 'auto' ||
+      (options.settings?.automatic === true && ['denoise', 'clarity'].includes(options.operation));
+    const mode = automatic ? 'studio' : (options.mode ?? 'studio');
+    const intensity = automatic ? 100 : options.intensity;
+    const strength = strengthValue(intensity);
     const neural =
-      (options.mode ?? 'studio') !== 'general' &&
-      ['denoise', 'clarity'].includes(options.operation) &&
+      mode !== 'general' &&
+      ['auto', 'denoise', 'clarity'].includes(options.operation) &&
       strength > 0;
-    const settings = {
+    let restoration: RestorationAnalysis | undefined;
+    const settings: FilterSettings = {
       ...options.settings,
       noiseFloor: options.settings?.noiseFloor ?? profile.floorDb,
       neural,
+      automatic,
     };
     if (neural) {
       options.onStatus?.(
-        options.mode === 'voice'
+        mode === 'voice'
           ? 'Limpando fala com RNNoise…'
-          : 'Restaurando fala com NOSSOM Voice · DeepFilterNet3…',
+          : automatic
+            ? 'Analisando a voz e ajustando a restauração automaticamente…'
+            : 'Restaurando a voz e preservando o estéreo…',
       );
       const cleaned = await denoiseVoice(
         source,
         (n) => options.onProgress?.(Math.round(n * 0.65)),
-        options.mode === 'voice' ? 'rnnoise' : 'deepfilter',
-        options.settings?.neuralAttenuation ?? 60,
+        mode === 'voice' ? 'rnnoise' : 'deepfilter',
+        options.settings?.neuralAttenuation ?? 24,
+        automatic,
       );
+      restoration = cleaned.analysis;
+      settings.restoration = restoration;
+      if (automatic && restoration) {
+        settings.neuralAttenuation = restoration.attenuationDb;
+        if (options.operation === 'clarity' || options.operation === 'auto')
+          Object.assign(settings, {
+            presence: restoration.presence,
+            compression: restoration.compression,
+            deess: restoration.deess,
+            mudCut: restoration.mudCut,
+            hum: 0,
+          });
+        if (options.operation === 'auto') {
+          settings.masterPreset = 'broadcast';
+          settings.broadcast = freshBroadcast();
+        }
+      }
       checkCancellation(epoch);
       const start = Math.round((options.region?.start ?? 0) * source.sampleRate);
       const end = Math.min(
@@ -345,7 +373,7 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
         for (let i = start; i < end; i++) {
           const fade = options.region ? Math.min(1, (i - start) / 240, (end - 1 - i) / 240) : 1;
           const mix = wet * Math.max(0, fade);
-          samples[i] = samples[i] * (1 - mix) + cleaned[c][i] * mix;
+          samples[i] = samples[i] * (1 - mix) + cleaned.channels[c][i] * mix;
         }
       }
     }
@@ -373,16 +401,12 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
           '[out]',
         );
       } else {
-        const filter =
+        let filter =
           options.operation === 'master' && options.settings?.masterPreset !== 'broadcast'
             ? await deliveryFilter(ff, options)
-            : treatmentFilter(
-                options.operation,
-                options.intensity,
-                options.target,
-                options.peak,
-                settings,
-              );
+            : treatmentFilter(options.operation, intensity, options.target, options.peak, settings);
+        if (automatic && restoration && options.operation !== 'auto')
+          filter += `,volume=${restoration.gainCompensationDb}dB,aresample=192000,alimiter=limit=0.870964:level=0:latency=1,aresample=48000`;
         if (options.region) {
           const { start, end } = options.region;
           // Apply the filter only to the chosen region, keeping the timeline and original surroundings.
@@ -408,6 +432,22 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
       options.onStatus?.('Verificando o resultado…');
       let rendered = 'result.wav';
       let metrics = await measureFile(ff, rendered);
+      if (automatic && !options.region && metrics.truePeak !== null && metrics.truePeak > -1) {
+        const trim = -1.1 - metrics.truePeak;
+        await execChecked(ff, [
+          '-i',
+          rendered,
+          '-af',
+          `volume=${trim.toFixed(3)}dB`,
+          '-ar',
+          '48000',
+          '-c:a',
+          'pcm_s16le',
+          'corrected.wav',
+        ]);
+        rendered = 'corrected.wav';
+        metrics = await measureFile(ff, rendered);
+      }
       // Short or highly dynamic material can miss loudnorm's target. Correct the measured
       // render only within verified true-peak headroom. Never alter outside a selected region.
       if (
@@ -448,15 +488,15 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
         info,
         metrics,
         processing: {
+          ...settings,
           engine: neural
-            ? options.mode === 'voice'
+            ? mode === 'voice'
               ? 'RNNoise + FFmpeg'
-              : 'NOSSOM Voice / DeepFilterNet3 + FFmpeg'
+              : 'NOSSOM Voice Natural 2 / DeepFilterNet3 + linked spectral gains + FFmpeg'
             : 'FFmpeg',
           strength,
-          noiseFloor: settings.noiseFloor,
-          mode: options.mode ?? 'studio',
-          ...options.settings,
+          noiseFloor: settings.noiseFloor ?? profile.floorDb,
+          mode,
         },
       };
     } finally {
@@ -476,7 +516,7 @@ export async function exportMp3(blob: Blob) {
         '-codec:a',
         'libmp3lame',
         '-b:a',
-        '192k',
+        '320k',
         'export.mp3',
       ]);
       const data = await ff.readFile('export.mp3');

@@ -1,6 +1,7 @@
 import { broadcastFilter, type BroadcastSettings } from './broadcast';
 import { equalizerFilter, type EqGains } from './equalizer';
-export type Operation = 'denoise' | 'clarity' | 'eq' | 'wind' | 'level' | 'master' | 'mix';
+import type { RestorationAnalysis } from './neural';
+export type Operation = 'auto' | 'denoise' | 'clarity' | 'eq' | 'wind' | 'level' | 'master' | 'mix';
 export type Intensity = number | 'light' | 'balanced' | 'strong';
 export type DenoiseMode = 'studio' | 'voice' | 'general';
 export function strengthValue(value: Intensity): number {
@@ -8,6 +9,9 @@ export function strengthValue(value: Intensity): number {
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 65;
 }
 export type FilterSettings = {
+  automatic?: boolean;
+  restoration?: RestorationAnalysis;
+  mudCut?: number;
   noiseFloor?: number;
   noiseReduction?: number;
   presence?: number;
@@ -22,6 +26,12 @@ export type FilterSettings = {
   broadcast?: BroadcastSettings;
 };
 export const operations: { id: Operation; label: string; description: string }[] = [
+  {
+    id: 'auto',
+    label: 'Tratamento completo',
+    description:
+      'A IA analisa a gravação, restaura a voz e finaliza com compressão multibanda e limitação. Um único tratamento, sem escolher parâmetros.',
+  },
   {
     id: 'denoise',
     label: 'Reduzir ruído',
@@ -90,7 +100,7 @@ export function treatmentFilter(
   target = -16,
   peak = -1,
   settings: FilterSettings = {},
-) {
+): string {
   if (operation === 'mix') throw new Error('Mixagem requer duas faixas.');
   const strength = strengthValue(intensity) / 100;
   if (operation === 'master' && settings.masterPreset === 'broadcast')
@@ -107,10 +117,12 @@ export function treatmentFilter(
   const ratio = 1 + (finite(settings.compression, 6, 1, 8) - 1) * strength;
   const presence = finite(settings.presence, 6, 0, 9) * strength;
   switch (operation) {
+    case 'auto':
+      return `${treatmentFilter('clarity', 100, target, peak, settings)},volume=${settings.restoration?.normalizationGainDb ?? 0}dB,${broadcastFilter(settings.broadcast, 100)}`;
     case 'denoise':
       return settings.neural ? 'anull' : spectral;
     case 'clarity':
-      return `${settings.hum === 50 || settings.hum === 60 ? [1, 2, 3, 4].map((n) => `equalizer=f=${settings.hum! * n}:t=q:w=8:g=-18`).join(',') + ',' : ''}${settings.deess ? `deesser=i=${(Math.min(1, Math.max(0, settings.deess / 100)) * strength).toFixed(3)}:m=0.5:f=0.5,` : ''}${settings.neural ? 'anull' : spectral},highpass=f=70:p=2,equalizer=f=280:t=q:w=0.7:g=${(-strength * 3).toFixed(2)},equalizer=f=3000:t=q:w=0.7:g=${presence},acompressor=threshold=0.09:ratio=${ratio}:attack=12:release=180:makeup=${(1 + strength * 0.8).toFixed(2)},alimiter=limit=0.8913:level=0:latency=1`;
+      return `${settings.hum === 50 || settings.hum === 60 ? [1, 2, 3, 4].map((n) => `equalizer=f=${settings.hum! * n}:t=q:w=8:g=-18`).join(',') + ',' : ''}${settings.deess ? `deesser=i=${(Math.min(1, Math.max(0, settings.deess / 100)) * strength).toFixed(3)}:m=0.5:f=0.5,` : ''}${settings.neural ? 'anull' : spectral},highpass=f=70:p=2,equalizer=f=280:t=q:w=0.7:g=${(settings.automatic ? finite(settings.mudCut, 0, -3, 0) : -strength * 3).toFixed(2)},equalizer=f=3000:t=q:w=0.7:g=${presence},acompressor=threshold=0.09:ratio=${ratio}:attack=12:release=180:makeup=${(settings.automatic ? 1 : 1 + strength * 0.8).toFixed(2)},alimiter=limit=0.8913:level=0:latency=1`;
     case 'eq':
       return equalizerFilter(settings.eq, settings.highpass, strength);
     case 'wind':
@@ -127,6 +139,7 @@ export function inferPlan(text: string): Operation | null {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '');
   if (/separ|stem|eco|reverb|transcrev|clon/.test(normalized)) return null;
+  if (/tratamento completo|deixar pronto|resolver tudo/.test(normalized)) return 'auto';
   if (/ruid|ar.condicionado|chiado|limp|restaur|isol/.test(normalized)) return 'denoise';
   if (/equaliz|eq\b|timbre/.test(normalized)) return 'eq';
   if (/vento|grave/.test(normalized)) return 'wind';
@@ -134,5 +147,6 @@ export function inferPlan(text: string): Operation | null {
   if (/entreg|master|lufs|public|transmiss|limitador|broadcast/.test(normalized)) return 'master';
   if (/nivel|volume/.test(normalized)) return 'level';
   if (/voz|clareza|presenca|sibil|deess|dialogo|hum/.test(normalized)) return 'clarity';
+  if (/automatic/.test(normalized)) return 'auto';
   return null;
 }

@@ -71,6 +71,7 @@ import {
   type Version,
 } from '@/lib/storage';
 const toolIcons = {
+  auto: Sparkles,
   denoise: Sparkles,
   eq: SlidersHorizontal,
   clarity: Mic,
@@ -145,6 +146,7 @@ export default function Studio() {
     [eqGains, setEqGains] = useState<EqGains>([0, 0, 0, 0, 0]),
     [eqHighpass, setEqHighpass] = useState(30);
   const [masterRecipe, setMasterRecipe] = useState('podcast');
+  const [automatic, setAutomatic] = useState(true);
   const [broadcast, setBroadcast] = useState<BroadcastSettings>(freshBroadcast);
   const [voicePreset, setVoicePreset] = useState('dialogue'),
     [deess, setDeess] = useState(25),
@@ -159,6 +161,7 @@ export default function Studio() {
   function selectVoice(id: string) {
     const p = voicePresets.find((p) => p.id === id);
     if (!p) return;
+    setAutomatic(false);
     setVoicePreset(id);
     setPresence(p.presence);
     setCompression(p.compression);
@@ -187,7 +190,7 @@ export default function Studio() {
   const [denoiseMode, setDenoiseMode] = useState<DenoiseMode>('studio');
   const [noiseFloor, setNoiseFloor] = useState<number | null>(null);
   const [noiseReduction, setNoiseReduction] = useState(36);
-  const [neuralAttenuation, setNeuralAttenuation] = useState(60);
+  const [neuralAttenuation, setNeuralAttenuation] = useState(24);
   const [presence, setPresence] = useState(2);
   const [compression, setCompression] = useState(2);
   const [highpass, setHighpass] = useState(140);
@@ -221,13 +224,15 @@ export default function Studio() {
     [projects, setProjects] = useState<ProjectSummary[]>([]),
     [project, setProject] = useState<Project | null>(null),
     [versionIndex, setVersionIndex] = useState(0);
-  const [operation, setOperation] = useState<Operation>(routeTool ?? 'denoise'),
+  const [operation, setOperation] = useState<Operation>(routeTool ?? 'auto'),
     [intensity, setIntensity] = useState(100),
     [preset, setPreset] = useState('podcast'),
     [target, setTarget] = useState(-16),
     [peak, setPeak] = useState(-1),
     [advanced, setAdvanced] = useState(false),
     [search, setSearch] = useState('');
+  const speechTool = operation === 'auto' || operation === 'denoise' || operation === 'clarity';
+  const autoEnabled = operation === 'auto' || (speechTool && automatic);
   const [busy, setBusy] = useState(''),
     [progress, setProgress] = useState(0),
     [error, setError] = useState(''),
@@ -345,7 +350,7 @@ export default function Studio() {
       operationLock.current = false;
     }
   }
-  async function upload(file: File) {
+  async function upload(file: File, requestedOperation?: Operation) {
     await run(async () => {
       if (projects.length >= 20)
         throw new Error(
@@ -369,7 +374,8 @@ export default function Studio() {
       setRegion(null);
       setMusic(null);
       setView('editor');
-      router.push(toolPath(operation, created.id), { scroll: false });
+      if (requestedOperation) setOperation(requestedOperation);
+      router.push(toolPath(requestedOperation ?? operation, created.id), { scroll: false });
       await refresh();
       notify('Áudio importado. Seu original está preservado.');
     });
@@ -434,6 +440,7 @@ export default function Studio() {
     });
   }
   function loadSavedPreset(p: SavedRecipe) {
+    setAutomatic(p.settings.automatic === true);
     setIntensity(Math.max(0, Math.min(100, p.intensity)));
     setDenoiseMode(p.mode);
     setTarget(Math.max(-30, Math.min(-10, p.target)));
@@ -442,7 +449,7 @@ export default function Studio() {
     const s = p.settings;
     setNoiseFloor(s.noiseFloor ?? null);
     setNoiseReduction(s.noiseReduction ?? 36);
-    setNeuralAttenuation(s.neuralAttenuation ?? 60);
+    setNeuralAttenuation(s.neuralAttenuation ?? 24);
     setPresence(s.presence ?? 2);
     setCompression(s.compression ?? 2);
     setHighpass(s.highpass ?? 140);
@@ -471,11 +478,13 @@ export default function Studio() {
         throw new Error('Envie uma faixa de música antes de mixar.');
       if (operation === 'mix' && region)
         throw new Error('Para mixar, desative a seleção de trecho. A mixagem usa o áudio inteiro.');
-      const result = await processAudio(version.blob, {
+      const inputVersion = autoEnabled ? project.versions[0] : version;
+      const result = await processAudio(inputVersion.blob, {
         operation,
         intensity,
         mode: denoiseMode,
         settings: {
+          automatic: autoEnabled,
           noiseFloor: noiseFloor ?? version.info.noiseFloor,
           noiseReduction,
           neuralAttenuation,
@@ -498,20 +507,22 @@ export default function Studio() {
       });
       const newVersion: Version = {
         id: crypto.randomUUID(),
-        parentId: version.id,
+        parentId: inputVersion.id,
         label: `${selectedTool.label} · V${project.versions.length}`,
         createdAt: Date.now(),
         operation,
         preset:
-          operation === 'master'
-            ? masterRecipe === 'broadcast'
-              ? 'Transmissão + Limite −3 dB'
-              : `${preset} / alvo ${target} LUFS / pico ${peak} dBTP / v2`
-            : operation === 'eq'
-              ? `EQ: ${eqPresets.find((p) => p.id === eqPreset)?.label ?? 'Personalizado'}`
-              : operation === 'clarity'
-                ? `Voz: ${voicePresets.find((p) => p.id === voicePreset)?.label ?? 'Personalizado'}`
-                : undefined,
+          operation === 'auto'
+            ? 'Automático · restauração + Transmissão + Limite −3 dB'
+            : operation === 'master'
+              ? masterRecipe === 'broadcast'
+                ? 'Transmissão + Limite −3 dB'
+                : `${preset} / alvo ${target} LUFS / pico ${peak} dBTP / v2`
+              : operation === 'eq'
+                ? `EQ: ${eqPresets.find((p) => p.id === eqPreset)?.label ?? 'Personalizado'}`
+                : operation === 'clarity'
+                  ? `Voz: ${voicePresets.find((p) => p.id === voicePreset)?.label ?? 'Personalizado'}`
+                  : undefined,
         ...result,
       };
       const updated = {
@@ -1075,7 +1086,8 @@ export default function Studio() {
                         disabled={!!busy || recording}
                         onClick={() => {
                           setDenoiseMode('general');
-                          void upload(makeDemo());
+                          setAutomatic(false);
+                          void upload(makeDemo(), 'denoise');
                         }}
                       >
                         Experimentar com um áudio de teste <ArrowRight size={14} />
@@ -1357,7 +1369,31 @@ export default function Studio() {
                     <h2>{selectedTool.label}</h2>
                   </div>
                   <p className="panel-subtitle">{selectedTool.description}</p>
-                  <div className="treatment-controls">
+                  {speechTool && (
+                    <div className="automatic-card">
+                      <div>
+                        <Sparkles size={22} />
+                        <h3>{autoEnabled ? 'A IA cuida dos ajustes.' : 'Ajustes manuais'}</h3>
+                      </div>
+                      <p>
+                        {autoEnabled
+                          ? operation === 'auto'
+                            ? 'Analisamos o original, adaptamos a restauração e o timbre e finalizamos com o preset Transmissão + Limite −3 dB. Você não precisa escolher parâmetros.'
+                            : 'Analisamos a gravação original e adaptamos a limpeza à sua voz, preservando o timbre e o estéreo. O volume e os picos são verificados no resultado.'
+                          : 'Personalize o tratamento ou volte à análise automática.'}
+                      </p>
+                      {operation !== 'auto' && (
+                        <button
+                          className="text-link"
+                          disabled={!!busy}
+                          onClick={() => setAutomatic(!automatic)}
+                        >
+                          {autoEnabled ? 'Ajustar manualmente' : 'Usar análise automática'}
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  <div className={`treatment-controls ${autoEnabled ? 'automatic-controls' : ''}`}>
                     {operation === 'eq' && (
                       <EqualizerControls
                         gains={eqGains}
@@ -1751,91 +1787,110 @@ export default function Studio() {
                       </p>
                     </>
                   )}
-                  <PresetLibrary
-                    operation={operation}
-                    disabled={!!busy}
-                    onLoad={loadSavedPreset}
-                    current={{
-                      operation,
-                      intensity,
-                      mode: denoiseMode,
-                      target,
-                      peak,
-                      musicGain,
-                      settings: {
-                        noiseFloor: noiseFloor ?? version.info.noiseFloor,
-                        noiseReduction,
-                        neuralAttenuation,
-                        presence,
-                        compression,
-                        highpass: operation === 'eq' ? eqHighpass : highpass,
-                        eq: operation === 'eq' ? eqGains : undefined,
-                        masterPreset: operation === 'master' ? masterRecipe : undefined,
-                        broadcast:
-                          operation === 'master' && masterRecipe === 'broadcast'
-                            ? broadcast
-                            : undefined,
-                        deess: operation === 'clarity' ? deess : undefined,
-                        hum: operation === 'clarity' ? hum : undefined,
-                      },
-                    }}
-                  />
-                  <button
-                    className="advanced-toggle"
-                    onClick={() => setAdvanced(!advanced)}
-                    aria-expanded={advanced}
-                  >
-                    <Settings2 size={14} /> Detalhes avançados <Plus size={13} />
-                  </button>
-                  {advanced && (
-                    <div className="advanced-panel">
-                      {operation === 'master' ? (
-                        <>
-                          <label>
-                            Loudness alvo (LUFS)
-                            <input
-                              type="number"
-                              min={-30}
-                              max={-10}
-                              value={target}
-                              disabled={!!busy}
-                              onChange={(e) =>
-                                setTarget(Math.max(-30, Math.min(-10, Number(e.target.value))))
-                              }
-                            />
-                          </label>
-                          <label>
-                            Teto de true peak (dBTP)
-                            <input
-                              type="number"
-                              min={-6}
-                              max={-1}
-                              step={0.1}
-                              value={peak}
-                              disabled={!!busy}
-                              onChange={(e) =>
-                                setPeak(Math.max(-6, Math.min(-1, Number(e.target.value))))
-                              }
-                            />
-                          </label>
-                          <p>
-                            Normalização EBU R128 por FFmpeg loudnorm, com medição pós-renderização.
-                            Perfis de cinema e ATSC exigem especificações próprias.
-                          </p>
-                        </>
-                      ) : (
-                        <p>
-                          {operation === 'denoise'
-                            ? 'RNNoise neural para fala ou afftdn espectral adaptativo. Intensidade contínua, alinhamento temporal preservado e processamento local.'
-                            : operation === 'clarity'
-                              ? 'Limpeza neural ou espectral, corte em 70 Hz, redução de graves médios, presença em 3 kHz, compressor e limitador.'
-                              : operation === 'wind'
-                                ? 'Corte de graves ajustável de 30 a 300 Hz com redução espectral de ruído.'
-                                : operation === 'level'
-                                  ? 'Compressor: threshold 0,12; ratio 2 / 3 / 4; ataque 10 ms; release 220 ms. Limiter de pico amostral em −1 dBFS.'
-                                  : 'Sidechain compressor: threshold 0,02; ratio 6:1; ataque 20 ms; release 500 ms. Não usa detecção semântica de fala.'}
-                        </p>
+                  {!autoEnabled && (
+                    <>
+                      <PresetLibrary
+                        operation={operation}
+                        disabled={!!busy}
+                        onLoad={loadSavedPreset}
+                        current={{
+                          operation,
+                          intensity,
+                          mode: denoiseMode,
+                          target,
+                          peak,
+                          musicGain,
+                          settings: {
+                            automatic: false,
+                            noiseFloor: noiseFloor ?? version.info.noiseFloor,
+                            noiseReduction,
+                            neuralAttenuation,
+                            presence,
+                            compression,
+                            highpass: operation === 'eq' ? eqHighpass : highpass,
+                            eq: operation === 'eq' ? eqGains : undefined,
+                            masterPreset: operation === 'master' ? masterRecipe : undefined,
+                            broadcast:
+                              operation === 'master' && masterRecipe === 'broadcast'
+                                ? broadcast
+                                : undefined,
+                            deess: operation === 'clarity' ? deess : undefined,
+                            hum: operation === 'clarity' ? hum : undefined,
+                          },
+                        }}
+                      />
+                      <button
+                        className="advanced-toggle"
+                        onClick={() => setAdvanced(!advanced)}
+                        aria-expanded={advanced}
+                      >
+                        <Settings2 size={14} /> Detalhes avançados <Plus size={13} />
+                      </button>
+                      {advanced && (
+                        <div className="advanced-panel">
+                          {operation === 'master' ? (
+                            <>
+                              <label>
+                                Loudness alvo (LUFS)
+                                <input
+                                  type="number"
+                                  min={-30}
+                                  max={-10}
+                                  value={target}
+                                  disabled={!!busy}
+                                  onChange={(e) =>
+                                    setTarget(Math.max(-30, Math.min(-10, Number(e.target.value))))
+                                  }
+                                />
+                              </label>
+                              <label>
+                                Teto de true peak (dBTP)
+                                <input
+                                  type="number"
+                                  min={-6}
+                                  max={-1}
+                                  step={0.1}
+                                  value={peak}
+                                  disabled={!!busy}
+                                  onChange={(e) =>
+                                    setPeak(Math.max(-6, Math.min(-1, Number(e.target.value))))
+                                  }
+                                />
+                              </label>
+                              <p>
+                                Normalização EBU R128 por FFmpeg loudnorm, com medição
+                                pós-renderização. Perfis de cinema e ATSC exigem especificações
+                                próprias.
+                              </p>
+                            </>
+                          ) : (
+                            <p>
+                              {operation === 'denoise'
+                                ? 'RNNoise neural para fala ou afftdn espectral adaptativo. Intensidade contínua, alinhamento temporal preservado e processamento local.'
+                                : operation === 'clarity'
+                                  ? 'Limpeza neural ou espectral, corte em 70 Hz, redução de graves médios, presença em 3 kHz, compressor e limitador.'
+                                  : operation === 'wind'
+                                    ? 'Corte de graves ajustável de 30 a 300 Hz com redução espectral de ruído.'
+                                    : operation === 'level'
+                                      ? 'Compressor: threshold 0,12; ratio 2 / 3 / 4; ataque 10 ms; release 220 ms. Limiter de pico amostral em −1 dBFS.'
+                                      : 'Sidechain compressor: threshold 0,02; ratio 6:1; ataque 20 ms; release 500 ms. Não usa detecção semântica de fala.'}
+                            </p>
+                          )}
+                        </div>
                       )}
+                    </>
+                  )}
+                  {autoEnabled && version.processing?.restoration?.automatic && (
+                    <div className="automatic-result" role="status">
+                      <Check size={17} />{' '}
+                      <span>
+                        Análise concluída · limpeza adaptada, estéreo preservado e picos
+                        verificados.
+                        <small>
+                          Supressão escolhida: {version.processing.restoration.attenuationDb} dB. Os
+                          ajustes usados estão no relatório.
+                        </small>
+                      </span>
                     </div>
                   )}
                   <button
@@ -1844,11 +1899,18 @@ export default function Studio() {
                     disabled={!!busy}
                   >
                     {busy ? <LoaderCircle size={17} className="spin" /> : <Sparkles size={17} />}{' '}
-                    {busy ? 'Processando…' : 'Aplicar tratamento'}{' '}
+                    {busy
+                      ? 'Processando…'
+                      : autoEnabled
+                        ? 'Analisar e tratar'
+                        : 'Aplicar tratamento'}{' '}
                     {!busy && <ArrowRight size={15} />}
                   </button>
                   <span className="treatment-footnote">
-                    <ShieldCheck size={12} /> Uma nova versão. Seu original intacto.
+                    <ShieldCheck size={12} />{' '}
+                    {autoEnabled
+                      ? 'Sempre a partir do original. Suas versões continuam salvas.'
+                      : 'Uma nova versão. Seu original intacto.'}
                   </span>
                   <div className="panel-help">
                     <AudioLines size={21} />

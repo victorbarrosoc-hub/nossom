@@ -25,6 +25,7 @@ export function validRecipe(value: unknown): value is SavedRecipe {
   )
     return false;
   if (![v.intensity, v.target, v.peak, v.musicGain].every(Number.isFinite)) return false;
+  if (s.automatic !== undefined && typeof s.automatic !== 'boolean') return false;
   for (const key of [
     'presence',
     'compression',

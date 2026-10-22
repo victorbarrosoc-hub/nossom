@@ -71,7 +71,7 @@ test('real audio workflow: import, general denoise, A/B, master, report, export,
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/studio');
+  await page.goto('/studio/limpeza');
   await page.screenshot({ path: 'test-results/studio-home.png', fullPage: true });
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
@@ -82,6 +82,7 @@ test('real audio workflow: import, general denoise, A/B, master, report, export,
     timeout: 90000,
   });
   await expect(page.getByText('Estéreo', { exact: false }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Ajustar manualmente', exact: true }).click();
   await page.getByRole('button', { name: 'Áudio geral', exact: false }).click();
   await expect(page.getByRole('button', { name: 'Aplicar tratamento' })).toBeEnabled();
   await page.getByRole('button', { name: 'Reproduzir áudio' }).click();
@@ -241,7 +242,7 @@ test('microphone recording can be imported, enhanced and leveled', async ({ page
     timeout: 90000,
   });
   await page.getByRole('button', { name: 'Melhorar voz', exact: true }).click();
-  await page.getByRole('button', { name: 'Aplicar tratamento' }).click();
+  await page.getByRole('button', { name: 'Analisar e tratar', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Melhorar voz · V1', exact: true })).toBeVisible({
     timeout: 90000,
   });

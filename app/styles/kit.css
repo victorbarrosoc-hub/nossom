@@ -1438,6 +1438,51 @@
 .tool-editor .treatment-controls {
   max-width: none;
 }
+.automatic-controls {
+  display: none;
+}
+.automatic-card {
+  padding: 24px;
+  border: 1px solid var(--hairline);
+  border-radius: 16px;
+  background: linear-gradient(120deg, var(--up-soft), var(--surface));
+  margin-bottom: 22px;
+}
+.automatic-card > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--up-text);
+}
+.automatic-card h3 {
+  font-size: 19px;
+  color: var(--text);
+}
+.automatic-card p {
+  font-size: 13px;
+  max-width: 700px;
+  margin: 15px 0;
+}
+.automatic-card .text-link {
+  font-size: 12px;
+}
+.automatic-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 18px;
+  background: var(--surface-2);
+  border-radius: 12px;
+  color: var(--ok-text);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.automatic-result small {
+  display: block;
+  color: var(--text-2);
+  font-size: 11px;
+  margin-top: 6px;
+}
 .tool-editor .panel-help {
   display: none;
 }
