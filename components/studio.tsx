@@ -1338,7 +1338,7 @@ export default function Studio() {
                     <FileAudio size={19} />
                     <div>
                       <strong>Pronto para seguir com seu som?</strong>
-                      <span>WAV 16-bit ou MP3 192 kbps · 48 kHz</span>
+                      <span>WAV 16-bit ou MP3 320 kbps · 48 kHz</span>
                     </div>
                     <button
                       className="button secondary small"

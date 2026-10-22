@@ -39,7 +39,7 @@ Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile 
 - Preservação do arquivo originalmente enviado. O editor utiliza uma cópia de trabalho WAV PCM 16-bit/48 kHz. Cada tratamento cria uma versão, sem sobrescrever o original.
 - Projetos, versões, renomeação, busca e exclusão em IndexedDB. Até 20 projetos e 8 versões processadas por projeto; capacidade real depende da cota do navegador.
 - Medição integrada de LUFS, true peak e LRA pelo filtro FFmpeg `loudnorm`, sobre o arquivo resultante. Contagem objetiva de amostras perto da saturação.
-- Exportação WAV PCM 16-bit e MP3 192 kbps em 48 kHz, download do arquivo original e relatório JSON com histórico e medições.
+- Exportação WAV PCM 16-bit e MP3 320 kbps em 48 kHz, download do arquivo original e relatório JSON com histórico e medições.
 - Assistente local por regras de intenção que propõe uma operação, com revisão e aplicação explícita. Não executa comandos livres e não se apresenta como IA generativa.
 - Adaptador de conversa ElevenLabs com resposta por voz, estado visual de fala, permissão de microfone e encerramento de sessão ao fechar o painel. Precisa de agente configurado.
 

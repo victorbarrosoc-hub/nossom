@@ -116,7 +116,7 @@ const faqs = [
   ],
   [
     'Quais arquivos posso usar?',
-    'WAV, MP3, M4A, FLAC, OGG e áudio de MP4 ou MOV, conforme o codec. Até 100 MB e 10 minutos, mono ou estéreo. Exporte WAV de 16 bits ou MP3 a 192 kbps, em 48 kHz.',
+    'WAV, MP3, M4A, FLAC, OGG e áudio de MP4 ou MOV, conforme o codec. Até 100 MB e 10 minutos, mono ou estéreo. Exporte WAV de 16 bits ou MP3 a 320 kbps, em 48 kHz.',
   ],
   [
     'Posso voltar ao original?',
