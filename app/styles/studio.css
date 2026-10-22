@@ -2,7 +2,7 @@
   transform: translateY(1px);
 }
 .eyebrow {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   letter-spacing: 2.7px;
   color: var(--text-2);
@@ -18,7 +18,7 @@
 }
 .brand > span {
   letter-spacing: 6px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 .button {
@@ -29,7 +29,7 @@
   min-height: 48px;
   padding: 0 24px;
   border-radius: 100px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 650;
   white-space: nowrap;
   border: 1px solid transparent;
@@ -50,7 +50,7 @@
 }
 .button.small {
   min-height: 37px;
-  font-size: 12px;
+  font-size: 14px;
   padding: 0 18px;
   gap: 10px;
 }
@@ -80,7 +80,7 @@
   display: inline-flex;
   align-items: center;
   gap: 9px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-2);
   font-weight: 550;
 }
@@ -101,7 +101,7 @@
 }
 .segmented button {
   padding: 7px 12px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   border-radius: 50px;
   display: inline-flex;
@@ -158,7 +158,7 @@
   justify-content: space-between;
 }
 .assistant-panel > header > .eyebrow {
-  font-size: 12px;
+  font-size: 14px;
 }
 .voice-orb {
   margin: 17px auto 20px;
@@ -182,7 +182,7 @@
   letter-spacing: -1.2px;
 }
 .assistant-panel > p {
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 15px;
 }
 .assistant-mode {
@@ -190,7 +190,7 @@
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin: 22px 0 15px;
 }
@@ -206,7 +206,7 @@
   width: 100%;
   background: none;
   border: 0;
-  font-size: 13px;
+  font-size: 14px;
   padding: 12px;
 }
 .icon-button.solid {
@@ -225,7 +225,7 @@
   border: 1px solid var(--line);
   border-radius: 30px;
   padding: 7px 10px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .suggestion-chips > button:hover {
@@ -240,7 +240,7 @@
   margin-block: 20px;
 }
 .assistant-reply p {
-  font-size: 13px;
+  font-size: 14px;
 }
 .assistant-reply .button {
   margin-top: 14px;
@@ -254,7 +254,7 @@
   padding-top: 22px;
 }
 .voice-connect > span {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   max-width: 320px;
 }
@@ -274,7 +274,7 @@
   margin-bottom: 15px;
 }
 .confirm-dialog p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .confirm-dialog > div {
   display: flex;
@@ -288,11 +288,11 @@
 }
 .error-text {
   color: var(--text-2) !important;
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 12px;
 }
 .inline-note {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   padding-top: 13px;
 }
@@ -323,7 +323,7 @@
   gap: 10px;
 }
 .studio-sidebar .brand > span {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 4.5px;
 }
 .studio-sidebar .brand > svg {
@@ -334,7 +334,7 @@
   align-items: center;
   gap: 10px;
   padding: 27px 6px 22px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .workspace-avatar {
   display: grid;
@@ -344,17 +344,17 @@
   border: 1px solid var(--hairline);
   background: var(--surface-2);
   border-radius: 9px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .workspace-label > div > small {
   display: block;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 4px;
 }
 .local-badge {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 1.1px;
   padding: 3px 5px;
   border: 1px solid var(--hairline);
@@ -366,7 +366,7 @@
   width: 100%;
   border-radius: 9px;
   min-height: 38px;
-  font-size: 12px;
+  font-size: 14px;
   gap: 10px;
 }
 .studio-sidebar nav {
@@ -383,7 +383,7 @@
   text-align: left;
   padding: 11px 12px;
   border-radius: 7px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   border: 1px solid transparent;
 }
@@ -398,11 +398,11 @@
 }
 .studio-sidebar nav > button > small {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .sidebar-caption {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 1.4px;
   color: var(--text-2);
   margin: 22px 12px 7px;
@@ -411,12 +411,12 @@
   display: flex;
   gap: 11px;
   align-items: center;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   padding: 11px 12px;
 }
 .future-nav > small {
-  font-size: 12px;
+  font-size: 14px;
   margin-left: auto;
   border: 1px solid var(--hairline);
   border-radius: 4px;
@@ -435,7 +435,7 @@
   border: 1px solid var(--hairline);
   border-radius: 9px;
   background: var(--surface-2);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .local-note > svg {
@@ -443,7 +443,7 @@
   margin-top: 1px;
 }
 .local-note p {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.8;
   color: var(--text-2);
   margin-top: 6px;
@@ -453,7 +453,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 20px 5px 0;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .studio-body {
@@ -476,7 +476,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  font-size: 12px;
+  font-size: 14px;
   min-width: 0;
   color: var(--text-2);
 }
@@ -492,7 +492,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   white-space: nowrap;
 }
@@ -505,7 +505,7 @@
   color: var(--text-2);
   padding: 2px 4px;
   margin-left: 8px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .studio-main {
   padding: 40px 38px 55px;
@@ -522,7 +522,7 @@
   margin-bottom: 30px;
 }
 .studio-welcome .eyebrow {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 2px;
   color: var(--text-2);
 }
@@ -533,14 +533,14 @@
   font-weight: 600;
 }
 .studio-welcome p {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .workspace-indicator {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 17px;
 }
@@ -592,7 +592,7 @@
   margin-top: 17px;
 }
 .upload-zone > p {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 10px;
   color: var(--text-2);
 }
@@ -604,12 +604,12 @@
 .upload-actions .button {
   border-radius: 8px;
   min-height: 37px;
-  font-size: 12px;
+  font-size: 14px;
   padding: 0 19px;
   gap: 9px;
 }
 .upload-formats {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0.3px;
   color: var(--text-2);
   margin-top: 17px;
@@ -627,12 +627,12 @@
   font-weight: 600;
 }
 .subheading > span {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 1.5px;
   color: var(--text-2);
 }
 .subheading > .text-link {
-  font-size: 12px;
+  font-size: 14px;
 }
 .quick-section {
   margin-top: 33px;
@@ -651,7 +651,7 @@
   align-items: center;
   gap: 10px;
   text-align: left;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   min-height: 68px;
 }
@@ -697,22 +697,22 @@
   margin-bottom: 20px;
 }
 .empty-projects h3 {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   font-weight: 600;
 }
 .empty-projects p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 9px;
 }
 .empty-projects > .text-link {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 21px;
   color: var(--text-2);
 }
 .empty-projects > small {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 7px;
 }
@@ -724,7 +724,7 @@
   overflow: hidden;
 }
 .studio-tip > .eyebrow {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 1.5px;
   gap: 7px;
 }
@@ -735,12 +735,12 @@
   margin: 18px 0 11px;
 }
 .studio-tip p {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.8;
   color: var(--text-2);
 }
 .studio-tip .text-link {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 17px;
 }
 .tip-wave {
@@ -764,7 +764,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .studio-footer > span {
@@ -805,7 +805,7 @@
   min-width: 0;
 }
 .project-open strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   display: block;
   white-space: nowrap;
@@ -815,18 +815,18 @@
 }
 .project-open small {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 6px;
 }
 .project-date {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-left: auto;
   white-space: nowrap;
 }
 .project-status {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-left: 20px;
   display: flex;
@@ -869,7 +869,7 @@
   background: none;
   border: 0;
   width: 100%;
-  font-size: 13px;
+  font-size: 14px;
   padding: 13px;
 }
 .project-list {
@@ -884,7 +884,7 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 24px;
   color: var(--text-2);
 }
@@ -896,7 +896,7 @@
   border-radius: 10px;
   border: 1px solid var(--hairline);
   background: var(--surface-2);
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-2);
   margin-bottom: 20px;
 }
@@ -915,12 +915,12 @@
   color: var(--text-2);
 }
 .processing-banner strong {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
 }
 .processing-banner small {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 5px;
 }
@@ -932,7 +932,7 @@
 }
 .processing-banner > .text-link {
   margin-left: auto;
-  font-size: 12px;
+  font-size: 14px;
 }
 .toast {
   position: fixed;
@@ -944,7 +944,7 @@
   align-items: center;
   gap: 12px;
   padding: 12px 12px 12px 18px;
-  font-size: 13px;
+  font-size: 14px;
   background: var(--surface-2);
   backdrop-filter: blur(20px);
   border: 1px solid var(--hairline);
@@ -963,7 +963,7 @@
   margin-bottom: 28px;
 }
 .editor-heading .text-link {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-bottom: 15px;
 }
@@ -981,7 +981,7 @@
   flex-wrap: wrap;
   align-items: center;
   gap: 9px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 8px;
 }
@@ -994,7 +994,7 @@
 .editor-heading > .button {
   border-radius: 9px;
   min-height: 39px;
-  font-size: 12px;
+  font-size: 14px;
   padding: 0 18px;
   gap: 10px;
 }
@@ -1020,17 +1020,17 @@
   gap: 15px;
 }
 .player-title .eyebrow {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 1.7px;
   color: var(--text-2);
 }
 .player-title h3 {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 7px;
   color: var(--text-2);
 }
 .player-title .segmented button {
-  font-size: 12px;
+  font-size: 14px;
   padding: 6px 9px;
 }
 .wave-container {
@@ -1062,7 +1062,7 @@
 .player-times {
   display: flex;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   font-variant-numeric: tabular-nums;
   margin-top: 10px;
@@ -1084,7 +1084,7 @@
   height: 40px;
 }
 .checkbox-label {
-  font-size: 12px;
+  font-size: 14px;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1093,7 +1093,7 @@
 .player-controls > .button {
   margin-left: auto;
   border-radius: 7px;
-  font-size: 12px;
+  font-size: 14px;
   padding: 0 9px;
   gap: 6px;
   min-height: 29px;
@@ -1106,7 +1106,7 @@
   padding-top: 20px;
   margin-top: 15px;
   border-top: 1px solid var(--line);
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .region-fields > label {
@@ -1117,11 +1117,11 @@
 .region-fields input {
   width: 70px;
   padding: 7px;
-  font-size: 12px;
+  font-size: 14px;
   border-radius: 5px;
 }
 .region-fields > span {
-  font-size: 12px;
+  font-size: 14px;
   max-width: 230px;
 }
 .analysis-panel {
@@ -1132,7 +1132,7 @@
 }
 .analysis-panel .subheading h2,
 .history-panel .subheading h2 {
-  font-size: 13px;
+  font-size: 14px;
 }
 .metrics-grid {
   display: grid;
@@ -1144,7 +1144,7 @@
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .metrics-grid strong {
@@ -1157,13 +1157,13 @@
   font-variant-numeric: tabular-nums;
 }
 .metrics-grid strong > small {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0;
   color: var(--text-2);
   margin-left: 7px;
 }
 .metrics-grid p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 7px;
 }
@@ -1176,7 +1176,7 @@
   color: var(--text-2);
 }
 .analysis-verdict p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   line-height: 1.8;
 }
@@ -1197,15 +1197,15 @@
   margin-top: 17px;
 }
 .delivery-result .eyebrow {
-  font-size: 12px;
+  font-size: 14px;
 }
 .delivery-result p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin: 7px 0;
 }
 .delivery-result small {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .history-panel {
@@ -1215,7 +1215,7 @@
   margin-bottom: 10px;
 }
 .history-panel .subheading > span {
-  font-size: 12px;
+  font-size: 14px;
 }
 .version-row {
   width: 100%;
@@ -1243,19 +1243,19 @@
   flex-shrink: 0;
 }
 .version-row strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   display: block;
   color: var(--text-2);
 }
 .version-row small {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   display: block;
   margin-top: 5px;
 }
 .version-row > span:nth-child(3) {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-left: auto;
   white-space: nowrap;
@@ -1281,19 +1281,19 @@
   margin-right: auto;
 }
 .export-strip strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   display: block;
 }
 .export-strip > div > span {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   display: block;
   margin-top: 5px;
 }
 .export-strip .button {
   border-radius: 7px;
-  font-size: 12px;
+  font-size: 14px;
   padding: 0 12px;
   min-height: 31px;
   gap: 7px;
@@ -1318,26 +1318,26 @@
   letter-spacing: -0.3px;
 }
 .panel-subtitle {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 8px;
 }
 .field-label {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 1.2px;
   color: var(--text-2);
   margin: 25px 0 10px;
 }
 .treatment-panel select {
-  font-size: 12px;
+  font-size: 14px;
   padding: 12px 10px;
   border-radius: 8px;
   background: var(--surface-2);
   border-color: var(--hairline);
 }
 .operation-description {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.8;
   margin-top: 12px;
   color: var(--text-2);
@@ -1354,7 +1354,7 @@
   padding: 8px 4px;
   flex: 1;
   border-radius: 5px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .intensity-selector > .active {
@@ -1363,7 +1363,7 @@
   color: var(--text-2);
 }
 .field-hint {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.8;
   color: var(--text-2);
   margin-top: 12px;
@@ -1373,7 +1373,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   padding: 21px 0 18px;
   margin-top: 8px;
@@ -1390,7 +1390,7 @@
   margin-bottom: 15px;
 }
 .advanced-panel p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .advanced-panel > label {
@@ -1398,14 +1398,14 @@
   align-items: center;
   gap: 10px;
   justify-content: space-between;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-bottom: 10px;
 }
 .advanced-panel input {
   width: 60px;
   padding: 7px;
-  font-size: 12px;
+  font-size: 14px;
   border-radius: 5px;
 }
 .process-button {
@@ -1413,7 +1413,7 @@
   border-radius: 8px;
   min-height: 39px;
   padding: 0 13px;
-  font-size: 12px;
+  font-size: 14px;
   gap: 9px;
 }
 .process-button > svg:last-child {
@@ -1424,7 +1424,7 @@
   justify-content: center;
   align-items: center;
   gap: 5px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 12px;
 }
@@ -1437,17 +1437,17 @@
   color: var(--text-2);
 }
 .panel-help h3 {
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 12px;
   color: var(--text-2);
 }
 .panel-help p {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 8px;
   color: var(--text-2);
 }
 .panel-help .text-link {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 15px;
   gap: 5px;
 }
@@ -1462,7 +1462,7 @@
   background: var(--surface-2);
 }
 .target-preview > span {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   display: block;
 }
@@ -1475,7 +1475,7 @@
   margin-top: 7px;
 }
 .target-preview small {
-  font-size: 12px;
+  font-size: 14px;
   letter-spacing: 0;
   color: var(--text-2);
 }
@@ -1491,7 +1491,7 @@
   align-items: center;
   gap: 9px;
   color: var(--text-2);
-  font-size: 12px;
+  font-size: 14px;
 }
 .music-upload > span {
   overflow: hidden;
@@ -1526,7 +1526,7 @@
   margin: 40px 0 15px;
 }
 .privacy-page p {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.9;
 }
 .privacy-page > .button {
@@ -1591,7 +1591,7 @@
     padding: 14px 11px;
   }
   .quick-grid > button > span {
-    font-size: 12px;
+    font-size: 14px;
     flex-basis: 100%;
     order: 3;
   }
@@ -1631,11 +1631,11 @@
     font-size: 23px;
   }
   .metrics-grid strong > small {
-    font-size: 12px;
+    font-size: 14px;
     margin-left: 4px;
   }
   .metrics-grid p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .treatment-panel {
     padding: 20px 15px;
@@ -1650,29 +1650,29 @@
     padding-inline: 12px;
   }
   .studio-sidebar .brand > span {
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 3px;
   }
   .studio-sidebar .brand > svg {
     width: 34px;
   }
   .studio-sidebar nav > button {
-    font-size: 12px;
+    font-size: 14px;
     padding: 10px 8px;
     gap: 9px;
   }
   .sidebar-caption {
-    font-size: 12px;
+    font-size: 14px;
     margin-left: 8px;
     letter-spacing: 0.8px;
   }
   .future-nav {
-    font-size: 12px;
+    font-size: 14px;
     gap: 8px;
     padding: 10px 8px;
   }
   .future-nav > small {
-    font-size: 12px;
+    font-size: 14px;
   }
   .studio-body {
     margin-left: 190px;
@@ -1704,7 +1704,7 @@
     padding: 12px 9px;
   }
   .quick-grid > button > span {
-    font-size: 12px;
+    font-size: 14px;
   }
   .studio-footer {
     padding-inline: 22px;
@@ -1720,11 +1720,11 @@
     font-size: 22px;
   }
   .editor-heading > .button {
-    font-size: 12px;
+    font-size: 14px;
     padding-inline: 12px;
   }
   .editor-heading p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .metrics-grid strong {
     font-size: 30px;
@@ -1783,14 +1783,14 @@
     display: inline-flex;
   }
   .segmented button {
-    font-size: 12px;
+    font-size: 14px;
     padding: 6px 9px;
   }
   .segmented button > svg {
     width: 9px;
   }
   .eyebrow {
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 2px;
   }
   .modal-backdrop {
@@ -1805,21 +1805,21 @@
     font-size: 25px;
   }
   .assistant-panel > p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .assistant-mode {
-    font-size: 12px;
+    font-size: 14px;
   }
   .assistant-panel form input {
-    font-size: 12px;
+    font-size: 14px;
     padding: 12px 8px;
   }
   .suggestion-chips > button {
-    font-size: 12px;
+    font-size: 14px;
     padding: 7px 9px;
   }
   .assistant-reply p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .confirm-dialog {
     padding: 24px;
@@ -1828,7 +1828,7 @@
     font-size: 21px;
   }
   .confirm-dialog > div > .button {
-    font-size: 12px;
+    font-size: 14px;
     padding-inline: 17px;
   }
   .studio-sidebar {
@@ -1850,7 +1850,7 @@
   }
   .studio-header > div {
     gap: 7px;
-    font-size: 12px;
+    font-size: 14px;
   }
   .studio-header > div > .icon-button {
     width: 25px;
@@ -1864,7 +1864,7 @@
     gap: 6px;
   }
   .assistant-top > span {
-    font-size: 12px;
+    font-size: 14px;
   }
   .assistant-top .keycap {
     display: none;
@@ -1886,14 +1886,14 @@
     margin-top: 12px;
   }
   .studio-welcome p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .studio-welcome .eyebrow {
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 1.5px;
   }
   .studio-welcome > .button {
-    font-size: 12px;
+    font-size: 14px;
     padding: 0 13px;
     min-height: 35px;
     gap: 6px;
@@ -1907,7 +1907,7 @@
     letter-spacing: -0.7px;
   }
   .upload-zone p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .upload-icon {
     width: 43px;
@@ -1920,12 +1920,12 @@
     gap: 8px;
   }
   .upload-actions > .button {
-    font-size: 12px;
+    font-size: 14px;
     padding: 0 13px;
     gap: 8px;
   }
   .upload-formats {
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 0;
     text-align: center;
     line-height: 1.7;
@@ -1943,7 +1943,7 @@
     font-size: 14px;
   }
   .subheading > span {
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 1px;
   }
   .quick-grid {
@@ -1955,7 +1955,7 @@
     min-height: 79px;
   }
   .quick-grid > button > span {
-    font-size: 12px;
+    font-size: 14px;
     white-space: nowrap;
   }
   .quick-grid > button > svg:first-child {
@@ -1970,7 +1970,7 @@
   .quick-grid > button:last-child > span {
     order: 0;
     flex-basis: auto;
-    font-size: 12px;
+    font-size: 14px;
   }
   .quick-grid > button:last-child > svg:last-child {
     margin-left: auto;
@@ -1983,37 +1983,37 @@
     min-height: 225px;
   }
   .empty-projects h3 {
-    font-size: 13px;
+    font-size: 14px;
   }
   .empty-projects p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .empty-projects > .text-link {
-    font-size: 12px;
+    font-size: 14px;
   }
   .studio-footer {
     padding: 17px 20px;
-    font-size: 12px;
+    font-size: 14px;
     gap: 10px;
   }
   .studio-footer > span {
     gap: 6px;
   }
   .studio-footer > span:last-child {
-    font-size: 12px;
+    font-size: 14px;
   }
   .studio-footer > span:last-child > svg {
     width: 10px;
   }
   .project-open strong {
     max-width: 150px;
-    font-size: 12px;
+    font-size: 14px;
   }
   .project-open {
     gap: 9px;
   }
   .project-date {
-    font-size: 12px;
+    font-size: 14px;
   }
   .project-open > svg {
     margin-left: 5px;
@@ -2027,7 +2027,7 @@
   }
   .storage-note {
     align-items: start;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.8;
   }
   .storage-note > svg {
@@ -2035,7 +2035,7 @@
   }
   .toast {
     left: 50%;
-    font-size: 12px;
+    font-size: 14px;
     padding: 10px 8px 10px 12px;
     width: max-content;
     max-width: calc(100vw - 25px);
@@ -2053,17 +2053,17 @@
     max-width: 100%;
   }
   .editor-heading p {
-    font-size: 12px;
+    font-size: 14px;
     gap: 7px;
   }
   .editor-heading > .button {
     min-height: 33px;
     padding-inline: 13px;
-    font-size: 12px;
+    font-size: 14px;
     gap: 8px;
   }
   .editor-heading .saved {
-    font-size: 12px;
+    font-size: 14px;
   }
   .editor-player {
     padding: 18px 15px;
@@ -2072,14 +2072,14 @@
     gap: 10px;
   }
   .player-title .eyebrow {
-    font-size: 12px;
+    font-size: 14px;
     letter-spacing: 1px;
   }
   .player-title h3 {
-    font-size: 12px;
+    font-size: 14px;
   }
   .player-title .segmented button {
-    font-size: 12px;
+    font-size: 14px;
     padding: 6px 7px;
   }
   .wave-container {
@@ -2099,10 +2099,10 @@
     order: 3;
     width: 100%;
     margin-top: 10px;
-    font-size: 12px;
+    font-size: 14px;
   }
   .player-controls > .button {
-    font-size: 12px;
+    font-size: 14px;
     min-height: 29px;
     gap: 5px;
     padding-inline: 8px;
@@ -2114,7 +2114,7 @@
     padding: 19px 16px;
   }
   .metrics-grid > div > span {
-    font-size: 12px;
+    font-size: 14px;
     gap: 3px;
   }
   .metrics-grid > div > span > svg {
@@ -2124,36 +2124,36 @@
     font-size: 25px;
   }
   .metrics-grid strong > small {
-    font-size: 12px;
+    font-size: 14px;
   }
   .metrics-grid p {
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.7;
   }
   .analysis-verdict p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .analysis-panel .subheading h2,
   .history-panel .subheading h2 {
-    font-size: 12px;
+    font-size: 14px;
   }
   .analysis-panel .subheading > .text-link {
-    font-size: 12px;
+    font-size: 14px;
   }
   .version-row {
     gap: 8px;
     padding: 11px 9px;
   }
   .version-row strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .version-row small {
-    font-size: 12px;
+    font-size: 14px;
     max-width: 160px;
     line-height: 1.6;
   }
   .version-row > span:nth-child(3) {
-    font-size: 12px;
+    font-size: 14px;
   }
   .version-marker {
     width: 26px;
@@ -2180,49 +2180,49 @@
     font-size: 15px;
   }
   .panel-subtitle {
-    font-size: 12px;
+    font-size: 14px;
   }
   .field-label {
-    font-size: 12px;
+    font-size: 14px;
   }
   .treatment-panel select {
-    font-size: 13px;
+    font-size: 14px;
   }
   .operation-description {
-    font-size: 12px;
+    font-size: 14px;
   }
   .intensity-selector > button {
-    font-size: 12px;
+    font-size: 14px;
     padding-block: 10px;
   }
   .field-hint {
-    font-size: 12px;
+    font-size: 14px;
   }
   .advanced-toggle {
-    font-size: 12px;
+    font-size: 14px;
   }
   .processing-banner {
     padding: 14px 12px;
     gap: 9px;
   }
   .processing-banner strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .processing-banner small {
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.6;
   }
   .processing-banner progress {
     display: none;
   }
   .processing-banner > .text-link {
-    font-size: 12px;
+    font-size: 14px;
   }
   .processing-banner > svg {
     width: 15px;
   }
   .alert {
-    font-size: 12px;
+    font-size: 14px;
     gap: 8px;
     padding: 12px;
   }
@@ -2239,7 +2239,7 @@
     font-size: 20px;
   }
   .privacy-page p {
-    font-size: 12px;
+    font-size: 14px;
   }
 }
 .editor-title-line {
@@ -2254,54 +2254,54 @@
   font-size: 36px;
 }
 .studio-welcome p {
-  font-size: 13px;
+  font-size: 14px;
 }
 .upload-zone > p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .studio-sidebar nav > button {
-  font-size: 12px;
+  font-size: 14px;
 }
 .studio-sidebar nav > button > small {
-  font-size: 12px;
+  font-size: 14px;
 }
 .project-open strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .treatment-panel .field-hint {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.7;
 }
 .analysis-verdict p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .metrics-grid p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .metrics-grid > div > span {
-  font-size: 12px;
+  font-size: 14px;
 }
 .version-row strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .version-row small {
-  font-size: 12px;
+  font-size: 14px;
 }
 .version-row > span:nth-child(3) {
-  font-size: 12px;
+  font-size: 14px;
 }
 .assistant-panel form input {
-  font-size: 13px;
+  font-size: 14px;
 }
 @media (max-width: 960px) {
   .studio-sidebar nav > button {
-    font-size: 12px;
+    font-size: 14px;
   }
   .studio-welcome h1 {
     font-size: 29px;
   }
   .metrics-grid > div > span {
-    font-size: 12px;
+    font-size: 14px;
   }
 }
 @media (max-width: 680px) {
@@ -2309,38 +2309,38 @@
     font-size: 29px;
   }
   .studio-welcome p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .upload-zone > p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .upload-zone h2 {
     font-size: 21px;
   }
   .upload-actions > .button {
-    font-size: 12px;
+    font-size: 14px;
     min-height: 42px;
   }
   .metrics-grid > div > span {
-    font-size: 12px;
+    font-size: 14px;
   }
   .metrics-grid p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .analysis-verdict p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .version-row small {
-    font-size: 12px;
+    font-size: 14px;
   }
   .version-row strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .version-row > span:nth-child(3) {
-    font-size: 12px;
+    font-size: 14px;
   }
   .assistant-panel form input {
-    font-size: 12px;
+    font-size: 14px;
   }
   .studio-footer > span:last-child {
     display: none;

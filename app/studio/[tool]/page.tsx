@@ -5,6 +5,7 @@ const titles: Record<string, string> = {
   ...Object.fromEntries(operations.map((o) => [toolSlugs[o.id], o.label])),
   projetos: 'Meus projetos',
   ia: 'Inteligência NOSSOM',
+  conta: 'Minha conta',
 };
 export function generateStaticParams() {
   return Object.keys(titles).map((tool) => ({ tool }));

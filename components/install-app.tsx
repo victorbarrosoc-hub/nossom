@@ -1,4 +1,7 @@
 'use client';
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Download, Share, PlusSquare, X, Smartphone } from 'lucide-react';
 import { useDialog } from '@/lib/use-dialog';
@@ -6,7 +9,8 @@ type InstallPrompt = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: string }>;
 };
-export default function InstallApp() {
+export default function InstallApp({ onOpen }: { onOpen?: () => void }) {
+  const reduced = useReducedMotion();
   const [open, setOpen] = useState(false),
     [standalone, setStandalone] = useState(false),
     [ios, setIos] = useState(false),
@@ -53,71 +57,97 @@ export default function InstallApp() {
             const choice = await prompt.userChoice;
             setPrompt(null);
             if (choice.outcome === 'accepted') setStandalone(true);
-          } else setOpen(true);
+          } else {
+            onOpen?.();
+            setOpen(true);
+          }
         }}
       >
         <Download size={16} /> Adicionar à Tela de Início
       </button>
-      {open && (
-        <div
-          className="modal-backdrop install-backdrop"
-          onClick={(event) => {
-            if (event.target === event.currentTarget) setOpen(false);
-          }}
-        >
-          <section
-            className="install-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="install-title"
-            aria-describedby="install-description"
-          >
-            <button
-              className="icon-button install-close"
-              aria-label="Fechar instruções de instalação"
-              onClick={() => setOpen(false)}
-            >
-              <X size={20} />
-            </button>
-            <Smartphone size={30} />
-            <h2 id="install-title">Seu som, a um toque.</h2>
-            <p id="install-description">
-              Adicione a NOSSOM à Tela de Início para abrir direto no estúdio, em modo aplicativo.
-            </p>
-            <ol>
-              <li>
-                <Share size={20} />
-                <span>
-                  No <strong>Safari</strong>, toque em <strong>Compartilhar</strong> na barra do
-                  navegador. Se estiver em outro aplicativo, abra o link no Safari.
-                </span>
-              </li>
-              <li>
-                <PlusSquare size={20} />
-                <span>
-                  Escolha <strong>Adicionar à Tela de Início</strong>. Se a opção não aparecer de
-                  imediato, role a lista de ações.
-                </span>
-              </li>
-              <li>
-                <Smartphone size={20} />
-                <span>
-                  Confirme o nome <strong>NOSSOM</strong> e toque em <strong>Adicionar</strong>.
-                </span>
-              </li>
-            </ol>
-            {!ios && (
-              <p className="install-desktop-note">
-                No computador, use a opção de instalar na barra de endereço do Chrome/Edge. No
-                Safari do Mac, use Arquivo → Adicionar ao Dock.
-              </p>
+      {typeof document !== 'undefined' &&
+        createPortal(
+          <AnimatePresence>
+            {open && (
+              <motion.div
+                className="modal-backdrop install-backdrop"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: reduced ? 0 : 0.18 }}
+                onClick={(event) => {
+                  if (event.target === event.currentTarget) setOpen(false);
+                }}
+              >
+                <motion.section
+                  initial={reduced ? false : { opacity: 0, y: 22, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: reduced ? 0 : 12 }}
+                  transition={{ duration: reduced ? 0 : 0.23 }}
+                  className="install-dialog"
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="install-title"
+                  aria-describedby="install-description"
+                >
+                  <button
+                    className="icon-button install-close"
+                    aria-label="Fechar instruções de instalação"
+                    onClick={() => setOpen(false)}
+                  >
+                    <X size={20} />
+                  </button>
+                  <Smartphone size={30} />
+                  <h2 id="install-title">Seu som, a um toque.</h2>
+                  <p id="install-description">
+                    Adicione a NOSSOM à Tela de Início para abrir direto no estúdio, em modo
+                    aplicativo.
+                  </p>
+                  <ol>
+                    <li>
+                      <Share size={20} />
+                      <span>
+                        No <strong>Safari</strong>, toque em <strong>Compartilhar</strong> na barra
+                        do navegador. Se estiver em outro aplicativo, abra o link no Safari.
+                      </span>
+                    </li>
+                    <li>
+                      <PlusSquare size={20} />
+                      <span>
+                        Escolha <strong>Adicionar à Tela de Início</strong>. Se a opção não aparecer
+                        de imediato, role a lista de ações.
+                      </span>
+                    </li>
+                    <li>
+                      <Smartphone size={20} />
+                      <span>
+                        Confirme o nome <strong>NOSSOM</strong> e toque em{' '}
+                        <strong>Adicionar</strong>.
+                      </span>
+                    </li>
+                  </ol>
+                  {!ios && (
+                    <p className="install-desktop-note">
+                      No computador, use a opção de instalar na barra de endereço do Chrome/Edge. No
+                      Safari do Mac, use Arquivo → Adicionar ao Dock.
+                    </p>
+                  )}
+                  <Link
+                    className="install-download-link"
+                    href="/apps"
+                    onClick={() => setOpen(false)}
+                  >
+                    Aplicativos para Mac e Windows <Download size={14} />
+                  </Link>
+                  <button className="button primary" onClick={() => setOpen(false)}>
+                    Entendi
+                  </button>
+                </motion.section>
+              </motion.div>
             )}
-            <button className="button primary" onClick={() => setOpen(false)}>
-              Entendi
-            </button>
-          </section>
-        </div>
-      )}
+          </AnimatePresence>,
+          document.body,
+        )}
     </>
   );
 }

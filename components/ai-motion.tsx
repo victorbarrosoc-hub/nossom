@@ -26,7 +26,12 @@ export default function AIMotion({
       onPointerEnter={() => setHover(true)}
       onPointerLeave={() => setHover(false)}
     >
-      <svg viewBox="0 0 360 210" role="img" aria-label={`IA NOSSOM: ${labels[state]}`}>
+      <svg
+        viewBox="0 0 720 220"
+        preserveAspectRatio="none"
+        role="img"
+        aria-label={`IA NOSSOM: ${labels[state]}`}
+      >
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
             <stop stopColor="#edf6ff" />
@@ -38,12 +43,21 @@ export default function AIMotion({
             <stop stopColor="#8bafff" stopOpacity=".3" />
             <stop offset="1" stopColor="#7f9fff" stopOpacity="0" />
           </radialGradient>
+          <linearGradient id={`${id}-edge`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stopColor="white" stopOpacity="0" />
+            <stop offset=".09" stopColor="white" />
+            <stop offset=".91" stopColor="white" />
+            <stop offset="1" stopColor="white" stopOpacity="0" />
+          </linearGradient>
+          <mask id={`${id}-mask`} maskUnits="userSpaceOnUse" x="0" y="0" width="720" height="220">
+            <rect width="720" height="220" fill={`url(#${id}-edge)`} />
+          </mask>
         </defs>
         <motion.ellipse
-          cx="180"
+          cx="360"
           cy="110"
-          rx="145"
-          ry="85"
+          rx="340"
+          ry="100"
           fill={`url(#${id}-glow)`}
           animate={
             reduced
@@ -52,29 +66,31 @@ export default function AIMotion({
           }
           transition={{ duration: active ? 1.5 : 5, repeat: Infinity }}
         />
-        {Array.from({ length: 13 }, (_, i) => {
-          const y = 86 + i * 3.5,
-            amplitude = (active ? 38 : hover ? 31 : 24) + i * 1.6;
-          const a = `M 20 ${y} C 83 ${y - amplitude}, 106 ${y - amplitude}, 166 ${y} S 263 ${y + amplitude}, 340 ${y - 10}`;
-          const b = `M 20 ${y + 6} C 76 ${y + amplitude}, 114 ${y + amplitude}, 178 ${y} S 275 ${y - amplitude}, 340 ${y + 3}`;
-          return (
-            <motion.path
-              key={i}
-              d={a}
-              fill="none"
-              stroke={`url(#${id})`}
-              strokeWidth={i === 6 ? 2.5 : 0.8}
-              opacity={0.22 + (1 - Math.abs(i - 6) / 7) * 0.65}
-              animate={reduced ? undefined : { d: [a, b, a] }}
-              transition={{
-                duration: state === 'thinking' ? 1.8 : state === 'speaking' ? 1.2 : 5.5,
-                delay: i * 0.035,
-                repeat: Infinity,
-                ease: 'easeInOut',
-              }}
-            />
-          );
-        })}
+        <g mask={`url(#${id}-mask)`}>
+          {Array.from({ length: 13 }, (_, i) => {
+            const y = 86 + i * 3.5,
+              amplitude = (active ? 38 : hover ? 31 : 24) + i * 1.6;
+            const a = `M -40 ${y} C 126 ${y - amplitude}, 212 ${y - amplitude}, 350 ${y} S 590 ${y + amplitude}, 760 ${y - 10}`;
+            const b = `M -40 ${y + 6} C 116 ${y + amplitude}, 228 ${y + amplitude}, 360 ${y} S 610 ${y - amplitude}, 760 ${y + 3}`;
+            return (
+              <motion.path
+                key={i}
+                d={a}
+                fill="none"
+                stroke={`url(#${id})`}
+                strokeWidth={i === 6 ? 2.5 : 0.8}
+                opacity={0.22 + (1 - Math.abs(i - 6) / 7) * 0.65}
+                animate={reduced ? undefined : { d: [a, b, a] }}
+                transition={{
+                  duration: state === 'thinking' ? 1.8 : state === 'speaking' ? 1.2 : 5.5,
+                  delay: i * 0.035,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                }}
+              />
+            );
+          })}
+        </g>
       </svg>
       {!compact && (
         <span className="ai-motion-label" role="status">

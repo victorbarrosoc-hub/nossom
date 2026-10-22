@@ -152,7 +152,7 @@ test('real audio workflow: import, general denoise, A/B, master, report, export,
 test('rejects invalid uploads without losing a project, supports selection and actual music ducking', async ({
   page,
 }) => {
-  await page.goto('/studio');
+  await page.goto('/studio/automatico');
   await page.getByLabel('Importar arquivo de áudio', { exact: true }).setInputFiles({
     name: 'invalid.wav',
     mimeType: 'audio/wav',
@@ -216,7 +216,7 @@ test('landing and studio expose accessible names and sufficient text contrast', 
 });
 
 test('cancelling an import preserves saved projects and lets the user retry', async ({ page }) => {
-  await page.goto('/studio');
+  await page.goto('/studio/automatico');
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles({ name: 'cancelar.wav', mimeType: 'audio/wav', buffer: waveFixture(10) });
@@ -238,7 +238,7 @@ test('cancelling an import preserves saved projects and lets the user retry', as
 
 test('microphone recording can be imported, enhanced and leveled', async ({ page, context }) => {
   await context.grantPermissions(['microphone']);
-  await page.goto('/studio');
+  await page.goto('/studio/automatico');
   await page.getByRole('button', { name: 'Gravar uma ideia', exact: true }).click();
   await expect(page.getByRole('button', { name: /Finalizar/ })).toBeVisible();
   // Chromium supplies a synthetic microphone, so no real person is recorded.
@@ -276,6 +276,7 @@ test('studio themes persist, responsive layouts fit and reduced motion pauses de
   await expect(page.getByLabel('Tema do estúdio')).toHaveValue('dark');
   const { default: AxeBuilder } = await import('@axe-core/playwright');
   for (const theme of ['light', 'dark']) {
+    await page.setViewportSize({ width: 1440, height: 1000 });
     await page.getByLabel('Tema do estúdio').selectOption(theme);
     // Audit settled colors, after the existing 200 ms theme transition.
     await expect(page.locator('.studio-sidebar nav > button').nth(1)).toHaveCSS(

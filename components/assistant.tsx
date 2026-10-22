@@ -1,19 +1,39 @@
 'use client';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useId } from 'react';
 import AIMotion from './ai-motion';
 import { useDialog } from '@/lib/use-dialog';
 import { useConversation } from '@elevenlabs/react';
-import { ArrowUp, AudioLines, Mic, PhoneOff, X, Sparkles, ArrowRight } from 'lucide-react';
+import {
+  ArrowUp,
+  Paperclip,
+  FileAudio,
+  AudioLines,
+  Mic,
+  PhoneOff,
+  X,
+  Sparkles,
+  ArrowRight,
+} from 'lucide-react';
 import { inferPlan, operations, type Operation } from '@/lib/presets';
 export default function Assistant({
-  onClose,
+  onClose = () => {},
   onPlan,
   context,
+  embedded = false,
+  onUpload,
+  fileName,
+  disabled = false,
 }: {
-  onClose: () => void;
+  onClose?: () => void;
+  embedded?: boolean;
+  onUpload?: () => void;
+  fileName?: string;
+  disabled?: boolean;
   onPlan?: (operation: Operation, intensity?: number, eqPreset?: string) => void;
   context?: Record<string, number | null>;
 }) {
+  const id = useId();
+  const Title = embedded ? 'h1' : 'h2';
   const [cloud, setCloud] = useState(false),
     [authenticated, setAuthenticated] = useState(false),
     [loading, setLoading] = useState(true),
@@ -54,7 +74,7 @@ export default function Assistant({
     [reply, setReply] = useState(''),
     [plan, setPlan] = useState<Operation | null>(null),
     [error, setError] = useState('');
-  useDialog(true);
+  useDialog(!embedded);
   const agentId = process.env.NEXT_PUBLIC_ELEVENLABS_AGENT_ID;
   const conversation = useConversation({
     onError: () =>
@@ -69,9 +89,16 @@ export default function Assistant({
     },
     [conversation.endSession],
   );
+  useEffect(() => {
+    pending.current?.abort();
+    endManagedConversation();
+    setReply('');
+    setPlan(null);
+    setThinking(false);
+  }, [fileName]);
   const connected = conversation.status === 'connected';
   async function suggest(value: string) {
-    if (loading || !authenticated) return;
+    if (loading || !authenticated || disabled) return;
     setText(value);
     setError('');
     setRecommended({});
@@ -123,19 +150,24 @@ export default function Assistant({
     }
   }
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div
+      className={embedded ? 'assistant-embedded' : 'modal-backdrop'}
+      onClick={embedded ? undefined : onClose}
+    >
       <section
         className="assistant-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="assistant-title"
+        role={embedded ? undefined : 'dialog'}
+        aria-modal={embedded ? undefined : true}
+        aria-labelledby={id + '-title'}
         onClick={(e) => e.stopPropagation()}
       >
         <header>
           <span className="eyebrow">UMA NOVA FORMA DE CRIAR</span>
-          <button className="icon-button" aria-label="Fechar assistente" onClick={onClose}>
-            <X size={19} />
-          </button>
+          {!embedded && (
+            <button className="icon-button" aria-label="Fechar assistente" onClick={onClose}>
+              <X size={19} />
+            </button>
+          )}
         </header>
         <AIMotion
           state={
@@ -152,15 +184,21 @@ export default function Assistant({
                       : 'idle'
           }
         />
-        <h2 id="assistant-title">
+        <Title id={id + '-title'}>
           O que vamos ouvir
           <br />
           <span className="text-gradient">de diferente hoje?</span>
-        </h2>
+        </Title>
         <p>
-          Descreva o que quer melhorar.
-          <br />
-          Eu encontro um ponto de partida para o seu som.
+          {embedded ? (
+            'Envie seu áudio e conte o que quer melhorar.'
+          ) : (
+            <>
+              Descreva o que quer melhorar.
+              <br />
+              Eu encontro um ponto de partida para o seu som.
+            </>
+          )}
         </p>
         <div className="assistant-mode">
           <Sparkles size={13} />{' '}
@@ -182,26 +220,46 @@ export default function Assistant({
             Entrar para conversar
           </a>
         )}
+        {fileName && (
+          <div className="assistant-attachment">
+            <FileAudio size={20} />
+            <span>
+              <strong>{fileName}</strong>
+              <small>Áudio anexado · pronto para análise</small>
+            </span>
+          </div>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             suggest(text);
           }}
         >
-          <label className="sr-only" htmlFor="assistant-text">
+          {onUpload && (
+            <button
+              type="button"
+              className="assistant-attach"
+              aria-label="Anexar áudio ao assistente"
+              onClick={onUpload}
+              disabled={disabled || thinking}
+            >
+              <Paperclip size={20} />
+            </button>
+          )}
+          <label className="sr-only" htmlFor={id + '-text'}>
             Descreva seu objetivo
           </label>
           <input
-            id="assistant-text"
+            id={id + '-text'}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="Quero reduzir o ruído do meu áudio…"
+            placeholder="O que vamos fazer com o seu áudio?"
             maxLength={1500}
-            disabled={thinking || loading || !authenticated}
+            disabled={thinking || loading || !authenticated || disabled}
             required
           />
           <button
-            disabled={thinking || loading || !authenticated}
+            disabled={thinking || loading || !authenticated || disabled}
             aria-label="Encontrar tratamento"
             className="icon-button solid"
           >
@@ -212,7 +270,7 @@ export default function Assistant({
           {['Melhorar minha voz', 'Nivelar volumes', 'Preparar para publicar'].map((s) => (
             <button
               key={s}
-              disabled={thinking || loading || !authenticated}
+              disabled={thinking || loading || !authenticated || disabled}
               onClick={() => suggest(s)}
             >
               {s}

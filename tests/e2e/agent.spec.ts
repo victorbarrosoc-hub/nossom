@@ -43,7 +43,7 @@ test('the platform agent is connected automatically, continues a private convers
     });
   });
   await page.goto('/studio/ia');
-  await expect(page.getByRole('status').filter({ hasText: 'Conectado à sua conta' })).toBeVisible();
+  await expect(page.getByText('IA NOSSOM · pronta para conversar', { exact: true })).toBeVisible();
   for (const label of [
     'IA da plataforma',
     'Agent ID',
@@ -56,15 +56,18 @@ test('the platform agent is connected automatically, continues a private convers
   );
   await page.goto('/studio');
   await page.locator('.assistant-top').click();
-  await expect(page.getByText('IA NOSSOM · pronta para conversar', { exact: true })).toBeVisible();
-  await page.getByLabel('Descreva seu objetivo').fill('Mais presença na voz.');
-  await page.getByRole('button', { name: 'Encontrar tratamento', exact: true }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(
+    dialog.getByText('IA NOSSOM · pronta para conversar', { exact: true }),
+  ).toBeVisible();
+  await dialog.getByLabel('Descreva seu objetivo').fill('Mais presença na voz.');
+  await dialog.getByRole('button', { name: 'Encontrar tratamento', exact: true }).click();
   await expect(page.getByText('Sugestão 1: mais presença.', { exact: true })).toBeVisible();
   await expect(page).toHaveURL(/\/studio$/);
-  await page.getByLabel('Descreva seu objetivo').fill('E a equalização?');
-  await page.getByRole('button', { name: 'Encontrar tratamento', exact: true }).click();
+  await dialog.getByLabel('Descreva seu objetivo').fill('E a equalização?');
+  await dialog.getByRole('button', { name: 'Encontrar tratamento', exact: true }).click();
   await expect(page.getByText('Sugestão 2: mais presença.', { exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Revisar tratamento', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Revisar tratamento', exact: true }).click();
   await expect(page).toHaveURL(/\/studio\/equalizacao$/);
   await expect.poll(() => closed).toBe(true);
   await page.goto('/studio/ia');

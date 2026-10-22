@@ -7,9 +7,10 @@ export const metadata = { title: 'Entrar', robots: { index: false, follow: false
 export default async function SignIn({
   searchParams,
 }: {
-  searchParams: Promise<{ next?: string }>;
+  searchParams: Promise<{ next?: string; modo?: string }>;
 }) {
-  const next = safeReturnPath((await searchParams).next);
+  const params = await searchParams;
+  const next = safeReturnPath(params.next);
   if (accountFromToken((await cookies()).get(ACCOUNT_COOKIE)?.value)) redirect(next);
-  return <AccountAccess next={next} />;
+  return <AccountAccess next={next} initialMode={params.modo === 'criar' ? 'register' : 'login'} />;
 }

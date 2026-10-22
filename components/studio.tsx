@@ -1,5 +1,7 @@
 'use client';
 import Link from 'next/link';
+import AccountMenu from './account-menu';
+import AccountSettings from './account-settings';
 import { usePathname, useRouter } from 'next/navigation';
 import { toolPath, routeOperation } from '@/lib/studio-routes';
 import { activateVersion, activeIndex, previousIndex, nextIndex } from '@/lib/history';
@@ -44,6 +46,7 @@ import {
   Activity,
   Undo2,
   MessageCircle,
+  UserRound,
   Menu,
   PenLine,
   Info,
@@ -213,7 +216,7 @@ export default function Studio({ account }: { account: Account }) {
   useEffect(() => {
     try {
       const saved = localStorage.getItem('nossom-theme');
-      if (saved === 'light' || saved === 'dark') setTheme(saved);
+      if (saved === 'light' || saved === 'dark' || saved === 'system') setTheme(saved);
     } catch {
       /* The studio also works with preference storage disabled. */
     }
@@ -226,14 +229,16 @@ export default function Studio({ account }: { account: Account }) {
       /* Optional preference. */
     }
   }
-  const [view, setView] = useState<'home' | 'projects' | 'editor' | 'tool' | 'ai'>(
-      pathname === '/studio/ia'
-        ? 'ai'
-        : pathname === '/studio/projetos'
-          ? 'projects'
-          : routeTool
-            ? 'tool'
-            : 'home',
+  const [view, setView] = useState<'home' | 'projects' | 'editor' | 'tool' | 'ai' | 'account'>(
+      pathname === '/studio/conta'
+        ? 'account'
+        : pathname === '/studio/ia'
+          ? 'ai'
+          : pathname === '/studio/projetos'
+            ? 'projects'
+            : routeTool
+              ? 'tool'
+              : 'home',
     ),
     [projects, setProjects] = useState<ProjectSummary[]>([]),
     [project, setProject] = useState<Project | null>(null),
@@ -253,6 +258,8 @@ export default function Studio({ account }: { account: Account }) {
     [notice, setNotice] = useState(''),
     [assistant, setAssistant] = useState(false),
     [sidebar, setSidebar] = useState(false),
+    [collapsed, setCollapsed] = useState(false),
+    [mobile, setMobile] = useState(false),
     [dragging, setDragging] = useState(false),
     [deleteId, setDeleteId] = useState<string | null>(null),
     [renaming, setRenaming] = useState(false),
@@ -290,9 +297,34 @@ export default function Studio({ account }: { account: Account }) {
     window.addEventListener('focus', focus);
     return () => window.removeEventListener('focus', focus);
   }, []);
+  useEffect(() => {
+    const query = matchMedia('(max-width: 680px)');
+    const update = () => {
+      setMobile(query.matches);
+      if (!query.matches) setSidebar(false);
+    };
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, []);
+  useEffect(() => {
+    if (!sidebar) return;
+    document.querySelector<HTMLButtonElement>('.sidebar-close')?.focus();
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = overflow;
+      document.querySelector<HTMLButtonElement>('.mobile-menu')?.focus();
+    };
+  }, [sidebar]);
   const version = project?.versions[versionIndex];
   const selectedTool = operations.find((o) => o.id === operation)!;
   useEffect(() => {
+    setSidebar(false);
+    if (pathname === '/studio/conta') {
+      setView('account');
+      return;
+    }
     if (pathname === '/studio/ia') {
       setView('ai');
       return;
@@ -385,7 +417,7 @@ export default function Studio({ account }: { account: Account }) {
       operationLock.current = false;
     }
   }
-  async function upload(file: File, requestedOperation?: Operation) {
+  async function upload(file: File, requestedOperation?: Operation, inAssistant = false) {
     await run(async () => {
       if (projects.length >= 20)
         throw new Error(
@@ -408,9 +440,10 @@ export default function Studio({ account }: { account: Account }) {
       setVersionIndex(0);
       setRegion(null);
       setMusic(null);
-      setView('editor');
+      setView(inAssistant ? 'home' : 'editor');
       if (requestedOperation) setOperation(requestedOperation);
-      router.push(toolPath(requestedOperation ?? operation, created.id), { scroll: false });
+      if (!inAssistant)
+        router.push(toolPath(requestedOperation ?? operation, created.id), { scroll: false });
       await refresh();
       notify('Áudio importado. Seu original está preservado.');
     });
@@ -432,6 +465,7 @@ export default function Studio({ account }: { account: Account }) {
     }
   }
   function navigate(next: 'home' | 'projects' | 'editor') {
+    setSidebar(false);
     if (busy || recording) return;
     setSidebar(false);
     router.push(
@@ -783,7 +817,7 @@ export default function Studio({ account }: { account: Account }) {
   );
   return (
     <div
-      className={`studio-shell ${routeTool ? `tool-editor tool-${routeTool}` : ''}`}
+      className={`studio-shell ${collapsed ? 'nav-collapsed' : ''} ${routeTool ? `tool-editor tool-${routeTool}` : ''}`}
       data-theme={theme}
     >
       <a className="skip-link" href="#studio-main">
@@ -793,10 +827,21 @@ export default function Studio({ account }: { account: Account }) {
         <button
           className="sidebar-backdrop"
           onClick={() => setSidebar(false)}
-          aria-label="Fechar navegação"
+          aria-label="Fechar navegação ao tocar fora"
         />
       )}
-      <aside className={`studio-sidebar ${sidebar ? 'open' : ''}`}>
+      <aside
+        id="studio-navigation"
+        className={`studio-sidebar ${sidebar ? 'open' : ''}`}
+        inert={mobile ? !sidebar : collapsed}
+      >
+        <button
+          className="icon-button sidebar-close"
+          aria-label="Fechar navegação"
+          onClick={() => setSidebar(false)}
+        >
+          <X size={20} />
+        </button>
         <Link href="/" aria-label="NOSSOM página inicial">
           <Brand />
         </Link>
@@ -838,7 +883,10 @@ export default function Studio({ account }: { account: Account }) {
           <Plus size={17} /> Novo projeto
         </button>
         <nav aria-label="Navegação do estúdio">
-          <button className={view === 'home' ? 'active' : ''} onClick={() => navigate('home')}>
+          <button
+            className={view === 'home' || view === 'ai' ? 'active' : ''}
+            onClick={() => navigate('home')}
+          >
             <House size={18} /> Início
           </button>
           <button
@@ -855,29 +903,20 @@ export default function Studio({ account }: { account: Account }) {
             <AudioLines size={18} /> Estúdio
           </button>
           <button
-            className={view === 'ai' ? 'active' : ''}
+            className={view === 'account' ? 'active' : ''}
             onClick={() => {
-              if (!busy && !recording) router.push('/studio/ia');
+              setSidebar(false);
+              if (!busy && !recording) router.push('/studio/conta');
             }}
           >
-            <MessageCircle size={18} /> Assistente
+            <UserRound size={18} /> Minha conta
           </button>
         </nav>
         <div className="sidebar-bottom">
-          <button
-            className="text-link account-signout"
-            disabled={!!busy || recording}
-            onClick={() =>
-              void run(async () => {
-                const response = await fetch('/api/account', { method: 'DELETE' });
-                if (!response.ok) throw new Error('Não foi possível sair da conta.');
-                location.assign('/entrar');
-              })
-            }
-          >
-            Sair da conta
-          </button>
-          <InstallApp />
+          <InstallApp onOpen={() => setSidebar(false)} />
+          <Link href="/apps">
+            Aplicativos para Mac e Windows <Download size={15} />
+          </Link>
           <div className="local-note">
             <ShieldCheck size={17} />
             <div>
@@ -894,15 +933,26 @@ export default function Studio({ account }: { account: Account }) {
           </Link>
         </div>
       </aside>
-      <div className="studio-body">
+      <div className="studio-body" inert={mobile && sidebar}>
         <header className="studio-header">
           <div>
             <button
               className="icon-button mobile-menu"
               aria-label="Abrir navegação"
-              onClick={() => setSidebar(true)}
+              onClick={() => setSidebar(!sidebar)}
+              aria-expanded={sidebar}
+              aria-controls="studio-navigation"
             >
               <Menu size={20} />
+            </button>
+            <button
+              className="icon-button desktop-nav-toggle"
+              aria-label={collapsed ? 'Expandir navegação' : 'Recolher navegação'}
+              aria-expanded={!collapsed}
+              aria-controls="studio-navigation"
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              <Menu size={18} />
             </button>
             <span>Meu espaço</span>
             <ChevronRight size={12} />
@@ -927,14 +977,17 @@ export default function Studio({ account }: { account: Account }) {
             ) : (
               <strong>
                 {view === 'ai'
-                  ? 'Inteligência NOSSOM'
+                  ? 'Assistente'
                   : view === 'projects'
                     ? 'Meus projetos'
-                    : 'Início'}
+                    : view === 'account'
+                      ? 'Minha conta'
+                      : 'Assistente'}
               </strong>
             )}
           </div>
           <div className="studio-header-actions">
+            <AccountMenu account={account} usage={usage} disabled={!!busy || recording} />
             <label className="theme-control">
               <span className="sr-only">Tema do estúdio</span>
               <select
@@ -968,7 +1021,12 @@ export default function Studio({ account }: { account: Account }) {
             onChange={(e) => {
               const f = e.target.files?.[0];
               e.target.value = '';
-              if (f) void upload(f, view === 'home' ? 'auto' : undefined);
+              if (f)
+                void upload(
+                  f,
+                  view === 'home' || view === 'ai' ? undefined : operation,
+                  view === 'home' || view === 'ai',
+                );
             }}
           />
           <input
@@ -1027,12 +1085,12 @@ export default function Studio({ account }: { account: Account }) {
               </button>
             </div>
           )}
-          {(view === 'home' || view === 'tool') && (
+          {view === 'tool' && (
             <>
               <div className="studio-welcome">
                 <div>
                   <span className="eyebrow">TUDO ACONTECE NO SOM</span>
-                  <h1>{view === 'tool' ? selectedTool.label : 'Seu espaço de criação.'}</h1>
+                  <h1>{selectedTool.label}</h1>
                   <p>
                     {view === 'tool'
                       ? selectedTool.description
@@ -1043,42 +1101,6 @@ export default function Studio({ account }: { account: Account }) {
                   <span className="status-light" /> Seu estúdio está aberto
                 </div>
               </div>
-              {view === 'home' && (
-                <div className="studio-stats">
-                  <div>
-                    <span className="stat-icon purple">
-                      <Folder size={19} />
-                    </span>
-                    <div>
-                      <span>Seus projetos</span>
-                      <strong>{projects.length}</strong>
-                      <small>Salvos neste navegador</small>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="stat-icon blue">
-                      <Clock size={19} />
-                    </span>
-                    <div>
-                      <span>Áudio no seu espaço</span>
-                      <strong>
-                        {formatTime(projects.reduce((sum, p) => sum + p.duration, 0))}
-                      </strong>
-                      <small>Duração dos originais</small>
-                    </div>
-                  </div>
-                  <div>
-                    <span className="stat-icon green">
-                      <ShieldCheck size={19} />
-                    </span>
-                    <div>
-                      <span>Seu áudio, com você</span>
-                      <strong>Local</strong>
-                      <small>Sem envio para servidores</small>
-                    </div>
-                  </div>
-                </div>
-              )}
               <div className="studio-start-grid">
                 <section
                   className={`upload-zone ${dragging ? 'dragging' : ''}`}
@@ -1091,8 +1113,7 @@ export default function Studio({ account }: { account: Account }) {
                     e.preventDefault();
                     setDragging(false);
                     const f = e.dataTransfer.files[0];
-                    if (f && !busy && !recording)
-                      void upload(f, view === 'home' ? 'auto' : undefined);
+                    if (f && !busy && !recording) void upload(f);
                   }}
                 >
                   <span className="upload-icon">
@@ -1149,31 +1170,6 @@ export default function Studio({ account }: { account: Account }) {
                   </ol>
                 </aside>
               </div>
-              {view === 'home' && (
-                <div className="quick-section">
-                  <div className="subheading">
-                    <h2>O que você quer fazer?</h2>
-                    <span>SEU PRÓXIMO PASSO</span>
-                  </div>
-                  <div className="quick-grid workflow-quick-grid">
-                    {(['auto', 'effects', 'master'] as Operation[]).map((id) => {
-                      const o = operations.find((o) => o.id === id)!;
-                      const Icon = toolIcons[o.id];
-                      return (
-                        <button
-                          key={o.id}
-                          className={operation === o.id ? 'selected' : ''}
-                          onClick={() => chooseTool(o.id)}
-                        >
-                          <Icon size={21} strokeWidth={1.5} />
-                          <span>{o.label}</span>
-                          <ArrowUpRight size={13} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
               <div className="studio-lower">
                 <section className="recent-projects">
                   <div className="subheading">
@@ -1209,7 +1205,35 @@ export default function Studio({ account }: { account: Account }) {
               </div>
             </>
           )}
-          {view === 'ai' && <AssistantHome onOpen={() => setAssistant(true)} />}
+          {(view === 'home' || view === 'ai') && (
+            <AssistantHome
+              onOpen={() => setAssistant(true)}
+              onUpload={() => fileInput.current?.click()}
+              onDrop={(file) => {
+                if (!busy && !recording) void upload(file, undefined, true);
+              }}
+              fileName={project?.originalName}
+              disabled={!!busy || recording}
+              context={
+                version
+                  ? {
+                      ...version.metrics,
+                      duration: version.info.duration,
+                      channels: version.info.channels,
+                    }
+                  : undefined
+              }
+              onPlan={(next, amount, eq) => {
+                if (typeof amount === 'number') setIntensity(amount);
+                if (eq) selectEq(eq);
+                chooseTool(next);
+              }}
+            />
+          )}
+          {view === 'account' && (
+            <AccountSettings account={account} usage={usage} theme={theme} onTheme={changeTheme} />
+          )}
+
           {view === 'projects' && (
             <>
               <div className="studio-welcome">
@@ -2155,8 +2179,11 @@ export default function Studio({ account }: { account: Account }) {
           </button>
         </div>
       )}
-      <nav className="studio-tabs" aria-label="Navegação rápida">
-        <button className={view === 'home' ? 'active' : ''} onClick={() => navigate('home')}>
+      <nav className="studio-tabs" aria-label="Navegação rápida" inert={mobile && sidebar}>
+        <button
+          className={view === 'home' || view === 'ai' ? 'active' : ''}
+          onClick={() => navigate('home')}
+        >
           <House size={19} />
           <span>Início</span>
         </button>
@@ -2176,12 +2203,12 @@ export default function Studio({ account }: { account: Account }) {
           <span>Estúdio</span>
         </button>
         <button
-          className={view === 'ai' ? 'active' : ''}
+          className={view === 'account' ? 'active' : ''}
           disabled={!!busy || recording}
-          onClick={() => router.push('/studio/ia')}
+          onClick={() => router.push('/studio/conta')}
         >
           <MessageCircle size={19} />
-          <span>Assistente</span>
+          <span>Conta</span>
         </button>
       </nav>
       {assistant && (

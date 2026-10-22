@@ -55,6 +55,15 @@ const server = createServer(async (req, res) => {
     if (!saved.user.email_confirmed_at) return send({ error_code: 'email_not_confirmed' }, 400);
     return send(session(saved.user));
   }
+  if (url.pathname === '/auth/v1/user' && req.method === 'PUT') {
+    if (!user) return send({ error_code: 'session_not_found' }, 401);
+    if (body.data) user.user_metadata = { ...user.user_metadata, ...body.data };
+    if (body.password) {
+      const stored = users.get(user.email);
+      stored.password = body.password;
+    }
+    return send(user);
+  }
   if (url.pathname === '/auth/v1/user')
     return user ? send(user) : send({ error_code: 'session_not_found' }, 401);
   if (url.pathname === '/auth/v1/logout') {

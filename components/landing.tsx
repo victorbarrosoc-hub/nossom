@@ -30,6 +30,7 @@ import Assistant from './assistant';
 import DemoPlayer from './demo-player';
 import { operations } from '@/lib/presets';
 import InstallApp from './install-app';
+import AccountMenu from './account-menu';
 
 function Reveal({
   children,
@@ -156,9 +157,7 @@ export default function Landing() {
             ))}
           </nav>
           <div className="ns-nav-actions">
-            <Link href="/studio" className="ns-login">
-              Abrir estúdio
-            </Link>
+            <AccountMenu />
             <Link href="/studio" className="button primary small">
               Começar grátis <ArrowRight size={14} />
             </Link>
@@ -546,6 +545,7 @@ export default function Landing() {
         </div>
         <nav aria-label="Rodapé">
           <InstallApp />
+          <Link href="/apps">Aplicativos para Mac e Windows</Link>
           <Link href="/privacidade">Privacidade</Link>
           <Link href="/studio">
             Abrir estúdio <ArrowUpRight size={13} />

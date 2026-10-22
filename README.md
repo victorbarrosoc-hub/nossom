@@ -25,7 +25,7 @@ Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile 
 ## O que funciona
 
 - Página pública responsiva com motion, demonstração sonora real, perguntas frequentes e entrada no estúdio.
-- Navegação com quatro destinos: Início, Meus projetos, Estúdio e Assistente. O seletor no topo agrupa ferramentas em Tratar, Ajustar, Criar e Entregar; trocar de ferramenta mantém o projeto e o histórico.
+- Navegação com quatro destinos: Início (assistente com anexo de áudio), Meus projetos, Estúdio e Minha conta. Menu recolhível no desktop e drawer com fechamento explícito no celular. O seletor no topo agrupa ferramentas em Tratar, Ajustar, Criar e Entregar; trocar de ferramenta mantém o projeto e o histórico.
 - Instalação pelo Safari: Compartilhar → Adicionar à Tela de Início → Adicionar. Manifest em modo standalone, entrada `/studio`, ícones PNG 180/192/512 e metadados Apple. Há ajuda de instalação no rodapé da homepage e na lateral do estúdio; em modo instalado, o botão some. Não há promessa de funcionamento offline nem service worker de cache.
 - Open Graph e Twitter Card com imagem própria de 1.200 × 630, logo NOSSOM, prata/azul sobre fundo escuro e URLs absolutas do domínio de produção. A imagem é gerada estaticamente no build em `/opengraph-image`. Para regenerar os ícones: `npx tsx scripts/generate-brand-assets.tsx`.
 - Tratamento completo automático como entrada padrão em `/studio/automatico`: restauração neural com preservação de fase/estéreo, timbre e dinâmica adaptados à gravação e finalização Transmissão + Limite −3 dB. Um botão, sem definir intensidade.
@@ -122,3 +122,9 @@ Cada usuário tem 10 autorizações de tratamento por semana, renovadas segunda-
 Configuração e migração: [docs/supabase-setup.md](docs/supabase-setup.md). Integração do agente: [docs/claude-setup.md](docs/claude-setup.md). Nenhum segredo fica no cliente. Claude orienta o tratamento por texto/medições; o motor de áudio continua local. A cota não impede executar os modelos públicos fora do produto.
 
 Testes de banco real isolado: `npm run test:quota` (Docker/PostgreSQL 17). Os E2E iniciam automaticamente um Supabase simulado e o build de produção, sem cadastrar usuários no banco real nem gerar custos de IA. Migração local validada não equivale a migração aplicada em produção.
+
+## Conta, leitura e aplicativos
+
+Menu de login/conta animado em Motion, formulários reutilizáveis e painel `/studio/conta` para nome, e-mail, senha e tema. O início permite conversar e anexar áudio antes de revisar a ferramenta sugerida. Textos maiores e campos de 16 px melhoram a leitura no celular/desktop. A instalação abre em portal centralizado, independente do menu lateral.
+
+A página `/apps` apresenta as opções Mac/Windows. O wrapper e os builds DMG/EXE estão em `desktop/`; detalhes e limites de assinatura/distribuição em [desktop/README.md](desktop/README.md). Sem URLs de instaladores publicados, os cartões ficam em preparação. O bloqueio de cobrança do GitHub Actions precisa ser resolvido antes de gerar artefatos nos runners.

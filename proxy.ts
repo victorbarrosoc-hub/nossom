@@ -27,4 +27,6 @@ export async function proxy(request: NextRequest) {
   if (before) response.headers.append('Set-Cookie', sessionCookie(null));
   return response;
 }
-export const config = { matcher: ['/studio/:path*', '/api/ai/:path*', '/api/usage'] };
+export const config = {
+  matcher: ['/studio/:path*', '/api/ai/:path*', '/api/usage', '/api/account'],
+};

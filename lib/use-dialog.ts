@@ -51,7 +51,8 @@ export function useDialog(active: boolean) {
         node.inert = inert;
       });
       dialog.removeEventListener('keydown', trap);
-      previous?.focus();
+      if (previous?.isConnected && !previous.closest('[inert]')) previous.focus();
+      else document.querySelector<HTMLButtonElement>('.mobile-menu')?.focus();
     };
   }, [active]);
 }

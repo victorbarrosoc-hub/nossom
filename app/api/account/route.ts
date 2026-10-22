@@ -1,5 +1,11 @@
 import {
   accountConfigured,
+  accountFromUser,
+  decodeSession,
+  encodeSession,
+  sessionFromProvider,
+  type AuthUser,
+  type ProviderSession,
   accountToken,
   accessToken,
   authenticate,
@@ -121,4 +127,100 @@ export async function DELETE(request: Request) {
     { signedOut: true },
     { headers: { ...privateHeaders, 'Set-Cookie': sessionCookie(null) } },
   );
+}
+
+export async function PATCH(request: Request) {
+  if (!sameOrigin(request))
+    return Response.json(
+      { error: 'Origem não autorizada.' },
+      { status: 403, headers: privateHeaders },
+    );
+  const account = await currentAccount(request);
+  if (!account)
+    return Response.json(
+      { error: 'Entre novamente na sua conta.' },
+      { status: 401, headers: privateHeaders },
+    );
+  if (!allowRequest('account-update:' + account.id, 10, 900000))
+    return Response.json(
+      { error: 'Aguarde alguns minutos antes de alterar novamente.' },
+      { status: 429, headers: privateHeaders },
+    );
+  const raw = await request.text();
+  if (raw.length > 3000)
+    return Response.json({ error: 'Dados inválidos.' }, { status: 413, headers: privateHeaders });
+  try {
+    const body = JSON.parse(raw);
+    let changes: Record<string, unknown> = {};
+    const session = decodeSession(accountToken(request))!;
+    let auth: ProviderSession | undefined;
+    if (body.action === 'profile') {
+      if (
+        typeof body.name !== 'string' ||
+        body.name.trim().length < 2 ||
+        body.name.trim().length > 60
+      )
+        throw new Error('Use um nome entre 2 e 60 caracteres.');
+      changes = { data: { name: body.name.trim() } };
+    } else if (body.action === 'email' || body.action === 'password') {
+      if (
+        typeof body.currentPassword !== 'string' ||
+        !body.currentPassword ||
+        body.currentPassword.length > 128
+      )
+        throw new Error('Informe sua senha atual.');
+      if (body.action === 'password') {
+        if (
+          typeof body.password !== 'string' ||
+          body.password.length < 8 ||
+          body.password.length > 128
+        )
+          throw new Error('Use uma senha entre 8 e 128 caracteres.');
+        changes = { password: body.password };
+      } else {
+        if (
+          typeof body.email !== 'string' ||
+          body.email.length > 254 ||
+          !/^\S+@\S+\.\S+$/.test(body.email)
+        )
+          throw new Error('Informe um e-mail válido.');
+        changes = { email: body.email.trim().toLowerCase() };
+      }
+      try {
+        auth = await supabase<ProviderSession>('/auth/v1/token?grant_type=password', {
+          method: 'POST',
+          body: { email: account.email, password: body.currentPassword },
+        });
+      } catch {
+        throw new Error('Sua senha atual não foi confirmada.');
+      }
+      if (auth.user.id !== account.id)
+        throw new Error('Não foi possível confirmar sua identidade.');
+    } else
+      return Response.json({ error: 'Ação inválida.' }, { status: 400, headers: privateHeaders });
+    const user = await supabase<AuthUser>(
+      '/auth/v1/user?redirect_to=' + encodeURIComponent(requestOrigin(request) + '/auth/confirm'),
+      { method: 'PUT', token: auth?.access_token || session.access, body: changes },
+    );
+    const updated = accountFromUser(user);
+    const token = auth
+      ? encodeSession(sessionFromProvider({ ...auth, user }))
+      : encodeSession({ ...session, account: updated });
+    return Response.json(
+      { account: updated, confirmationRequired: body.action === 'email' },
+      { headers: { ...privateHeaders, 'Set-Cookie': sessionCookie(token) } },
+    );
+  } catch (error) {
+    return Response.json(
+      {
+        error:
+          error instanceof SupabaseError
+            ? 'Não foi possível alterar os dados. Confira sua conta e tente novamente.'
+            : error instanceof Error
+              ? error.message
+              : 'Não foi possível salvar.',
+      },
+      { status: 400, headers: privateHeaders },
+    );
+  }
 }

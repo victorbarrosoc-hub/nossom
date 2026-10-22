@@ -82,9 +82,7 @@ test('the assistant page has no personal key, access-code or agent configuration
   page,
 }) => {
   await page.goto('/studio/ia');
-  await expect(
-    page.getByRole('button', { name: 'Conversar com a IA', exact: false }),
-  ).toBeVisible();
+  await expect(page.getByLabel('Descreva seu objetivo')).toBeVisible();
   for (const label of [
     'Código de acesso da NOSSOM',
     'Agent ID',

@@ -48,7 +48,11 @@ test('Supabase accounts can sign up, sign out and sign in from another browser w
   expect(status.environmentId).toBeUndefined();
   const saved = await page.evaluate(() => localStorage.getItem('nossom-demo-accounts-v1'));
   expect(saved).toBeNull();
-  await page.getByRole('button', { name: 'Sair da conta', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir menu da conta', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Sair da conta', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/entrar$/);
   await expect(page.getByRole('button', { name: 'Entrar no estúdio', exact: true })).toBeVisible();
   await page.getByLabel('E-mail', { exact: true }).fill('pessoa.ficticia@example.test');
@@ -74,13 +78,18 @@ test('accounts keep separate project spaces and logging back in restores the fir
   page,
 }) => {
   await create(page, 'Alice de teste', 'alice.demo@example.test');
+  await page.goto('/studio/automatico');
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles('tests/fixtures/synthetic-speech.wav');
   await expect(page).toHaveURL(/\/studio\/automatico\?project=/, { timeout: 90000 });
   const project = new URL(page.url()).searchParams.get('project')!;
   await expect(page.getByRole('heading', { name: 'Original', exact: true })).toBeVisible();
-  await page.getByRole('button', { name: 'Sair da conta', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir menu da conta', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Sair da conta', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/entrar$/);
   await create(page, 'Bob de teste', 'bob.demo@example.test');
   await page.goto('/studio/projetos');
@@ -88,7 +97,11 @@ test('accounts keep separate project spaces and logging back in restores the fir
   await page.goto('/studio/equalizacao?project=' + project);
   await expect(page.getByLabel('Importar arquivo de áudio', { exact: true })).toHaveCount(1);
   await expect(page.getByText('synthetic-speech', { exact: true })).toHaveCount(0);
-  await page.getByRole('button', { name: 'Sair da conta', exact: true }).click();
+  await page.getByRole('button', { name: 'Abrir menu da conta', exact: true }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('button', { name: 'Sair da conta', exact: true })
+    .click();
   await expect(page).toHaveURL(/\/entrar$/);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await page.getByLabel('E-mail', { exact: true }).fill('alice.demo@example.test');

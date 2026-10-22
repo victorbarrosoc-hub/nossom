@@ -188,7 +188,7 @@ test('real recording regression: the untouched default preserves timbre, stereo 
     !process.env.NOSSOM_REGRESSION_MP3,
     'Requires the private recording supplied for this regression; it is never committed.',
   );
-  await page.goto('/studio');
+  await page.goto('/studio/automatico');
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles(process.env.NOSSOM_REGRESSION_MP3!);

@@ -7,7 +7,7 @@
   min-height: 46px;
   border-radius: 999px;
   padding: 0 22px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 550;
   border: 1px solid transparent;
   white-space: nowrap;
@@ -31,7 +31,7 @@
 }
 .button.small {
   min-height: 34px;
-  font-size: 11px;
+  font-size: 14px;
   padding-inline: 15px;
 }
 .button.danger {
@@ -61,7 +61,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--up-text);
   font-weight: 550;
 }
@@ -82,7 +82,7 @@
   gap: 5px;
   padding: 8px 14px;
   border-radius: 999px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .segmented .active {
@@ -170,7 +170,7 @@
   padding: 27px 14px 20px;
 }
 .studio-sidebar .brand > span {
-  font-size: 11px;
+  font-size: 14px;
   letter-spacing: 3px;
 }
 .studio-sidebar .brand > svg {
@@ -187,7 +187,7 @@
 }
 .workspace-label small,
 .local-badge {
-  font-size: 10px;
+  font-size: 14px;
 }
 .local-badge {
   border-radius: 5px;
@@ -209,7 +209,7 @@
   min-height: 40px;
   padding: 10px 11px;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .studio-sidebar nav > button.active {
@@ -233,34 +233,34 @@
   color: var(--text);
 }
 .sidebar-caption {
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.06em;
   margin: 21px 11px 7px;
 }
 .future-nav {
-  font-size: 12px;
+  font-size: 14px;
   gap: 9px;
   padding-inline: 11px;
 }
 .future-nav small {
-  font-size: 9px;
+  font-size: 14px;
 }
 .sidebar-bottom {
   padding-top: 25px;
 }
 .local-note {
-  font-size: 11px;
+  font-size: 14px;
   padding: 12px 9px;
   background: var(--surface);
 }
 .local-note p {
-  font-size: 10px;
+  font-size: 14px;
 }
 .local-note > svg {
   color: var(--ok-text);
 }
 .sidebar-bottom > a {
-  font-size: 10px;
+  font-size: 14px;
   padding-top: 16px;
 }
 .studio-body {
@@ -274,7 +274,7 @@
   border-color: var(--hairline);
 }
 .studio-header > div {
-  font-size: 12px;
+  font-size: 14px;
 }
 .studio-header strong {
   color: var(--text);
@@ -284,7 +284,7 @@
   flex-shrink: 0;
 }
 .theme-control select {
-  font-size: 11px;
+  font-size: 14px;
   background: transparent;
   border: 0;
   padding: 7px 0;
@@ -292,7 +292,7 @@
   color: var(--text-2);
 }
 .assistant-top {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text);
 }
 .assistant-top > svg {
@@ -308,7 +308,7 @@
   margin-bottom: 28px;
 }
 .studio-welcome .eyebrow {
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.1em;
   color: var(--text-2);
 }
@@ -322,7 +322,7 @@
   font-size: 14px;
 }
 .workspace-indicator {
-  font-size: 11px;
+  font-size: 14px;
 }
 .studio-stats {
   display: grid;
@@ -370,7 +370,7 @@
   min-width: 0;
 }
 .studio-stats span:not(.stat-icon) {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .studio-stats strong {
@@ -384,7 +384,7 @@
 }
 .studio-stats small {
   display: block;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--text-2);
   margin-top: 8px;
 }
@@ -421,7 +421,7 @@
   letter-spacing: -0.035em;
 }
 .upload-zone > p {
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 8px;
   color: var(--text-2);
 }
@@ -431,7 +431,7 @@
 }
 .upload-actions .button {
   min-height: 44px;
-  font-size: 12px;
+  font-size: 14px;
   border-radius: 999px;
   padding-inline: 20px;
 }
@@ -442,7 +442,7 @@
 }
 .upload-formats {
   color: var(--text-2);
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0;
   margin-top: 17px;
 }
@@ -453,7 +453,7 @@
   border-radius: 16px;
 }
 .studio-start-guide .eyebrow {
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 0.08em;
 }
 .studio-start-guide h2 {
@@ -480,15 +480,15 @@
   color: var(--up-text);
   display: grid;
   place-items: center;
-  font-size: 10px;
+  font-size: 14px;
   flex-shrink: 0;
 }
 .studio-start-guide strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 .studio-start-guide p {
-  font-size: 11px;
+  font-size: 14px;
   margin-top: 4px;
 }
 .quick-section {
@@ -502,12 +502,12 @@
   font-weight: 650;
 }
 .subheading > span {
-  font-size: 9px;
+  font-size: 14px;
   color: var(--text-2);
   letter-spacing: 0.06em;
 }
 .subheading > .text-link {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--up-text);
 }
 .quick-grid {
@@ -539,7 +539,7 @@
 .quick-grid > button > span {
   flex-basis: 100%;
   order: 3;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 550;
 }
 .quick-grid > button > svg:first-child {
@@ -566,15 +566,15 @@
   color: var(--text);
 }
 .empty-projects p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .empty-projects > .text-link {
   color: var(--up-text);
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 17px;
 }
 .empty-projects > small {
-  font-size: 10px;
+  font-size: 14px;
 }
 .empty-icon {
   color: var(--text-2);
@@ -590,7 +590,7 @@
 .project-open small,
 .project-date,
 .project-status {
-  font-size: 11px;
+  font-size: 14px;
 }
 .project-icon {
   background: var(--up-soft);
@@ -600,7 +600,7 @@
   background: var(--ok);
 }
 .studio-footer {
-  font-size: 10px;
+  font-size: 14px;
   border-color: var(--hairline);
   padding-inline: var(--page-x);
 }
@@ -617,7 +617,7 @@
   border-radius: 12px;
   background-color: var(--surface);
   color: var(--text);
-  font-size: 12px;
+  font-size: 14px;
   cursor: pointer;
 }
 .quick-grid.workflow-quick-grid {
@@ -669,11 +669,11 @@
   min-height: 42px;
 }
 .editor-heading p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .saved {
   color: var(--ok-text);
-  font-size: 11px;
+  font-size: 14px;
 }
 .editor-layout {
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -695,10 +695,10 @@
   font-weight: 600;
 }
 .player-title .eyebrow {
-  font-size: 10px;
+  font-size: 14px;
 }
 .player-title .segmented button {
-  font-size: 11px;
+  font-size: 14px;
 }
 .wave-container {
   background: repeating-linear-gradient(0deg, transparent, transparent 29px, var(--hairline) 30px);
@@ -719,10 +719,10 @@
   border-radius: 999px;
   min-height: 34px;
   padding-inline: 13px;
-  font-size: 11px;
+  font-size: 14px;
 }
 .checkbox-label {
-  font-size: 11px;
+  font-size: 14px;
 }
 .treatment-panel {
   top: 20px;
@@ -739,21 +739,21 @@
   font-weight: 650;
 }
 .panel-subtitle {
-  font-size: 12px;
+  font-size: 14px;
 }
 .field-label {
-  font-size: 10px;
+  font-size: 14px;
   letter-spacing: 0.05em;
 }
 .treatment-panel select {
   background: var(--surface-2);
-  font-size: 13px;
+  font-size: 14px;
   border-radius: 10px;
   padding: 13px 11px;
 }
 .operation-description,
 .field-hint {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.65;
 }
 .intensity-selector {
@@ -762,7 +762,7 @@
   background: var(--surface-2);
 }
 .intensity-selector > button {
-  font-size: 12px;
+  font-size: 14px;
   padding: 9px 5px;
   border-radius: 999px;
 }
@@ -774,7 +774,7 @@
 .process-button {
   min-height: 48px;
   border-radius: 999px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .process-button.primary {
   background: linear-gradient(110deg, #0876e6, #7150e8);
@@ -792,18 +792,18 @@
   font-size: 14px;
 }
 .panel-help p {
-  font-size: 12px;
+  font-size: 14px;
 }
 .panel-help .text-link {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--up-text);
 }
 .advanced-toggle {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .advanced-panel p {
-  font-size: 11px;
+  font-size: 14px;
 }
 .target-preview {
   background: var(--up-soft);
@@ -827,16 +827,16 @@
 }
 .metrics-grid > div > span,
 .metrics-grid strong > small {
-  font-size: 11px;
+  font-size: 14px;
 }
 .metrics-grid p {
-  font-size: 11px;
+  font-size: 14px;
 }
 .analysis-verdict {
   color: var(--ok-text);
 }
 .analysis-verdict p {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .analysis-verdict.warning,
@@ -858,13 +858,13 @@
 }
 .version-row strong {
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
 }
 .version-row small {
-  font-size: 11px;
+  font-size: 14px;
 }
 .version-row > span:nth-child(3) {
-  font-size: 11px;
+  font-size: 14px;
 }
 .version-marker {
   background: var(--surface-3);
@@ -874,14 +874,14 @@
   background: var(--surface);
 }
 .export-strip strong {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text);
 }
 .export-strip > div > span {
-  font-size: 11px;
+  font-size: 14px;
 }
 .export-strip .button {
-  font-size: 11px;
+  font-size: 14px;
   border-radius: 999px;
   min-height: 34px;
 }
@@ -903,7 +903,7 @@
 }
 .processing-banner small {
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 14px;
 }
 .toast {
   background: var(--surface);
@@ -984,7 +984,7 @@
     font-size: 26px;
   }
   .studio-stats small {
-    font-size: 9px;
+    font-size: 14px;
   }
   .quick-grid > button {
     padding: 15px 12px;
@@ -1054,7 +1054,7 @@
     height: 62px;
   }
   .studio-header > div {
-    font-size: 11px;
+    font-size: 14px;
   }
   .studio-header > div > span {
     display: none;
@@ -1070,7 +1070,7 @@
     gap: 8px;
   }
   .theme-control select {
-    font-size: 10px;
+    font-size: 14px;
     max-width: 115px;
   }
   .studio-header .assistant-top {
@@ -1085,7 +1085,7 @@
     line-height: 1.1;
   }
   .studio-welcome p {
-    font-size: 13px;
+    font-size: 14px;
     line-height: 1.5;
     max-width: 300px;
   }
@@ -1105,13 +1105,13 @@
     margin-bottom: 11px;
   }
   .studio-stats span:not(.stat-icon) {
-    font-size: 11px;
+    font-size: 14px;
   }
   .studio-stats strong {
     font-size: 27px;
   }
   .studio-stats small {
-    font-size: 10px;
+    font-size: 14px;
     line-height: 1.5;
   }
   .upload-zone {
@@ -1124,7 +1124,7 @@
     line-height: 1.15;
   }
   .upload-zone > p {
-    font-size: 12px;
+    font-size: 14px;
     max-width: 240px;
   }
   .upload-actions {
@@ -1133,12 +1133,12 @@
     justify-content: center;
   }
   .upload-actions .button {
-    font-size: 11px;
+    font-size: 14px;
     padding-inline: 14px;
     min-height: 42px;
   }
   .upload-formats {
-    font-size: 10px;
+    font-size: 14px;
     max-width: 250px;
     line-height: 1.6;
   }
@@ -1157,7 +1157,7 @@
     min-height: 92px;
   }
   .quick-grid > button > span {
-    font-size: 12px;
+    font-size: 14px;
     white-space: normal;
   }
   .quick-grid > button:last-child {
@@ -1168,7 +1168,7 @@
   .quick-grid > button:last-child > span {
     order: 0;
     flex-basis: auto;
-    font-size: 12px;
+    font-size: 14px;
   }
   .empty-projects {
     padding: 24px 17px;
@@ -1180,14 +1180,14 @@
     line-height: 1.4;
   }
   .empty-projects p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .empty-projects > .text-link {
-    font-size: 11px;
+    font-size: 14px;
   }
   .studio-footer {
     padding: 16px 20px 100px;
-    font-size: 10px;
+    font-size: 14px;
   }
   .studio-footer > span:last-child {
     display: none;
@@ -1216,7 +1216,7 @@
     min-width: 60px;
     min-height: 44px;
     color: var(--text-2);
-    font-size: 10px;
+    font-size: 14px;
   }
   .studio-tabs > .active {
     color: var(--up-text);
@@ -1233,10 +1233,10 @@
     font-size: 27px;
   }
   .editor-heading p {
-    font-size: 11px;
+    font-size: 14px;
   }
   .editor-heading > .button {
-    font-size: 12px;
+    font-size: 14px;
     min-height: 40px;
   }
   .editor-player {
@@ -1250,30 +1250,30 @@
     font-size: 14px;
   }
   .player-title .segmented button {
-    font-size: 11px;
+    font-size: 14px;
   }
   .wave-container {
     height: 105px;
   }
   .player-controls > .checkbox-label {
-    font-size: 11px;
+    font-size: 14px;
   }
   .player-controls > .button {
-    font-size: 11px;
+    font-size: 14px;
     min-height: 34px;
   }
   .metrics-grid strong {
     font-size: 27px;
   }
   .metrics-grid p {
-    font-size: 10px;
+    font-size: 14px;
   }
   .metrics-grid > div > span {
-    font-size: 10px;
+    font-size: 14px;
     flex-wrap: wrap;
   }
   .metrics-grid strong > small {
-    font-size: 10px;
+    font-size: 14px;
   }
   .analysis-panel {
     padding: 22px 17px;
@@ -1283,19 +1283,19 @@
     font-size: 16px;
   }
   .analysis-verdict p {
-    font-size: 11px;
+    font-size: 14px;
   }
   .version-row {
     padding: 13px 9px;
   }
   .version-row strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .version-row small {
-    font-size: 10px;
+    font-size: 14px;
   }
   .version-row > span:nth-child(3) {
-    font-size: 10px;
+    font-size: 14px;
   }
   .treatment-panel {
     padding: 24px 20px;
@@ -1307,17 +1307,17 @@
     min-height: 48px;
   }
   .field-label {
-    font-size: 10px;
+    font-size: 14px;
   }
   .panel-help {
     display: block;
   }
   .project-open strong {
-    font-size: 13px;
+    font-size: 14px;
   }
   .project-open small,
   .project-date {
-    font-size: 10px;
+    font-size: 14px;
   }
   .toast {
     bottom: 90px;
@@ -1351,7 +1351,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text);
   margin-bottom: 14px;
 }
@@ -1377,7 +1377,7 @@
   color: var(--text-2);
 }
 .range-scale small {
-  font-size: 10px;
+  font-size: 14px;
 }
 .treatment-controls > .intensity-selector {
   margin-top: 16px;
@@ -1405,17 +1405,17 @@
   color: var(--up-text);
 }
 .audio-mode-options strong {
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
 }
 .audio-mode-options span {
-  font-size: 10px;
+  font-size: 14px;
   line-height: 1.4;
   color: var(--text-2);
 }
 .analyze-noise {
   margin-top: 16px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .studio-shell:not([data-theme='light']) .studio-stats > div {
   background: linear-gradient(
@@ -1509,12 +1509,12 @@
   color: var(--text);
 }
 .automatic-card p {
-  font-size: 13px;
+  font-size: 14px;
   max-width: 700px;
   margin: 15px 0;
 }
 .automatic-card .text-link {
-  font-size: 12px;
+  font-size: 14px;
 }
 .automatic-result {
   display: flex;
@@ -1524,13 +1524,13 @@
   background: var(--surface-2);
   border-radius: 12px;
   color: var(--ok-text);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
 }
 .automatic-result small {
   display: block;
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 14px;
   margin-top: 6px;
 }
 .tool-editor .panel-help {
@@ -1574,11 +1574,11 @@
 }
 .effect-toolbar > span {
   margin-left: auto;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--text-2);
 }
 .effect-toolbar .text-link {
-  font-size: 12px;
+  font-size: 14px;
 }
 .preset-grid {
   display: grid;
@@ -1604,7 +1604,7 @@
 }
 .preset-grid span {
   display: block;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--text-2);
   margin-top: 8px;
@@ -1629,7 +1629,7 @@
   display: flex;
   justify-content: space-between;
   gap: 10px;
-  font-size: 12px;
+  font-size: 14px;
   margin-bottom: 12px;
 }
 .eq-sliders output {
@@ -1652,7 +1652,7 @@
   font-size: 18px;
 }
 .preset-explanation p {
-  font-size: 12px;
+  font-size: 14px;
   max-width: 650px;
   margin-top: 8px;
 }
@@ -1676,7 +1676,7 @@
 }
 .broadcast-controls legend {
   padding: 0 8px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--up-text);
 }
@@ -1687,7 +1687,7 @@
 .number-setting > span {
   display: block;
   color: var(--text-2);
-  font-size: 11px;
+  font-size: 14px;
   margin-bottom: 7px;
 }
 .number-setting > div {
@@ -1698,11 +1698,11 @@
 .number-setting input {
   width: 100%;
   padding: 9px 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 .number-setting small {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--text-2);
   white-space: nowrap;
 }
@@ -1738,10 +1738,10 @@
   margin-bottom: 8px;
 }
 .ai-connection-card p {
-  font-size: 13px;
+  font-size: 14px;
 }
 .connection-status {
-  font-size: 12px;
+  font-size: 14px;
   color: var(--text-2);
   display: flex;
   align-items: center;
@@ -1776,11 +1776,11 @@
   font-size: 14px;
 }
 .ai-guide p {
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 9px;
 }
 .ai-guide .text-link {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 12px;
 }
 .ai-guide dl {
@@ -1801,7 +1801,7 @@
 }
 .ai-guide dd {
   margin: 7px 0 0;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
   color: var(--text-2);
 }
@@ -1810,7 +1810,7 @@
   margin-bottom: 25px;
 }
 .ai-login > p {
-  font-size: 13px;
+  font-size: 14px;
   margin-top: 15px;
 }
 .ai-login form {
@@ -1819,7 +1819,7 @@
   margin: 25px 0;
 }
 .ai-login label {
-  font-size: 12px;
+  font-size: 14px;
 }
 .ai-login .field-hint {
   margin-top: 25px;
@@ -1835,7 +1835,7 @@
   margin: -4px 0 16px;
 }
 .assistant-provider .text-link {
-  font-size: 11px;
+  font-size: 14px;
 }
 @media (max-width: 1000px) {
   .broadcast-bands {
@@ -1861,15 +1861,15 @@
   .effect-toolbar > span {
     width: 100%;
     margin-left: 0;
-    font-size: 10px;
+    font-size: 14px;
     margin-top: 4px;
   }
   .effect-toolbar .button {
-    font-size: 11px;
+    font-size: 14px;
     padding-inline: 13px;
   }
   .effect-toolbar .text-link {
-    font-size: 11px;
+    font-size: 14px;
   }
   .preset-grid {
     grid-template-columns: 1fr 1fr;
@@ -1879,10 +1879,10 @@
     padding: 14px;
   }
   .preset-grid strong {
-    font-size: 12px;
+    font-size: 14px;
   }
   .preset-grid span {
-    font-size: 11px;
+    font-size: 14px;
   }
   .eq-sliders {
     grid-template-columns: 1fr;
@@ -1935,7 +1935,7 @@
     display: none;
   }
   .ai-guide dt {
-    font-size: 10px;
+    font-size: 14px;
   }
   .tool-editor .process-button {
     max-width: none;
@@ -1953,7 +1953,7 @@
   font-size: 15px;
 }
 .preset-library > div > p {
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 7px;
 }
 .preset-library form {
@@ -1966,7 +1966,7 @@
 .preset-library form input {
   flex: 1;
   min-width: 0;
-  font-size: 12px;
+  font-size: 14px;
 }
 .saved-preset-list {
   display: flex;
@@ -1983,7 +1983,7 @@
   padding: 3px 3px 3px 15px;
 }
 .saved-preset-list .text-link {
-  font-size: 12px;
+  font-size: 14px;
 }
 @media (max-width: 680px) {
   .preset-library form {
@@ -1994,6 +1994,6 @@
     min-height: 40px;
   }
   .saved-preset-list .text-link {
-    font-size: 11px;
+    font-size: 14px;
   }
 }
