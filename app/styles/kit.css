@@ -1730,6 +1730,7 @@
   margin-top: 25px;
 }
 .ai-model-detail {
+  overflow-wrap: anywhere;
   padding: 18px;
   background: var(--up-soft);
   border-radius: 12px;

@@ -3,8 +3,8 @@
 Ambiente: Node.js 24, Next.js 16, Chromium Linux. FFmpeg/WASM, RNNoise e DeepFilterNet3 servidos pelo próprio domínio. Validação de navegador em build local de produção.
 
 - Build e TypeScript aprovados, com rotas próprias do estúdio e endpoints de IA.
-- 10 testes unitários aprovados: medições, intenções, parâmetros, piso de ruído, histórico com ramificações, sessão assinada e contrato Anthropic.
-- 10 cenários E2E verificados entre suíte geral e reexecução dos cenários afetados pelos ajustes finais.
+- 16 testes unitários aprovados: medições, intenções, parâmetros, piso de ruído, histórico com ramificações, sessão assinada, contrato Anthropic e Managed Agents.
+- Os 10 cenários E2E de áudio/interface da entrega anterior foram verificados entre suíte geral e reexecução dos cenários afetados. Na integração Managed Agents, 3 cenários afetados passaram: novo fluxo do agente, configuração Claude sem credenciais e navegação/demo/assistente local.
 - O fixture de ruído verifica bypass de 0%, render neural, duração e alinhamento. O melhor alinhamento por correlação foi zero na grade de 16 amostras.
 - No intervalo sem fala do fixture sintético, o render DeepFilterNet3 chegou a silêncio digital PCM16. A redução reportada fica limitada conservadoramente à resolução PCM16: ao menos 52,6 dB nesse intervalo. Isso não é uma medição de qualidade perceptual, e não equivale a 52,6 dB de melhoria de inteligibilidade.
 - A energia RMS na janela de fala correspondeu a 61,2% da referência sintetizada limpa. O teste não comprova preservação de palavras, naturalidade ou ausência de artefatos; a compensação de volume A/B permite comparação mais justa.
@@ -17,6 +17,7 @@ Ambiente: Node.js 24, Next.js 16, Chromium Linux. FFmpeg/WASM, RNNoise e DeepFil
 - Responsividade: 1440/1000/390 px, editor móvel e tema claro/escuro; sem overflow nos fluxos conferidos. Reduzir movimento validado.
 - Acessibilidade automatizada: axe WCAG 2 A/AA e 2.1 AA nas superfícies verificadas. Não é certificação completa.
 - Anthropic: payload Sonnet 5.5, pensamento adaptativo e esforço high verificados com HTTP simulado. Sessão, origem e operações permitidas testadas. Sem chave real, sem chamada paga.
+- Managed Agents: validação inicial somente por GET, dois cookies HttpOnly, preservação de instruções e versão, modelo/high por override, limite de consumo, continuidade de duas mensagens, paginação sem reaproveitar respostas antigas, isolamento entre logins/agentes e exclusão remota ao cancelar verificados com HTTP simulado. O formulário e o assistente são verificados com endpoints simulados no navegador; não se declara uma conexão real com um agente do usuário.
 - Produção sem credenciais: página de IA informa configuração pendente; endpoint rejeita pedidos não autenticados.
 - Dependências: nenhuma vulnerabilidade conhecida na última consulta `npm audit --omit=dev`.
 

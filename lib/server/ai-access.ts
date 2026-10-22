@@ -13,6 +13,44 @@ export function sameOrigin(request: Request) {
 function signature(value: string) {
   return createHmac('sha256', code()).update(value).digest('base64url');
 }
+export function cookieValue(request: Request, name: string) {
+  return request.headers
+    .get('cookie')
+    ?.split(';')
+    .map((s) => s.trim())
+    .find((s) => s.startsWith(name + '='))
+    ?.slice(name.length + 1);
+}
+export function signToken(scope: string, data: Record<string, unknown>) {
+  const value = Buffer.from(JSON.stringify({ ...data, expires: Date.now() + 3600000 })).toString(
+    'base64url',
+  );
+  return `${value}.${signature(scope + ':' + value)}`;
+}
+export function readToken(
+  scope: string,
+  token: string | undefined,
+): Record<string, unknown> | null {
+  if (!token || token.length > 4000) return null;
+  const [value, sig, extra] = token.split('.');
+  if (!value || !sig || extra) return null;
+  const expected = Buffer.from(signature(scope + ':' + value)),
+    actual = Buffer.from(sig);
+  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return null;
+  try {
+    const result = JSON.parse(Buffer.from(value, 'base64url').toString());
+    return typeof result?.expires === 'number' &&
+      result.expires > Date.now() &&
+      result.expires <= Date.now() + 3601000
+      ? result
+      : null;
+  } catch {
+    return null;
+  }
+}
+export function privateCookie(name: string, value: string, clear = false) {
+  return `${name}=${value}; HttpOnly; SameSite=Strict; Path=/api/ai; Max-Age=${clear ? 0 : 3600}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
+}
 export function authorized(request: Request) {
   if (!aiConfigured()) return false;
   const token = request.headers

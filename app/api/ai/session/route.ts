@@ -7,6 +7,7 @@ import {
   sameOrigin,
 } from '@/lib/server/ai-access';
 import { verifyClaude } from '@/lib/server/claude';
+import { agentCookie, validConnection, verifyManagedAgent } from '@/lib/server/managed-agent';
 export async function POST(request: Request) {
   if (!sameOrigin(request))
     return Response.json(
@@ -33,10 +34,16 @@ export async function POST(request: Request) {
         { error: 'Código de acesso inválido.' },
         { status: 401, headers: privateHeaders },
       );
-    const model = await verifyClaude(AbortSignal.any([request.signal, AbortSignal.timeout(15000)]));
+    const config = body.mode === 'managed' ? validConnection(body) : null;
+    const signal = AbortSignal.any([request.signal, AbortSignal.timeout(15000)]);
+    if (config) await verifyManagedAgent(config, signal);
+    const model = await verifyClaude(signal);
+    const headers = new Headers(privateHeaders);
+    headers.append('Set-Cookie', cookie);
+    headers.append('Set-Cookie', agentCookie(config));
     return Response.json(
-      { connected: true, model: model.id, effort: 'high' },
-      { headers: { ...privateHeaders, 'Set-Cookie': cookie } },
+      { connected: true, model: model.id, effort: 'high', mode: config ? 'managed' : 'messages' },
+      { headers },
     );
   } catch (error) {
     return Response.json(
@@ -48,13 +55,11 @@ export async function POST(request: Request) {
 export async function DELETE(request: Request) {
   if (!sameOrigin(request) || !authorized(request))
     return Response.json({ error: 'Acesso negado.' }, { status: 403 });
-  return Response.json(
-    { connected: false },
-    {
-      headers: {
-        ...privateHeaders,
-        'Set-Cookie': `nossom-ai=; HttpOnly; SameSite=Strict; Path=/api/ai; Max-Age=0${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`,
-      },
-    },
+  const headers = new Headers(privateHeaders);
+  headers.append(
+    'Set-Cookie',
+    `nossom-ai=; HttpOnly; SameSite=Strict; Path=/api/ai; Max-Age=0${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`,
   );
+  headers.append('Set-Cookie', agentCookie(null));
+  return Response.json({ connected: false }, { headers });
 }

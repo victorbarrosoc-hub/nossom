@@ -47,6 +47,13 @@ export default function Privacy() {
         conversa, o áudio do microfone é enviado ao ElevenLabs e tratado conforme as políticas e a
         configuração do agente do provedor.
       </p>
+      <p>
+        Ao associar um Managed Agent do Console, seus identificadores ficam em outro cookie HttpOnly
+        assinado por até uma hora. Os pedidos e as medições passam a compor uma sessão na Anthropic.
+        Ao fechar o assistente, a NOSSOM solicita a exclusão dessa sessão; falhas de rede podem
+        impedir essa solicitação. As políticas de retenção do provedor continuam aplicáveis. O áudio
+        permanece no dispositivo e os efeitos dependem da sua revisão.
+      </p>
       <h2>Dados de acesso</h2>
       <p>
         A hospedagem pode registrar dados técnicos de acesso, como endereço IP, horário e erros,

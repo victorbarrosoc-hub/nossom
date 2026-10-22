@@ -113,6 +113,8 @@ A integração está em `/studio/ia`. Em Vercel → projeto NOSSOM → Settings 
 - `ANTHROPIC_MODEL=claude-sonnet-5-5`.
 - `NOSSOM_AI_ACCESS_CODE`: ao menos 16 caracteres aleatórios, para liberar a sessão no estúdio.
 
+Para associar um Managed Agent existente, escolha **Meu agente do Console** nessa página e preencha Agent ID, Environment ID e o código da NOSSOM. A validação inicial não cria uma conversa paga. O assistente mantém o contexto por conversa, usa as instruções do agente e Sonnet 5.5/high por override da sessão, e mantém a revisão antes de aplicar tratamentos. A associação dura uma hora neste navegador; ferramentas externas do agente não são acionadas. Detalhes em [docs/claude-setup.md](docs/claude-setup.md).
+
 Faça um novo deploy. Abra `/studio/ia`, digite somente o código de acesso e conecte. As chaves nunca são pedidas na interface nem enviadas ao cliente. O servidor verifica acesso ao modelo e envia `thinking: { type: 'adaptive' }` e `output_config: { effort: 'high' }`. A sessão usa cookie HttpOnly assinado de uma hora e o endpoint exige a mesma origem. O limite em memória é adicional; não substitui quotas de conta, gateway ou rate limiting distribuído para um produto multiusuário.
 
 Claude recebe pedido e medições, não o áudio. Retorna uma sugestão restrita de ferramenta/intensidade/preset, que o usuário revisa. Não renderiza a restauração neural, não executa filtros livres e não aplica efeitos automaticamente. Sem configuração, o assistente continua identificado como sugestões locais por intenção. A assinatura do aplicativo Claude não substitui créditos de API.

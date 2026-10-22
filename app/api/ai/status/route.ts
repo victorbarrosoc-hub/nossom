@@ -1,10 +1,15 @@
 import { aiConfigured, authorized, privateHeaders } from '@/lib/server/ai-access';
 import { claudeModel } from '@/lib/server/claude';
+import { agentConnection } from '@/lib/server/managed-agent';
 export async function GET(request: Request) {
+  const connected = authorized(request);
+  const agent = connected ? agentConnection(request) : null;
   return Response.json(
     {
       configured: aiConfigured(),
-      authorized: authorized(request),
+      authorized: connected,
+      mode: agent ? 'managed' : 'messages',
+      ...(agent ? { agentId: agent.agentId, environmentId: agent.environmentId } : {}),
       model: claudeModel(),
       effort: 'high',
       missing: [

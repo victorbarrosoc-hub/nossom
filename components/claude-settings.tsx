@@ -7,8 +7,14 @@ export default function ClaudeSettings() {
       authorized: boolean;
       model: string;
       missing: string[];
+      mode?: 'managed' | 'messages';
+      agentId?: string;
+      environmentId?: string;
     } | null>(null),
     [code, setCode] = useState(''),
+    [mode, setMode] = useState<'managed' | 'messages'>('messages'),
+    [agentId, setAgentId] = useState(''),
+    [environmentId, setEnvironmentId] = useState(''),
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false);
   const refresh = () =>
@@ -27,7 +33,13 @@ export default function ClaudeSettings() {
       const response = await fetch('/api/ai/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code }),
+        body: JSON.stringify({
+          code,
+          mode,
+          ...(mode === 'managed'
+            ? { agentId: agentId.trim(), environmentId: environmentId.trim() }
+            : {}),
+        }),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error);
@@ -54,7 +66,11 @@ export default function ClaudeSettings() {
           <span className="ns-icon purple">
             <AudioLines size={24} />
           </span>
-          <h2>Claude Sonnet 5.5</h2>
+          <h2>
+            {status?.authorized && status.mode === 'managed'
+              ? 'Seu agente do Console'
+              : 'Claude Sonnet 5.5'}
+          </h2>
           <p>Pensamento adaptativo · esforço alto</p>
         </div>
         <span className={`connection-status ${status?.authorized ? 'connected' : ''}`}>
@@ -107,6 +123,19 @@ export default function ClaudeSettings() {
                 dura uma hora.
               </p>
             </li>
+            <li>
+              <strong>Use o agente que você criou no Console</strong>
+              <p>
+                Escolha “Meu agente do Console” no formulário. Copie o Agent ID e o Environment ID
+                do Managed Agents. A chave configurada precisa pertencer ao workspace desses
+                recursos. A conferência inicial não inicia uma conversa paga.
+              </p>
+              <p>
+                A NOSSOM mantém as instruções do agente e usa Sonnet 5.5 em esforço alto nesta
+                sessão. As configurações salvas no Console continuam disponíveis para seus outros
+                usos.
+              </p>
+            </li>
           </ol>
         </section>
         <section className="ai-login">
@@ -122,22 +151,77 @@ export default function ClaudeSettings() {
                 Modelo: {status.model}
                 <br />
                 Esforço: high
+                {status.mode === 'managed' && (
+                  <>
+                    <br />
+                    Agente: {status.agentId}
+                    <br />
+                    Ambiente: {status.environmentId}
+                  </>
+                )}
               </p>
               <button
                 className="button secondary"
                 disabled={busy}
                 onClick={async () => {
                   setBusy(true);
-                  await fetch('/api/ai/session', { method: 'DELETE' });
-                  await refresh();
-                  setBusy(false);
+                  setError('');
+                  try {
+                    const response = await fetch('/api/ai/session', { method: 'DELETE' });
+                    if (!response.ok) throw new Error('Não foi possível encerrar esta conexão.');
+                    await refresh();
+                  } catch (e) {
+                    setError(e instanceof Error ? e.message : 'Falha ao encerrar.');
+                  } finally {
+                    setBusy(false);
+                  }
                 }}
               >
-                Encerrar sessão
+                Trocar ou encerrar conexão
               </button>
             </>
           ) : (
             <form onSubmit={connect}>
+              <label htmlFor="ai-mode">IA da plataforma</label>
+              <select
+                id="ai-mode"
+                value={mode}
+                disabled={busy}
+                onChange={(e) => setMode(e.target.value as 'managed' | 'messages')}
+              >
+                <option value="messages">Claude com as instruções NOSSOM</option>
+                <option value="managed">Meu agente do Console</option>
+              </select>
+              {mode === 'managed' && (
+                <>
+                  <label htmlFor="ai-agent">Agent ID</label>
+                  <input
+                    id="ai-agent"
+                    value={agentId}
+                    onChange={(e) => setAgentId(e.target.value)}
+                    placeholder="agent_…"
+                    autoComplete="off"
+                    disabled={busy}
+                    maxLength={106}
+                    required
+                  />
+                  <label htmlFor="ai-environment">Environment ID</label>
+                  <input
+                    id="ai-environment"
+                    value={environmentId}
+                    onChange={(e) => setEnvironmentId(e.target.value)}
+                    placeholder="env_…"
+                    autoComplete="off"
+                    disabled={busy}
+                    maxLength={104}
+                    required
+                  />
+                  <p className="field-hint">
+                    São os identificadores do agente e do ambiente no Console. Não cole uma chave de
+                    API nesses campos.
+                  </p>
+                </>
+              )}
               <label htmlFor="ai-access">Código de acesso da NOSSOM</label>
               <input
                 id="ai-access"
@@ -152,7 +236,7 @@ export default function ClaudeSettings() {
               />
               <button className="button primary" disabled={!status?.configured || busy}>
                 {busy ? <LoaderCircle className="spin" size={17} /> : <AudioLines size={17} />}
-                Conectar Claude
+                {mode === 'managed' ? 'Conectar meu agente' : 'Conectar Claude'}
               </button>
             </form>
           )}
@@ -168,6 +252,14 @@ export default function ClaudeSettings() {
             O Claude recebe seu pedido e as medições de áudio. A gravação não é enviada para ele.
             Cada conversa consome créditos da sua API; nenhuma sugestão aplica efeitos sozinha.
           </p>
+          {(mode === 'managed' || status?.mode === 'managed') && (
+            <p className="field-hint">
+              A associação dura uma hora neste navegador. O agente sugere os ajustes para revisão;
+              ferramentas externas do Console não são acionadas. Cada conversa configura um limite
+              de US$ 1 para o uso de modelos e é excluída ao fechar o assistente quando o provedor
+              responde.
+            </p>
+          )}
         </section>
       </div>
     </section>

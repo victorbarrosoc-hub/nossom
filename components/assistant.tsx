@@ -15,9 +15,22 @@ export default function Assistant({
 }) {
   const [cloud, setCloud] = useState(false),
     [cloudAvailable, setCloudAvailable] = useState(false),
+    [managed, setManaged] = useState(false),
     [thinking, setThinking] = useState(false);
   const [recommended, setRecommended] = useState<{ intensity?: number; eqPreset?: string }>({});
   const pending = useRef<AbortController | null>(null);
+  const managedConversation = useRef<string | undefined>(undefined);
+  function endManagedConversation() {
+    const token = managedConversation.current;
+    managedConversation.current = undefined;
+    if (token)
+      void fetch('/api/ai/assistant', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversation: token }),
+        keepalive: true,
+      }).catch(() => {});
+  }
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/ai/status', { cache: 'no-store', signal: controller.signal })
@@ -25,11 +38,13 @@ export default function Assistant({
       .then((s) => {
         setCloudAvailable(s.configured && s.authorized);
         setCloud(s.configured && s.authorized);
+        setManaged(s.mode === 'managed');
       })
       .catch(() => {});
     return () => {
       controller.abort();
       pending.current?.abort();
+      endManagedConversation();
     };
   }, []);
   const [text, setText] = useState(''),
@@ -66,11 +81,13 @@ export default function Assistant({
         const response = await fetch('/api/ai/assistant', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ text: value, context }),
+          body: JSON.stringify({ text: value, context, conversation: managedConversation.current }),
           signal: controller.signal,
         });
         const result = await response.json();
         if (!response.ok) throw new Error(result.error);
+        if (typeof result.conversation === 'string')
+          managedConversation.current = result.conversation;
         setReply(result.reply);
         setPlan(operations.some((o) => o.id === result.operation) ? result.operation : null);
         setRecommended({ intensity: result.intensity, eqPreset: result.eqPreset });
@@ -132,7 +149,11 @@ export default function Assistant({
         </p>
         <div className="assistant-mode">
           <Sparkles size={13} />{' '}
-          {cloud ? 'Claude Sonnet · esforço alto' : 'Sugestões locais por intenção'}
+          {cloud
+            ? managed
+              ? 'Seu agente Claude · esforço alto'
+              : 'Claude Sonnet · esforço alto'
+            : 'Sugestões locais por intenção'}
         </div>
         {cloud && (
           <p className="field-hint">
@@ -145,6 +166,7 @@ export default function Assistant({
               className="text-link"
               onClick={() => {
                 pending.current?.abort();
+                endManagedConversation();
                 setThinking(false);
                 setCloud(!cloud);
                 setReply('');

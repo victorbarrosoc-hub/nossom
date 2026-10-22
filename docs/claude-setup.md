@@ -14,33 +14,20 @@ Sem as credenciais, a página mostra as variáveis pendentes e o assistente perm
 
 ## Usar um agente existente no Console
 
-A integração entregue acima usa a Messages API, com instruções da NOSSOM. Ela ainda não recupera um agente salvo no Console. Primeiro identifique o recurso:
+1. Abra `/studio/ia`. Se já estiver conectado ao modelo direto, use **Trocar ou encerrar conexão**.
+2. Em **IA da plataforma**, escolha **Meu agente do Console**.
+3. Preencha **Agent ID** (`agent_…`), **Environment ID** (`env_…`) e o código privado da NOSSOM. Os IDs vêm do Managed Agents; a chave no servidor precisa ter acesso ao workspace desses recursos.
+4. Use **Conectar meu agente**. A validação consulta agente, ambiente e capacidades do modelo, sem criar uma sessão nem executar geração paga. A associação fica em cookie HttpOnly assinado por uma hora neste navegador.
+5. Abra o assistente e envie um pedido. O backend cria a sessão na primeira mensagem e a reutiliza nas mensagens seguintes. As sugestões selecionam uma ferramenta e parâmetros somente quando você usa **Revisar tratamento**.
 
-- **Managed Agents:** forneça somente o Agent ID (`agent_…`) e o Environment ID (`env_…`). A chave precisa ter acesso ao workspace desses recursos e deve ser configurada privadamente no servidor. O backend deve criar uma sessão para esse agente e ambiente, enviar eventos `user.message` e acompanhar os eventos `agent.message`. Conversas de usuários diferentes precisam ter sessões distintas; o ID da sessão deve ficar associado ao usuário no servidor.
-- **Workbench:** exporte o código ou as instruções do prompt, sem a chave. O backend deve reproduzir o system prompt, modelo e ferramentas usando a Messages API. Um prompt salvo não se conecta usando o endpoint de Managed Agents.
+O adaptador usa a API beta `managed-agents-2026-04-01`, com as rotas de Agents, Environments, Sessions e Events. Não depende do SDK instalado. A versão atual do agente é fixada ao criar a conversa; seu system prompt é preservado e recebe as regras de áudio e formato da NOSSOM. Um override da sessão usa `ANTHROPIC_MODEL` (padrão `claude-sonnet-5-5`) com `effort: 'high'`, sem alterar o agente salvo no Console.
 
-Exemplo de criação da primeira sessão, baseado no SDK oficial atual; é uma referência para o adaptador de Managed Agents, **não um endpoint já conectado nesta versão**:
+Esta conexão é de orientação de áudio: ferramentas e servidores MCP externos são desativados no override, e agentes com orquestração de outros agentes são recusados. Skills continuam sujeitas às capacidades disponíveis nessa sessão. Operação, intensidade e preset de EQ retornados passam pela validação da NOSSOM; não há execução de comandos livres ou aplicação automática de efeitos. A chave e o prompt do agente não vão para o navegador.
 
-```ts
-const session = await client.beta.sessions.create({
-  agent: agentId,
-  environment_id: environmentId,
-  initial_events: [
-    {
-      type: 'user.message',
-      content: [{ type: 'text', text: pedido }],
-    },
-  ],
-});
+O contexto de conversa usa um token assinado vinculado ao cookie da sessão de acesso, ao agente, ao ambiente e ao modelo. Outro login ou outro agente não pode reutilizá-lo. Os eventos são lidos com paginação, delimitando cada resposta pelo último evento anterior ao pedido. A sessão configura um limite de US$ 1 de custo de tabela de modelos; cobranças e retenção seguem as regras da Anthropic. Os limites de uso locais permanecem por sessão e em memória.
 
-// Nas mensagens seguintes, reutilize a sessão da mesma conversa.
-await client.beta.sessions.events.send(session.id, {
-  events: [{ type: 'user.message', content: [{ type: 'text', text: proximoPedido }] }],
-});
-```
+Fechar o assistente ou mudar para sugestões locais solicita a exclusão da sessão remota conhecida. Cancelar uma solicitação nova exclui a sessão recém-criada; cancelar uma continuação envia `user.interrupt`. A limpeza depende de conectividade com o provedor e não substitui suas regras de retenção.
 
-O SDK envia o cabeçalho beta `managed-agents-2026-04-01`. Na API REST, as rotas são `POST /v1/sessions?beta=true` e `POST /v1/sessions/{id}/events?beta=true`; respostas podem ser acompanhadas pelo stream de eventos da sessão. O modelo e o esforço de um Managed Agent fazem parte da configuração do próprio agente: o SDK aceita `model: { id: 'claude-sonnet-5-5', effort: 'high' }`. Alterar `ANTHROPIC_MODEL` da integração Messages atual não altera um agente salvo.
+Se o recurso for um **prompt salvo no Workbench**, ele não tem os IDs de Managed Agents exigidos neste formulário. Exporte as instruções e configurações, sem credenciais, para adaptar a integração Messages API. O modo “Claude com as instruções NOSSOM” continua disponível e não importa automaticamente um prompt do Workbench.
 
-As ferramentas de áudio precisam ser registradas e implementadas pela NOSSOM: por exemplo, recomendar EQ, sugerir intensidade e selecionar um preset. Ter um agente no Console não dá acesso automático aos arquivos e controles do navegador. A integração deve validar cada ação e manter a revisão antes de aplicar efeitos, assim como o assistente atual.
-
-Contratos consultados: [Agents](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/beta/agents/agents.ts), [Sessions](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/beta/sessions/sessions.ts) e [Events](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/beta/sessions/events.ts). O adaptador final depende do tipo e da configuração do agente do usuário; não foi validado com uma conta Managed Agents real.
+Contratos consultados: [Agents](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/beta/agents/agents.ts), [Environments](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/beta/environments/environments.ts), [Sessions](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/beta/sessions/sessions.ts), [Events](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/beta/sessions/events.ts) e [paginação](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/core/pagination.ts). Os testes verificam o contrato com HTTP simulado e o fluxo de interface com endpoints simulados; uma conversa real ainda depende de IDs válidos e da autenticação do usuário.
