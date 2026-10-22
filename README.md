@@ -25,8 +25,14 @@ Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile 
 ## O que funciona
 
 - Página pública responsiva com motion, demonstração sonora real, perguntas frequentes e entrada no estúdio.
+- Navegação com quatro destinos: Início, Meus projetos, Estúdio e Assistente. O seletor no topo agrupa ferramentas em Tratar, Ajustar, Criar e Entregar; trocar de ferramenta mantém o projeto e o histórico.
+- Instalação pelo Safari: Compartilhar → Adicionar à Tela de Início → Adicionar. Manifest em modo standalone, entrada `/studio`, ícones PNG 180/192/512 e metadados Apple. Há ajuda de instalação no rodapé da homepage e na lateral do estúdio; em modo instalado, o botão some. Não há promessa de funcionamento offline nem service worker de cache.
+- Open Graph e Twitter Card com imagem própria de 1.200 × 630, logo NOSSOM, prata/azul sobre fundo escuro e URLs absolutas do domínio de produção. A imagem é gerada estaticamente no build em `/opengraph-image`. Para regenerar os ícones: `npx tsx scripts/generate-brand-assets.tsx`.
 - Tratamento completo automático como entrada padrão em `/studio/automatico`: restauração neural com preservação de fase/estéreo, timbre e dinâmica adaptados à gravação e finalização Transmissão + Limite −3 dB. Um botão, sem definir intensidade.
-- Rotas próprias para limpeza, voz, equalização, vento, nivelamento, masterização e mixagem. O layout preserva o projeto durante a navegação; ajustes manuais continuam disponíveis.
+- Rotas próprias para limpeza, voz, equalização, vento, nivelamento, masterização, efeitos e mixagem. O layout preserva o projeto durante a navegação; ajustes manuais continuam disponíveis.
+- Destinos Podcast, Redes sociais/vídeo de conteúdo, YouTube, TV EBU R128, TV ATSC A/85 e referência Netflix para diálogo isolado. Metas verificadas após normalização em duas passagens; não são certificações de entrega. Disponíveis também no Tratamento completo.
+- Efeitos com intensidade e remoção em `/studio/efeitos`: Sala de estúdio, Capela, Igreja, Auditório, Rádio vintage, Rádio FM e Telefone. Ambientes exportam a cauda; trocar um efeito mantém a mesma versão de origem, sem acumular reverberação.
+- Tratamento completo reconstrói picos digitais identificáveis por predição autorregressiva antes da limpeza. Intermediários float32 preservam headroom. O relatório distingue reconstrução, ausência de detecção e saturação extensa limitada. Não é ressíntese generativa de fala; distorção de captação pode permanecer.
 - EQ em cinco bandas, presets editáveis, biblioteca de presets pessoais por ferramenta e presets de voz com de-esser/hum 50 ou 60 Hz.
 - Preset Transmissão + Limite −3 dB, baseado nas duas capturas Premiere fornecidas; implementação documentada em docs/audio-engine.md.
 - Desfazer, refazer e restaurar original com histórico e versão ativa persistidos. Novos ajustes podem formar ramificações sem apagar as versões anteriores.

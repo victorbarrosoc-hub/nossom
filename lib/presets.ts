@@ -1,7 +1,9 @@
 import { broadcastFilter, type BroadcastSettings } from './broadcast';
 import { equalizerFilter, type EqGains } from './equalizer';
 import type { RestorationAnalysis } from './neural';
-export type Operation = 'auto' | 'denoise' | 'clarity' | 'eq' | 'wind' | 'level' | 'master' | 'mix';
+import type { EffectId } from './effects';
+export type Operation =
+  'auto' | 'denoise' | 'clarity' | 'eq' | 'wind' | 'level' | 'master' | 'effects' | 'mix';
 export type Intensity = number | 'light' | 'balanced' | 'strong';
 export type DenoiseMode = 'studio' | 'voice' | 'general';
 export function strengthValue(value: Intensity): number {
@@ -24,6 +26,16 @@ export type FilterSettings = {
   eq?: EqGains;
   masterPreset?: string;
   broadcast?: BroadcastSettings;
+  deliveryPreset?: string;
+  effect?: EffectId;
+  effectMix?: number;
+  effectTailSeconds?: number;
+  clippingRepair?: {
+    method: 'autoregressive';
+    detected: number;
+    headroomGainDb: number;
+    status: 'reconstructed' | 'not-detected' | 'limited';
+  };
 };
 export const operations: { id: Operation; label: string; description: string }[] = [
   {
@@ -63,6 +75,12 @@ export const operations: { id: Operation; label: string; description: string }[]
     description: 'Ajuste o volume percebido e meça o resultado renderizado.',
   },
   {
+    id: 'effects',
+    label: 'Efeitos',
+    description:
+      'Crie ambientes, simule telefone e rádio ou dê outra textura à voz. Ajuste a intensidade e remova quando quiser.',
+  },
+  {
     id: 'mix',
     label: 'Mixar com música',
     description: 'Adicione uma trilha e reduza seu volume durante a fala.',
@@ -79,19 +97,43 @@ export const deliveryPresets = [
   },
   {
     id: 'social',
-    label: 'Vídeo e redes sociais',
+    label: 'Redes sociais · vídeo de conteúdo',
     lufs: -14,
     peak: -1,
     version: 'nossom-guidance-1',
-    note: 'Ponto de partida; cada plataforma normaliza de forma diferente.',
+    note: 'Ponto de partida para Reels, TikTok e Shorts. Cada plataforma pode normalizar o volume de outra forma.',
+  },
+  {
+    id: 'youtube',
+    label: 'YouTube · vídeos e entrevistas',
+    lufs: -14,
+    peak: -1,
+    version: 'nossom-guidance-2',
+    note: 'Meta editorial para vídeo online; o YouTube pode ajustar o volume de reprodução. Não é uma exigência de upload.',
+  },
+  {
+    id: 'netflix-dialogue',
+    label: 'Netflix · referência de diálogo',
+    lufs: -27,
+    peak: -2,
+    version: 'nossom-dialogue-reference-1',
+    note: 'Use em diálogo isolado. A mixagem completa exige medição por diálogo, revisão técnica e as especificações vigentes do projeto. Este preset não certifica uma entrega Netflix.',
   },
   {
     id: 'ebu',
-    label: 'TV · referência EBU R128',
+    label: 'TV · EBU R128',
     lufs: -23,
     peak: -1,
     version: 'nossom-ebu-reference-1',
     note: 'Referência de loudness. Confirme tolerâncias e true peak com o cliente; não constitui certificação.',
+  },
+  {
+    id: 'atsc',
+    label: 'TV · ATSC A/85',
+    lufs: -24,
+    peak: -2,
+    version: 'nossom-atsc-reference-1',
+    note: 'Referência de −24 LKFS para broadcast. Confirme requisitos de medição, canais, loudness e pico com a emissora.',
   },
 ] as const;
 export function treatmentFilter(
@@ -117,6 +159,8 @@ export function treatmentFilter(
   const ratio = 1 + (finite(settings.compression, 6, 1, 8) - 1) * strength;
   const presence = finite(settings.presence, 6, 0, 9) * strength;
   switch (operation) {
+    case 'effects':
+      return 'anull'; // The effect is rendered in float before the FFmpeg delivery stage.
     case 'auto':
       return `${treatmentFilter('clarity', 100, target, peak, settings)},volume=${settings.restoration?.normalizationGainDb ?? 0}dB,${broadcastFilter(settings.broadcast, 100)}`;
     case 'denoise':
@@ -140,6 +184,8 @@ export function inferPlan(text: string): Operation | null {
     .replace(/[\u0300-\u036f]/g, '');
   if (/separ|stem|eco|reverb|transcrev|clon/.test(normalized)) return null;
   if (/tratamento completo|deixar pronto|resolver tudo/.test(normalized)) return 'auto';
+  if (/capela|igreja|telefone|radio|auditorio/.test(normalized)) return 'effects';
+  if (/youtube|netflix|atsc|ebu|redes sociais|\btv\b/.test(normalized)) return 'master';
   if (/ruid|ar.condicionado|chiado|limp|restaur|isol/.test(normalized)) return 'denoise';
   if (/equaliz|eq\b|timbre/.test(normalized)) return 'eq';
   if (/vento|grave/.test(normalized)) return 'wind';

@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile, copyFile, mkdir } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { clippingRepairFilter } from '../../lib/declip';
 
 function pcm(wav: Buffer) {
   let at = 12,
@@ -48,6 +49,68 @@ function siSdr(reference: Float32Array, estimate: Float32Array) {
   }
   return 10 * Math.log10(target / error);
 }
+test('browser declipping reconstructs moderate clipped speech instead of merely lowering its peaks', async ({
+  page,
+}, testInfo) => {
+  const bytes = await readFile('tests/fixtures/synthetic-speech.wav');
+  const clean = pcm(bytes)[0],
+    clipped = Buffer.from(bytes);
+  // This fixture is mono PCM16. Locate the data chunk rather than assuming a 44-byte header.
+  let at = 12;
+  while (clipped.toString('ascii', at, at + 4) !== 'data')
+    at += 8 + clipped.readUInt32LE(at + 4) + (clipped.readUInt32LE(at + 4) % 2);
+  for (let i = 0; i < clean.length; i++)
+    clipped.writeInt16LE(
+      Math.round(Math.max(-0.2, Math.min(0.2, clean[i])) * 32768),
+      at + 8 + i * 2,
+    );
+  const damaged = pcm(clipped)[0];
+  await page.goto('/studio/automatico');
+  const result = await page.evaluate(
+    async ({ input, filter }) => {
+      // Exercise the same bundled WASM filter and float transport used by processAudio.
+      // @ts-expect-error runtime import of the public FFmpeg browser module
+      const { FFmpeg } = await import('/ffmpeg/worker/index.js');
+      const ff = new FFmpeg(),
+        logs: string[] = [];
+      ff.on('log', ({ message }: { message: string }) => logs.push(message));
+      await ff.load({
+        classWorkerURL: location.origin + '/ffmpeg/worker/worker.js',
+        coreURL: location.origin + '/ffmpeg/ffmpeg-core.js',
+        wasmURL: location.origin + '/ffmpeg/ffmpeg-core.wasm',
+      });
+      await ff.writeFile(
+        'input.wav',
+        Uint8Array.from(atob(input), (v) => v.charCodeAt(0)),
+      );
+      const code = await ff.exec(['-i', 'input.wav', '-af', filter, '-f', 'f32le', 'output.f32']);
+      const output = await ff.readFile('output.f32');
+      ff.terminate();
+      return {
+        code,
+        samples: Array.from(new Float32Array(output.buffer)),
+        detection: logs.find((s) => s.includes('Detected clips in')),
+      };
+    },
+    { input: clipped.toString('base64'), filter: clippingRepairFilter(clean.length / 48000) },
+  );
+  expect(result.code).toBe(0);
+  expect(result.samples.length).toBe(clean.length);
+  const restored = Float32Array.from(result.samples as number[]);
+  const before = siSdr(clean, damaged),
+    after = siSdr(clean, restored);
+  expect(after).toBeGreaterThan(before + 3);
+  expect(restored.some((v) => Math.abs(v) > 0.25)).toBe(true);
+  expect(result.detection).toMatch(/Detected clips in [1-9]\d* of/);
+  await testInfo.attach('declipping-reference.json', {
+    body: JSON.stringify({
+      beforeSiSdrDb: before,
+      afterSiSdrDb: after,
+      detection: result.detection,
+    }),
+    contentType: 'application/json',
+  });
+});
 test('default speech treatment needs no settings, improves the known noisy reference and keeps stereo coherent', async ({
   page,
 }, testInfo) => {
@@ -133,7 +196,9 @@ test('real recording regression: the untouched default preserves timbre, stereo 
     timeout: 90000,
   });
   await expect(page).toHaveURL(/\/studio\/automatico\?project=/);
-  await page.getByRole('button', { name: 'Reduzir ruído', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
+    .selectOption('denoise');
   const originalDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Baixar WAV', exact: true }).click();
   const original = pcm(await readFile((await (await originalDownload).path())!));
@@ -179,7 +244,9 @@ test('real recording regression: the untouched default preserves timbre, stereo 
     }),
     contentType: 'application/json',
   });
-  await page.getByRole('button', { name: 'Tratamento completo', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
+    .selectOption('auto');
   await expect(page).toHaveURL(/\/studio\/automatico\?project=/);
   await page.getByRole('button', { name: 'Analisar e tratar', exact: true }).click();
   await expect(
@@ -201,6 +268,7 @@ test('real recording regression: the untouched default preserves timbre, stereo 
     await readFile((await (await finalReportDownload).path())!, 'utf8'),
   );
   expect(finalReport.processingSettings.masterPreset).toBe('broadcast');
+  expect(finalReport.processingSettings.clippingRepair.method).toBe('autoregressive');
   expect(finalReport.samplePeakDbfs).toBeLessThanOrEqual(-2.97);
   expect(finalReport.after.truePeak).toBeLessThanOrEqual(-1);
   let referenceLufs: number | undefined;
@@ -236,6 +304,7 @@ test('real recording regression: the untouched default preserves timbre, stereo 
       automatic: finalReport.after,
       samplePeak: finalReport.samplePeakDbfs,
       restoration: finalReport.processingSettings.restoration,
+      clippingRepair: finalReport.processingSettings.clippingRepair,
       cleanup: report.after,
       cleanupCorrelation: correlation(original[0], first[0]),
       stereoCorrelation: correlation(first[0], first[1]),

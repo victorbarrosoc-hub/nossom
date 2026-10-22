@@ -28,6 +28,8 @@ import {
 import { Brand, SoundRibbon } from './brand';
 import Assistant from './assistant';
 import DemoPlayer from './demo-player';
+import { operations } from '@/lib/presets';
+import InstallApp from './install-app';
 
 function Reveal({
   children,
@@ -174,7 +176,6 @@ export default function Landing() {
       <main id="conteudo">
         <section className="ns-hero ns-wrap">
           <Reveal className="ns-hero-copy">
-            <span className="ns-kicker">INTELIGÊNCIA E SENSIBILIDADE. NO MESMO SOM.</span>
             <h1>
               O som em
               <br />
@@ -203,11 +204,6 @@ export default function Landing() {
             <AnimatedDemo className="ns-hero-ribbon">
               <SoundRibbon />
             </AnimatedDemo>
-            <span className="ns-ribbon-note">
-              Do primeiro impulso.
-              <br />
-              Ao som que fica.
-            </span>
             <div className="ns-ribbon-caption">
               <span>UMA NOVA FREQUÊNCIA</span>
               <span>∿</span>
@@ -231,7 +227,7 @@ export default function Landing() {
         </section>
         <div className="ns-stats ns-wrap">
           {[
-            ['6', 'tratamentos de áudio'],
+            [String(operations.length), 'ferramentas de áudio'],
             ['A / B', 'compare cada detalhe'],
             ['2', 'formatos de exportação'],
             ['100%', 'processamento local'],
@@ -549,6 +545,7 @@ export default function Landing() {
           <p>Tudo acontece no som.</p>
         </div>
         <nav aria-label="Rodapé">
+          <InstallApp />
           <Link href="/privacidade">Privacidade</Link>
           <Link href="/studio">
             Abrir estúdio <ArrowUpRight size={13} />

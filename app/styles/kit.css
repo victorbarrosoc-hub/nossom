@@ -607,6 +607,56 @@
 .studio-tabs {
   display: none;
 }
+.studio-header .tool-switcher {
+  width: auto;
+  max-width: 250px;
+  min-height: 38px;
+  margin: 0;
+  padding: 8px 30px 8px 12px;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background-color: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+}
+.quick-grid.workflow-quick-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+@media (display-mode: standalone) {
+  .studio-shell {
+    padding-top: env(safe-area-inset-top);
+  }
+  .studio-header {
+    top: env(safe-area-inset-top);
+  }
+  .studio-sidebar {
+    padding-top: calc(27px + env(safe-area-inset-top));
+    padding-bottom: calc(20px + env(safe-area-inset-bottom));
+  }
+}
+@media (max-width: 680px) {
+  .studio-header:has(.tool-switcher) > div:first-child > span,
+  .studio-header:has(.tool-switcher) > div:first-child > svg {
+    display: none;
+  }
+  .studio-header .tool-switcher {
+    max-width: clamp(130px, 40vw, 180px);
+    padding-inline: 8px;
+  }
+  .quick-grid.workflow-quick-grid {
+    grid-template-columns: 1fr;
+  }
+  .quick-grid.workflow-quick-grid > button,
+  .quick-grid.workflow-quick-grid > button:last-child {
+    grid-column: auto;
+    min-height: 76px;
+  }
+  .studio-shell .studio-tabs {
+    padding-inline: 12px;
+    height: calc(64px + env(safe-area-inset-bottom));
+  }
+}
 .editor-heading h1 {
   font-size: 30px;
   font-weight: 650;

@@ -7,6 +7,7 @@ export const toolSlugs: Record<Operation, string> = {
   wind: 'vento',
   level: 'nivelamento',
   master: 'masterizacao',
+  effects: 'efeitos',
   mix: 'mixagem',
 };
 export function toolPath(operation: Operation, projectId?: string) {

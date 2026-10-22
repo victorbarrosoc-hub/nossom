@@ -95,7 +95,9 @@ test('real audio workflow: import, general denoise, A/B, master, report, export,
   await page.getByRole('button', { name: 'A · Original', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Arquivo original', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'B · Resultado', exact: true }).click();
-  await page.getByRole('button', { name: 'Preparar entrega', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
+    .selectOption('master');
   await page.getByRole('button', { name: 'Aplicar tratamento' }).click();
   await expect(
     page.getByRole('heading', { name: 'Preparar entrega · V2', exact: true }),
@@ -165,13 +167,17 @@ test('rejects invalid uploads without losing a project, supports selection and a
   await page.getByRole('button', { name: 'Selecionar trecho', exact: true }).click();
   await page.getByLabel('Início do trecho em segundos').fill('0.5');
   await page.getByLabel('Fim do trecho em segundos').fill('2');
-  await page.getByRole('button', { name: 'Atenuar vento', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
+    .selectOption('wind');
   await page.getByRole('button', { name: 'Aplicar tratamento' }).click();
   await expect(page.getByRole('heading', { name: 'Atenuar vento · V1', exact: true })).toBeVisible({
     timeout: 90000,
   });
   await page.getByRole('button', { name: 'Áudio inteiro', exact: true }).click();
-  await page.getByRole('button', { name: 'Mixar com música', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
+    .selectOption('mix');
   await page
     .getByLabel('Importar trilha de música', { exact: true })
     .setInputFiles({ name: 'trilha.wav', mimeType: 'audio/wav', buffer: waveFixture(2, true) });
@@ -241,12 +247,16 @@ test('microphone recording can be imported, enhanced and leveled', async ({ page
   await expect(page.locator('.editor-heading p').getByText(/^Gravação /)).toBeVisible({
     timeout: 90000,
   });
-  await page.getByRole('button', { name: 'Melhorar voz', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
+    .selectOption('clarity');
   await page.getByRole('button', { name: 'Analisar e tratar', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Melhorar voz · V1', exact: true })).toBeVisible({
     timeout: 90000,
   });
-  await page.getByRole('button', { name: 'Nivelar volumes', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
+    .selectOption('level');
   await page.getByRole('button', { name: 'Aplicar tratamento' }).click();
   await expect(
     page.getByRole('heading', { name: 'Nivelar volumes · V2', exact: true }),

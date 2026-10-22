@@ -2,6 +2,7 @@ import type { FFmpeg } from '@ffmpeg/ffmpeg';
 import {
   treatmentFilter,
   strengthValue,
+  deliveryPresets,
   type Operation,
   type Intensity,
   type DenoiseMode,
@@ -10,6 +11,8 @@ import {
 import { estimateNoiseFloor } from './noise-profile';
 import { denoiseVoice, cancelNeural, type RestorationAnalysis } from './neural';
 import { freshBroadcast } from './broadcast';
+import { renderEffect } from './effects';
+import { clippingRepairFilter, denseClipping } from './declip';
 export const MAX_BYTES = 100 * 1024 * 1024;
 export const MAX_DURATION = 600;
 export type Measurements = { lufs: number | null; truePeak: number | null; lra: number | null };
@@ -146,32 +149,36 @@ export function inspect(buffer: AudioBuffer): AudioInfo {
     noiseFloor: estimateNoiseFloor(data, buffer.sampleRate).floorDb,
   };
 }
-export function encodeWav(buffer: AudioBuffer): Blob {
+export function encodeWav(buffer: AudioBuffer, floating = false): Blob {
   const channels = buffer.numberOfChannels,
-    frames = buffer.length;
-  const bytes = new ArrayBuffer(44 + frames * channels * 2),
+    frames = buffer.length,
+    width = floating ? 4 : 2;
+  const bytes = new ArrayBuffer(44 + frames * channels * width),
     view = new DataView(bytes);
   const str = (offset: number, text: string) => {
     for (let i = 0; i < text.length; i++) view.setUint8(offset + i, text.charCodeAt(i));
   };
   str(0, 'RIFF');
-  view.setUint32(4, 36 + frames * channels * 2, true);
+  view.setUint32(4, 36 + frames * channels * width, true);
   str(8, 'WAVE');
   str(12, 'fmt ');
   view.setUint32(16, 16, true);
-  view.setUint16(20, 1, true);
+  view.setUint16(20, floating ? 3 : 1, true);
   view.setUint16(22, channels, true);
   view.setUint32(24, buffer.sampleRate, true);
-  view.setUint32(28, buffer.sampleRate * channels * 2, true);
-  view.setUint16(32, channels * 2, true);
-  view.setUint16(34, 16, true);
+  view.setUint32(28, buffer.sampleRate * channels * width, true);
+  view.setUint16(32, channels * width, true);
+  view.setUint16(34, width * 8, true);
   str(36, 'data');
-  view.setUint32(40, frames * channels * 2, true);
+  view.setUint32(40, frames * channels * width, true);
   const arrays = Array.from({ length: channels }, (_, c) => buffer.getChannelData(c));
   for (let i = 0; i < frames; i++)
     for (let c = 0; c < channels; c++) {
-      const s = Math.max(-1, Math.min(1, arrays[c][i]));
-      view.setInt16(44 + (i * channels + c) * 2, s < 0 ? s * 32768 : s * 32767, true);
+      if (floating) view.setFloat32(44 + (i * channels + c) * width, arrays[c][i], true);
+      else {
+        const s = Math.max(-1, Math.min(1, arrays[c][i]));
+        view.setInt16(44 + (i * channels + c) * width, s < 0 ? s * 32768 : s * 32767, true);
+      }
     }
   return new Blob([bytes], { type: 'audio/wav' });
 }
@@ -201,7 +208,11 @@ async function measureFile(ff: FFmpeg, path: string): Promise<Measurements> {
     ff.off('log', listener);
   }
 }
-async function deliveryFilter(ff: FFmpeg, options: ProcessOptions): Promise<string> {
+async function deliveryFilter(
+  ff: FFmpeg,
+  options: ProcessOptions,
+  sourcePath = 'source.wav',
+): Promise<string> {
   const logs: string[] = [];
   const listener = ({ message }: { message: string }) => logs.push(message);
   ff.on('log', listener);
@@ -217,7 +228,7 @@ async function deliveryFilter(ff: FFmpeg, options: ProcessOptions): Promise<stri
     : '';
   try {
     options.onStatus?.('Analisando o volume para normalização em duas passagens…');
-    await execChecked(ff, ['-i', 'source.wav', '-af', range + base, '-f', 'null', '-']);
+    await execChecked(ff, ['-i', sourcePath, '-af', range + base, '-f', 'null', '-']);
   } finally {
     ff.off('log', listener);
   }
@@ -231,6 +242,80 @@ async function deliveryFilter(ff: FFmpeg, options: ProcessOptions): Promise<stri
   )
     return 'anull';
   return `${base}:measured_I=${data.input_i}:measured_TP=${data.input_tp}:measured_LRA=${data.input_lra}:measured_thresh=${data.input_thresh}:offset=${data.target_offset}:linear=true`;
+}
+/** Reconstruct identifiable clipped peaks before denoising. This is not generative resynthesis. */
+async function repairClippedPeaks(ff: FFmpeg, source: AudioBuffer, epoch: number) {
+  const dense = denseClipping(
+    Array.from({ length: source.numberOfChannels }, (_, c) => source.getChannelData(c)),
+  );
+  if (dense.tooDense)
+    return {
+      buffer: source,
+      report: {
+        method: 'autoregressive' as const,
+        detected: dense.flatSamples,
+        headroomGainDb: 0,
+        status: 'limited' as const,
+      },
+    };
+  const logs: string[] = [];
+  const listener = ({ message }: { message: string }) => logs.push(message);
+  const input = 'declip-input.wav',
+    output = 'declip-output.wav';
+  ff.on('log', listener);
+  try {
+    await ff.writeFile(input, new Uint8Array(await encodeWav(source, true).arrayBuffer()));
+    await execChecked(ff, [
+      '-i',
+      input,
+      '-af',
+      clippingRepairFilter(source.duration),
+      '-ar',
+      '48000',
+      '-c:a',
+      'pcm_f32le',
+      output,
+    ]);
+    checkCancellation(epoch);
+    const match = logs.join('\n').match(/Detected clips in (\d+) of \d+ samples/);
+    if (!match) throw new Error('O motor não retornou a análise de saturação.');
+    const detected = Number(match[1]);
+    const report = {
+      method: 'autoregressive' as const,
+      detected,
+      headroomGainDb: 0,
+      status: detected > 0 ? ('reconstructed' as const) : ('not-detected' as const),
+    };
+    if (!detected) return { buffer: source, report };
+    const bytes = await ff.readFile(output);
+    if (typeof bytes === 'string') throw new Error('A reconstrução não gerou áudio válido.');
+    const buffer = await decode(
+      new Blob([bytes as Uint8Array<ArrayBuffer>], { type: 'audio/wav' }),
+    );
+    if (buffer.length !== source.length || buffer.numberOfChannels !== source.numberOfChannels)
+      throw new Error('A reconstrução alterou a duração ou os canais do áudio.');
+    let peak = 0;
+    for (let c = 0; c < buffer.numberOfChannels; c++)
+      for (const sample of buffer.getChannelData(c)) {
+        if (!Number.isFinite(sample)) throw new Error('A reconstrução gerou uma amostra inválida.');
+        peak = Math.max(peak, Math.abs(sample));
+      }
+    const gain = peak > 0.9 ? 0.9 / peak : 1;
+    report.headroomGainDb = 20 * Math.log10(gain);
+    if (gain < 1)
+      for (let c = 0; c < buffer.numberOfChannels; c++) {
+        const samples = buffer.getChannelData(c);
+        for (let i = 0; i < samples.length; i++) samples[i] *= gain;
+      }
+    return { buffer, report };
+  } finally {
+    ff.off('log', listener);
+    for (const file of [input, output]) await ff.deleteFile(file).catch(() => {});
+  }
+}
+function preserveDuration(filter: string, frames: number, channels: number) {
+  // Flush look-ahead stages, then trim in the delivery rate rather than loudnorm's 192 kHz.
+  return `apad=pad_dur=0.1,${filter},aresample=48000,aformat=channel_layouts=${channels === 1 ? 'mono' : 'stereo'},apad=whole_len=${frames},atrim=end_sample=${frames}`;
 }
 export async function measure(blob: Blob, onStatus?: (s: string) => void): Promise<Measurements> {
   return exclusive(async () => {
@@ -308,8 +393,15 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
   const epoch = cancellationEpoch;
   return exclusive(async () => {
     const ff = await getEngine(options.onStatus);
-    const files = ['source.wav', 'result.wav', 'corrected.wav', 'music.wav'];
-    const source = await decode(blob);
+    const files = [
+      'source.wav',
+      'result.wav',
+      'corrected.wav',
+      'peak-safe.wav',
+      'delivery.wav',
+      'music.wav',
+    ];
+    let source = await decode(blob);
     checkCancellation(epoch);
     const profile = estimateNoiseFloor(source.getChannelData(0), source.sampleRate);
     const automatic =
@@ -317,7 +409,7 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
       (options.settings?.automatic === true && ['denoise', 'clarity'].includes(options.operation));
     const mode = automatic ? 'studio' : (options.mode ?? 'studio');
     const intensity = automatic ? 100 : options.intensity;
-    const strength = strengthValue(intensity);
+    const strength = options.operation === 'effects' ? 100 : strengthValue(intensity);
     const neural =
       mode !== 'general' &&
       ['auto', 'denoise', 'clarity'].includes(options.operation) &&
@@ -329,6 +421,12 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
       neural,
       automatic,
     };
+    if (options.operation === 'auto') {
+      options.onStatus?.('Analisando saturação e reconstruindo picos identificáveis…');
+      const repaired = await repairClippedPeaks(ff, source, epoch);
+      source = repaired.buffer;
+      settings.clippingRepair = repaired.report;
+    }
     if (neural) {
       options.onStatus?.(
         mode === 'voice'
@@ -377,7 +475,32 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
         }
       }
     }
-    const sourceBlob = neural ? encodeWav(source) : blob;
+    if (options.operation === 'effects') {
+      if (options.region)
+        throw new Error(
+          'Desative a seleção de trecho para preservar a cauda do efeito no áudio completo.',
+        );
+      options.onStatus?.('Criando o ambiente e preservando a cauda do efeito…');
+      settings.effect = options.settings?.effect ?? 'none';
+      settings.effectMix = options.settings?.effectMix ?? 0;
+      const effect = renderEffect(
+        Array.from({ length: source.numberOfChannels }, (_, c) => source.getChannelData(c)),
+        source.sampleRate,
+        settings.effect,
+        (settings.effectMix * strength) / 100,
+      );
+      settings.effectTailSeconds = effect.tailSeconds;
+      const rendered = new AudioBuffer({
+        length: effect.channels[0].length,
+        numberOfChannels: effect.channels.length,
+        sampleRate: source.sampleRate,
+      });
+      effect.channels.forEach((channel, c) =>
+        rendered.copyToChannel(channel as Float32Array<ArrayBuffer>, c),
+      );
+      source = rendered;
+    }
+    const sourceBlob = neural || options.operation === 'effects' ? encodeWav(source, true) : blob;
     await ff.writeFile('source.wav', new Uint8Array(await sourceBlob.arrayBuffer()));
     const progress = ({ progress }: { progress: number }) =>
       options.onProgress?.(
@@ -396,7 +519,7 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
           '-i',
           'music.wav',
           '-filter_complex',
-          `[0:a]asplit=2[voice][side];[1:a]volume=${options.musicGain ?? 0.25}[music];[music][side]sidechaincompress=threshold=0.02:ratio=${(1 + (strength / 100) * 15).toFixed(2)}:attack=15:release=400[duck];[voice][duck]amix=inputs=2:duration=first:normalize=0,alimiter=limit=0.8913:level=0:latency=1[out]`,
+          `[0:a]asplit=2[voice][side];[1:a]volume=${options.musicGain ?? 0.25}[music];[music][side]sidechaincompress=threshold=0.02:ratio=${(1 + (strength / 100) * 15).toFixed(2)}:attack=15:release=400[duck];[voice][duck]amix=inputs=2:duration=first:normalize=0,${preserveDuration('alimiter=limit=0.8913:level=0:latency=1', source.length, 2)}[out]`,
           '-map',
           '[out]',
         );
@@ -407,8 +530,20 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
             : treatmentFilter(options.operation, intensity, options.target, options.peak, settings);
         if (automatic && restoration && options.operation !== 'auto')
           filter += `,volume=${restoration.gainCompensationDb}dB,aresample=192000,alimiter=limit=0.870964:level=0:latency=1,aresample=48000`;
+        if (
+          options.operation === 'effects' &&
+          settings.effect !== 'none' &&
+          (settings.effectMix ?? 0) > 0 &&
+          strength > 0
+        )
+          filter += ',aresample=192000,alimiter=limit=0.870964:level=0:latency=1,aresample=48000';
         if (options.region) {
           const { start, end } = options.region;
+          filter = preserveDuration(
+            filter,
+            Math.round((end - start) * source.sampleRate),
+            source.numberOfChannels,
+          );
           // Apply the filter only to the chosen region, keeping the timeline and original surroundings.
           const nodes: string[] = [];
           const labels: string[] = [];
@@ -424,16 +559,48 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
           labels.push('[post]');
           nodes.push(`${labels.join('')}concat=n=${labels.length}:v=0:a=1[out]`);
           args.push('-filter_complex', nodes.join(';'), '-map', '[out]');
-        } else args.push('-af', filter);
+        } else args.push('-af', preserveDuration(filter, source.length, source.numberOfChannels));
       }
       args.push('-ar', '48000', '-c:a', 'pcm_s16le', 'result.wav');
       await execChecked(ff, args);
       ff.off('progress', progress);
       options.onStatus?.('Verificando o resultado…');
       let rendered = 'result.wav';
+      const destination =
+        options.operation === 'auto'
+          ? deliveryPresets.find((p) => p.id === settings.deliveryPreset)
+          : undefined;
+      if (destination) {
+        const delivery = {
+          ...options,
+          operation: 'master' as const,
+          target: destination.lufs,
+          peak: destination.peak,
+          settings: {},
+        };
+        const filter = await deliveryFilter(ff, delivery, rendered);
+        await execChecked(ff, [
+          '-i',
+          rendered,
+          '-af',
+          preserveDuration(filter, source.length, source.numberOfChannels),
+          '-ar',
+          '48000',
+          '-c:a',
+          'pcm_s16le',
+          'delivery.wav',
+        ]);
+        rendered = 'delivery.wav';
+      }
       let metrics = await measureFile(ff, rendered);
-      if (automatic && !options.region && metrics.truePeak !== null && metrics.truePeak > -1) {
-        const trim = -1.1 - metrics.truePeak;
+      const automaticCeiling = destination?.peak ?? -1;
+      if (
+        automatic &&
+        !options.region &&
+        metrics.truePeak !== null &&
+        metrics.truePeak > automaticCeiling
+      ) {
+        const trim = automaticCeiling - 0.1 - metrics.truePeak;
         await execChecked(ff, [
           '-i',
           rendered,
@@ -443,23 +610,28 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
           '48000',
           '-c:a',
           'pcm_s16le',
-          'corrected.wav',
+          'peak-safe.wav',
         ]);
-        rendered = 'corrected.wav';
+        rendered = 'peak-safe.wav';
         metrics = await measureFile(ff, rendered);
       }
       // Short or highly dynamic material can miss loudnorm's target. Correct the measured
       // render only within verified true-peak headroom. Never alter outside a selected region.
       if (
-        options.operation === 'master' &&
-        options.settings?.masterPreset !== 'broadcast' &&
+        ((options.operation === 'master' && options.settings?.masterPreset !== 'broadcast') ||
+          destination) &&
         !options.region &&
         metrics.lufs !== null &&
         metrics.truePeak !== null
       ) {
-        const delta = options.target - metrics.lufs;
+        const delta = (destination?.lufs ?? options.target) - metrics.lufs;
         const gain =
-          delta > 0 ? Math.min(delta, Math.max(0, options.peak - metrics.truePeak - 0.15)) : delta;
+          delta > 0
+            ? Math.min(
+                delta,
+                Math.max(0, (destination?.peak ?? options.peak) - metrics.truePeak - 0.15),
+              )
+            : delta;
         if (Math.abs(gain) > 0.1) {
           options.onStatus?.('Ajustando o volume medido, respeitando o teto de pico…');
           await execChecked(ff, [

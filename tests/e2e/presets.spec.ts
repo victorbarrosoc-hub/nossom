@@ -24,7 +24,9 @@ test('dedicated tools render EQ, apply the supplied multiband preset, and undo/r
   await expect(page.getByRole('heading', { name: 'Equalização · V1', exact: true })).toBeVisible({
     timeout: 90000,
   });
-  await page.getByRole('button', { name: 'Preparar entrega', exact: true }).click();
+  await page
+    .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
+    .selectOption('master');
   await expect(page).toHaveURL(/\/studio\/masterizacao\?project=/);
   await page.getByRole('button', { name: 'Transmissão + Limite −3 dB', exact: false }).click();
   await expect(page.getByRole('spinbutton', { name: 'Crossover 1', exact: true })).toHaveValue(

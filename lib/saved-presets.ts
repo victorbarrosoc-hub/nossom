@@ -1,4 +1,11 @@
-import { operations, type Operation, type DenoiseMode, type FilterSettings } from './presets';
+import {
+  operations,
+  deliveryPresets,
+  type Operation,
+  type DenoiseMode,
+  type FilterSettings,
+} from './presets';
+import { isEffectId } from './effects';
 export type SavedRecipe = {
   id: string;
   name: string;
@@ -26,6 +33,9 @@ export function validRecipe(value: unknown): value is SavedRecipe {
     return false;
   if (![v.intensity, v.target, v.peak, v.musicGain].every(Number.isFinite)) return false;
   if (s.automatic !== undefined && typeof s.automatic !== 'boolean') return false;
+  if (s.effect !== undefined && !isEffectId(s.effect)) return false;
+  if (s.deliveryPreset !== undefined && !deliveryPresets.some((p) => p.id === s.deliveryPreset))
+    return false;
   for (const key of [
     'presence',
     'compression',
@@ -35,11 +45,16 @@ export function validRecipe(value: unknown): value is SavedRecipe {
     'neuralAttenuation',
     'deess',
     'hum',
+    'effectMix',
   ] as const)
     if (s[key] !== undefined && !Number.isFinite(s[key])) return false;
   if (s.eq && (!Array.isArray(s.eq) || s.eq.length !== 5 || !s.eq.every(Number.isFinite)))
     return false;
-  if (s.masterPreset && !['broadcast', 'podcast', 'social', 'ebu'].includes(s.masterPreset))
+  if (
+    s.masterPreset &&
+    s.masterPreset !== 'broadcast' &&
+    !deliveryPresets.some((p) => p.id === s.masterPreset)
+  )
     return false;
   if (s.broadcast) {
     const b = s.broadcast;

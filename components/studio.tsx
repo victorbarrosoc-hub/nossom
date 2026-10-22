@@ -10,6 +10,9 @@ import { freshBroadcast, type BroadcastSettings } from '@/lib/broadcast';
 import PresetLibrary from './preset-library';
 import type { SavedRecipe } from '@/lib/saved-presets';
 import { voicePresets } from '@/lib/voice-presets';
+import { effectPresets, type EffectId } from '@/lib/effects';
+import { toolGroups } from '@/lib/workflow';
+import InstallApp from './install-app';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
@@ -78,6 +81,7 @@ const toolIcons = {
   wind: AudioLines,
   level: SlidersHorizontal,
   master: Activity,
+  effects: AudioLines,
   mix: Layers,
 };
 function metric(value: number | null, suffix = '') {
@@ -147,6 +151,14 @@ export default function Studio() {
     [eqHighpass, setEqHighpass] = useState(30);
   const [masterRecipe, setMasterRecipe] = useState('podcast');
   const [automatic, setAutomatic] = useState(true);
+  const [autoDestination, setAutoDestination] = useState('reference');
+  const [effect, setEffect] = useState<EffectId>('none'),
+    [effectMix, setEffectMix] = useState(0);
+  function selectEffect(id: EffectId) {
+    setEffect(id);
+    setEffectMix(effectPresets.find((p) => p.id === id)?.mix ?? 0);
+    setIntensity(100);
+  }
   const [broadcast, setBroadcast] = useState<BroadcastSettings>(freshBroadcast);
   const [voicePreset, setVoicePreset] = useState('dialogue'),
     [deess, setDeess] = useState(25),
@@ -455,6 +467,8 @@ export default function Studio() {
     setHighpass(s.highpass ?? 140);
     setDeess(s.deess ?? 25);
     setHum(s.hum ?? 0);
+    setEffect(s.effect ?? 'none');
+    setEffectMix(s.effectMix ?? 0);
     setVoicePreset('custom');
     if (s.eq) {
       setEqGains(s.eq);
@@ -478,7 +492,11 @@ export default function Studio() {
         throw new Error('Envie uma faixa de música antes de mixar.');
       if (operation === 'mix' && region)
         throw new Error('Para mixar, desative a seleção de trecho. A mixagem usa o áudio inteiro.');
-      const inputVersion = autoEnabled ? project.versions[0] : version;
+      const effectBase =
+        operation === 'effects' && version.operation === 'effects'
+          ? (project.versions.find((v) => v.id === version.parentId) ?? version)
+          : version;
+      const inputVersion = autoEnabled ? project.versions[0] : effectBase;
       const result = await processAudio(inputVersion.blob, {
         operation,
         intensity,
@@ -496,6 +514,10 @@ export default function Studio() {
           broadcast: operation === 'master' && masterRecipe === 'broadcast' ? broadcast : undefined,
           deess: operation === 'clarity' ? deess : undefined,
           hum: operation === 'clarity' ? hum : undefined,
+          deliveryPreset:
+            operation === 'auto' && autoDestination !== 'reference' ? autoDestination : undefined,
+          effect: operation === 'effects' ? effect : undefined,
+          effectMix: operation === 'effects' ? effectMix : undefined,
         },
         target,
         peak,
@@ -513,16 +535,18 @@ export default function Studio() {
         operation,
         preset:
           operation === 'auto'
-            ? 'Automático · restauração + Transmissão + Limite −3 dB'
+            ? `Automático · restauração + ${deliveryPresets.find((p) => p.id === autoDestination)?.label ?? 'Transmissão + Limite −3 dB'}`
             : operation === 'master'
               ? masterRecipe === 'broadcast'
                 ? 'Transmissão + Limite −3 dB'
                 : `${preset} / alvo ${target} LUFS / pico ${peak} dBTP / v2`
-              : operation === 'eq'
-                ? `EQ: ${eqPresets.find((p) => p.id === eqPreset)?.label ?? 'Personalizado'}`
-                : operation === 'clarity'
-                  ? `Voz: ${voicePresets.find((p) => p.id === voicePreset)?.label ?? 'Personalizado'}`
-                  : undefined,
+              : operation === 'effects'
+                ? `${effectPresets.find((p) => p.id === effect)?.label} · ${effectMix}%`
+                : operation === 'eq'
+                  ? `EQ: ${eqPresets.find((p) => p.id === eqPreset)?.label ?? 'Personalizado'}`
+                  : operation === 'clarity'
+                    ? `Voz: ${voicePresets.find((p) => p.id === voicePreset)?.label ?? 'Personalizado'}`
+                    : undefined,
         ...result,
       };
       const updated = {
@@ -683,6 +707,9 @@ export default function Studio() {
       setRegion(null);
       setMusic(null);
       setView('editor');
+      const recordingTool = routeTool ?? 'auto';
+      setOperation(recordingTool);
+      router.push(toolPath(recordingTool, p.id), { scroll: false });
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao importar gravação.');
@@ -764,37 +791,24 @@ export default function Studio() {
           >
             <Folder size={18} /> Meus projetos <small>{projects.length}</small>
           </button>
-          <span className="sidebar-caption">FERRAMENTAS</span>
-          {operations.map((o) => {
-            const Icon = toolIcons[o.id];
-            return (
-              <button
-                key={o.id}
-                className={routeTool === o.id ? 'active' : ''}
-                onClick={() => chooseTool(o.id)}
-              >
-                <Icon size={17} />
-                {o.label}
-              </button>
-            );
-          })}
+          <button
+            className={routeTool ? 'active' : ''}
+            onClick={() => chooseTool(operation)}
+            disabled={!!busy || recording}
+          >
+            <AudioLines size={18} /> Estúdio
+          </button>
           <button
             className={view === 'ai' ? 'active' : ''}
             onClick={() => {
               if (!busy && !recording) router.push('/studio/ia');
             }}
           >
-            <AudioLines size={17} /> Inteligência NOSSOM
+            <MessageCircle size={18} /> Assistente
           </button>
-          <span className="sidebar-caption">EM BREVE</span>
-          <span className="future-nav">
-            <Layers size={17} /> Separação por IA <small>Em breve</small>
-          </span>
-          <span className="future-nav">
-            <Folder size={17} /> Nuvem e equipes <small>Em breve</small>
-          </span>
         </nav>
         <div className="sidebar-bottom">
+          <InstallApp />
           <div className="local-note">
             <ShieldCheck size={17} />
             <div>
@@ -823,15 +837,33 @@ export default function Studio() {
             </button>
             <span>Meu espaço</span>
             <ChevronRight size={12} />
-            <strong>
-              {routeTool
-                ? selectedTool.label
-                : view === 'ai'
+            {routeTool ? (
+              <select
+                className="tool-switcher"
+                aria-label="Ferramenta do estúdio"
+                value={operation}
+                disabled={!!busy || recording}
+                onChange={(e) => chooseTool(e.target.value as Operation)}
+              >
+                {toolGroups.map((group) => (
+                  <optgroup key={group.label} label={group.label}>
+                    {group.tools.map((id) => (
+                      <option key={id} value={id}>
+                        {operations.find((o) => o.id === id)!.label}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            ) : (
+              <strong>
+                {view === 'ai'
                   ? 'Inteligência NOSSOM'
                   : view === 'projects'
                     ? 'Meus projetos'
                     : 'Início'}
-            </strong>
+              </strong>
+            )}
           </div>
           <div className="studio-header-actions">
             <label className="theme-control">
@@ -867,7 +899,7 @@ export default function Studio() {
             onChange={(e) => {
               const f = e.target.files?.[0];
               e.target.value = '';
-              if (f) void upload(f);
+              if (f) void upload(f, view === 'home' ? 'auto' : undefined);
             }}
           />
           <input
@@ -983,7 +1015,8 @@ export default function Studio() {
                     e.preventDefault();
                     setDragging(false);
                     const f = e.dataTransfer.files[0];
-                    if (f && !busy && !recording) void upload(f);
+                    if (f && !busy && !recording)
+                      void upload(f, view === 'home' ? 'auto' : undefined);
                   }}
                 >
                   <span className="upload-icon">
@@ -1026,15 +1059,15 @@ export default function Studio() {
                     <li>
                       <span>2</span>
                       <div>
-                        <strong>Encontre o ponto</strong>
-                        <p>Ajuste e compare com o original.</p>
+                        <strong>Deixe a IA cuidar do som</strong>
+                        <p>Comece pelo tratamento completo e compare com o original.</p>
                       </div>
                     </li>
                     <li>
                       <span>3</span>
                       <div>
                         <strong>Prepare a entrega</strong>
-                        <p>Baixe em WAV ou MP3.</p>
+                        <p>Escolha o destino e baixe em WAV ou MP3.</p>
                       </div>
                     </li>
                   </ol>
@@ -1043,11 +1076,12 @@ export default function Studio() {
               {view === 'home' && (
                 <div className="quick-section">
                   <div className="subheading">
-                    <h2>O que você quer melhorar?</h2>
-                    <span>ESCOLHA UM TRATAMENTO</span>
+                    <h2>O que você quer fazer?</h2>
+                    <span>SEU PRÓXIMO PASSO</span>
                   </div>
-                  <div className="quick-grid">
-                    {operations.slice(0, 5).map((o) => {
+                  <div className="quick-grid workflow-quick-grid">
+                    {(['auto', 'effects', 'master'] as Operation[]).map((id) => {
+                      const o = operations.find((o) => o.id === id)!;
                       const Icon = toolIcons[o.id];
                       return (
                         <button
@@ -1275,7 +1309,7 @@ export default function Studio() {
                           ? `${version.info.clipped} amostras próximas ao limite digital. Revise os picos antes de entregar.`
                           : version.metrics.lufs === null
                             ? 'Áudio silencioso ou insuficiente para medir loudness.'
-                            : 'Nenhuma amostra saturada detectada no WAV. Confira também o true peak e a especificação de entrega.'}
+                            : 'Nenhuma amostra no limite digital de 0 dBFS. Isso não exclui distorção já presente na gravação; confira também o true peak.'}
                       </p>
                     </div>
                     {operation === 'master' &&
@@ -1378,7 +1412,7 @@ export default function Studio() {
                       <p>
                         {autoEnabled
                           ? operation === 'auto'
-                            ? 'Analisamos o original, adaptamos a restauração e o timbre e finalizamos com o preset Transmissão + Limite −3 dB. Você não precisa escolher parâmetros.'
+                            ? 'Analisamos o original, reconstruímos picos saturados identificáveis e adaptamos a limpeza e o timbre. Finalizamos com Transmissão + Limite −3 dB ou com o destino que você escolher.'
                             : 'Analisamos a gravação original e adaptamos a limpeza à sua voz, preservando o timbre e o estéreo. O volume e os picos são verificados no resultado.'
                           : 'Personalize o tratamento ou volte à análise automática.'}
                       </p>
@@ -1394,6 +1428,58 @@ export default function Studio() {
                     </div>
                   )}
                   <div className={`treatment-controls ${autoEnabled ? 'automatic-controls' : ''}`}>
+                    {operation === 'effects' && (
+                      <>
+                        <div
+                          className="preset-grid effect-presets"
+                          role="group"
+                          aria-label="Presets de efeitos"
+                        >
+                          {effectPresets.map((p) => (
+                            <button
+                              key={p.id}
+                              className={effect === p.id ? 'active' : ''}
+                              aria-pressed={effect === p.id}
+                              disabled={!!busy}
+                              onClick={() => selectEffect(p.id)}
+                            >
+                              <strong>{p.label}</strong>
+                              <span>{p.description}</span>
+                            </button>
+                          ))}
+                        </div>
+                        <RangeControl
+                          label="Intensidade do efeito"
+                          value={effectMix}
+                          min={0}
+                          max={100}
+                          unit="%"
+                          disabled={!!busy || effect === 'none'}
+                          onChange={setEffectMix}
+                        />
+                        <p className="field-hint">
+                          Trocar o efeito parte da mesma versão de origem, sem acumular
+                          reverberação. A cauda é preservada na exportação.
+                        </p>
+                        {version.operation === 'effects' && (
+                          <button
+                            className="button secondary small"
+                            disabled={!!busy}
+                            onClick={() => {
+                              const index = project.versions.findIndex(
+                                (v) => v.id === version.parentId,
+                              );
+                              if (index >= 0) {
+                                selectEffect('none');
+                                void selectVersion(index);
+                              }
+                            }}
+                          >
+                            Remover efeito
+                          </button>
+                        )}
+                      </>
+                    )}
                     {operation === 'eq' && (
                       <EqualizerControls
                         gains={eqGains}
@@ -1531,56 +1617,60 @@ export default function Studio() {
                           onChange={setNeuralAttenuation}
                         />
                       )}
-                    <RangeControl
-                      label={
-                        operation === 'master'
-                          ? masterRecipe === 'broadcast'
-                            ? 'Mistura do preset'
-                            : 'Controle de dinâmica'
-                          : operation === 'mix'
-                            ? 'Redução da trilha durante a fala'
-                            : 'Intensidade do tratamento'
-                      }
-                      value={intensity}
-                      min={0}
-                      max={100}
-                      unit="%"
-                      disabled={!!busy}
-                      onChange={setIntensity}
-                    />
-                    <div
-                      className="intensity-selector"
-                      role="group"
-                      aria-label="Atalhos de intensidade"
-                    >
-                      {[
-                        [30, 'Suave'],
-                        [65, 'Equilibrado'],
-                        [100, 'Máximo'],
-                      ].map(([value, label]) => (
-                        <button
-                          key={value}
+                    {operation !== 'effects' && (
+                      <>
+                        <RangeControl
+                          label={
+                            operation === 'master'
+                              ? masterRecipe === 'broadcast'
+                                ? 'Mistura do preset'
+                                : 'Controle de dinâmica'
+                              : operation === 'mix'
+                                ? 'Redução da trilha durante a fala'
+                                : 'Intensidade do tratamento'
+                          }
+                          value={intensity}
+                          min={0}
+                          max={100}
+                          unit="%"
                           disabled={!!busy}
-                          className={intensity === value ? 'active' : ''}
-                          onClick={() => setIntensity(Number(value))}
+                          onChange={setIntensity}
+                        />
+                        <div
+                          className="intensity-selector"
+                          role="group"
+                          aria-label="Atalhos de intensidade"
                         >
-                          {label}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="field-hint">
-                      {operation === 'master'
-                        ? masterRecipe === 'broadcast'
-                          ? 'Mistura o sinal original com a cadeia de transmissão. Em 100%, utiliza somente o resultado tratado.'
-                          : 'Controla a faixa dinâmica pedida ao normalizador. Confira o resultado nas medições abaixo.'
-                        : operation === 'mix'
-                          ? 'Quanto maior, mais a trilha recua enquanto há sinal na voz.'
-                          : intensity === 0
-                            ? 'Sem tratamento adicional.'
-                            : intensity > 85
-                              ? 'Tratamento intenso. Compare com o original para conferir se os detalhes continuam naturais.'
-                              : 'Ajuste livremente, aplique e compare o resultado com o original.'}
-                    </p>
+                          {[
+                            [30, 'Suave'],
+                            [65, 'Equilibrado'],
+                            [100, 'Máximo'],
+                          ].map(([value, label]) => (
+                            <button
+                              key={value}
+                              disabled={!!busy}
+                              className={intensity === value ? 'active' : ''}
+                              onClick={() => setIntensity(Number(value))}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
+                        <p className="field-hint">
+                          {operation === 'master'
+                            ? masterRecipe === 'broadcast'
+                              ? 'Mistura o sinal original com a cadeia de transmissão. Em 100%, utiliza somente o resultado tratado.'
+                              : 'Controla a faixa dinâmica pedida ao normalizador. Confira o resultado nas medições abaixo.'
+                            : operation === 'mix'
+                              ? 'Quanto maior, mais a trilha recua enquanto há sinal na voz.'
+                              : intensity === 0
+                                ? 'Sem tratamento adicional.'
+                                : intensity > 85
+                                  ? 'Tratamento intenso. Compare com o original para conferir se os detalhes continuam naturais.'
+                                  : 'Ajuste livremente, aplique e compare o resultado com o original.'}
+                        </p>
+                      </>
+                    )}
                     {['denoise', 'clarity', 'wind'].includes(operation) &&
                       (denoiseMode === 'general' || operation === 'wind') && (
                         <>
@@ -1694,6 +1784,30 @@ export default function Studio() {
                       />
                     )}
                   </div>
+                  {operation === 'auto' && (
+                    <div className="destination-controls">
+                      <label className="field-label" htmlFor="auto-destination">
+                        ONDE ESSE SOM VAI CHEGAR?
+                      </label>
+                      <select
+                        id="auto-destination"
+                        disabled={!!busy}
+                        value={autoDestination}
+                        onChange={(e) => setAutoDestination(e.target.value)}
+                      >
+                        <option value="reference">NOSSOM · Transmissão + Limite −3 dB</option>
+                        {deliveryPresets.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.label}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="field-hint">
+                        {deliveryPresets.find((p) => p.id === autoDestination)?.note ??
+                          'Mantém a finalização da referência enviada, sem normalização extra de volume.'}
+                      </p>
+                    </div>
+                  )}
                   {operation === 'master' && masterRecipe !== 'broadcast' && (
                     <>
                       <label className="field-label" htmlFor="destination">
@@ -1816,6 +1930,8 @@ export default function Studio() {
                                 : undefined,
                             deess: operation === 'clarity' ? deess : undefined,
                             hum: operation === 'clarity' ? hum : undefined,
+                            effect: operation === 'effects' ? effect : undefined,
+                            effectMix: operation === 'effects' ? effectMix : undefined,
                           },
                         }}
                       />
@@ -1890,6 +2006,15 @@ export default function Studio() {
                           Supressão escolhida: {version.processing.restoration.attenuationDb} dB. Os
                           ajustes usados estão no relatório.
                         </small>
+                        {version.processing.clippingRepair && (
+                          <small>
+                            {version.processing.clippingRepair.status === 'reconstructed'
+                              ? 'Picos saturados identificados e reconstruídos. Compare os trechos distorcidos com o original.'
+                              : version.processing.clippingRepair.status === 'limited'
+                                ? 'Saturação extensa: a restauração local não reconstrói esta gravação com segurança. A distorção pode permanecer.'
+                                : 'Sem teto de saturação identificável. Distorção de captação ou de compressão ainda pode estar presente.'}
+                          </small>
+                        )}
                       </span>
                     </div>
                   )}
@@ -1949,19 +2074,27 @@ export default function Studio() {
           <span>Início</span>
         </button>
         <button
-          className="tab-create"
-          onClick={() => fileInput.current?.click()}
-          disabled={!!busy || recording}
-          aria-label="Importar novo áudio"
-        >
-          <Plus size={23} />
-        </button>
-        <button
           className={view === 'projects' ? 'active' : ''}
           onClick={() => navigate('projects')}
         >
           <Folder size={19} />
           <span>Projetos</span>
+        </button>
+        <button
+          className={routeTool ? 'active' : ''}
+          disabled={!!busy || recording}
+          onClick={() => chooseTool(operation)}
+        >
+          <AudioLines size={19} />
+          <span>Estúdio</span>
+        </button>
+        <button
+          className={view === 'ai' ? 'active' : ''}
+          disabled={!!busy || recording}
+          onClick={() => router.push('/studio/ia')}
+        >
+          <MessageCircle size={19} />
+          <span>Assistente</span>
         </button>
       </nav>
       {assistant && (

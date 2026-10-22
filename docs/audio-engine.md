@@ -18,6 +18,14 @@ As ferramentas Limpeza e Voz também começam em análise automática, com “Aj
 
 Cada execução automática parte do original e abre uma ramificação no histórico. Repetir não reaplica o modelo sobre uma voz já tratada. As operações manuais continuam encadeáveis. A exportação MP3 passa a 320 kb/s; o WAV é a referência das medições.
 
+## Saturação de entrada e reconstrução de picos
+
+Tratamento completo executa `adeclip` do FFmpeg antes da limpeza neural. Esse estágio identifica acúmulo de amostras em um teto local e usa predição autorregressiva para estimar picos perdidos. Janela de 20 ms, AR de 2%, limiar de histograma 10. Padding de 55 ms nas bordas seguido de corte mantém a duração e evita que a soma de janelas altere o início/fim da gravação. O áudio intermediário usa WAV float32, inclusive entre limpeza e finalização, preservando headroom; reconstruir em float e quantizar antes da finalização poderia clipar novamente. Ganho vinculado reserva pico de 0,9 quando a reconstrução excede essa margem.
+
+O relatório registra método, contagem de detecções em quadros sobrepostos, ganho e estado: `reconstructed`, `not-detected` ou `limited`. Não se interpretam essas contagens como número único de amostras danificadas. Quando não há detecções, a saída do filtro é descartada e a fonte é mantida exatamente. Silêncio digital não é saturação. Gravações com mais de 25% de amostras em patamares constantes são sinalizadas como limitadas: a reconstrução AR densa é cara e não é confiável, então o motor continua a limpeza sem alegar reparar os picos.
+
+O teste em WASM usa fala limpa conhecida, clipping introduzido em ±0,2 e exige ganho de SI-SDR superior a 3 dB, duração idêntica e recuperação de amplitudes acima do teto artificial. Isso verifica reconstrução efetiva, e não redução de volume. Não demonstra equivalência perceptual com Adobe Podcast v2. No bruto privado, a maior parte da distorção relatada não foi identificada como patamar de clipping digital; saturação analógica, processamento prévio e codificação com perdas podem ocultar esses patamares. O motor local não faz ressíntese generativa da fala. Nenhum modelo de reconstrução generativa foi treinado, integrado ou validado nesta alteração.
+
 As ferramentas são páginas próprias com uma fonte de áudio compartilhada. EQ, voz, dinâmica e entrega são estágios separados; aplicar um ajuste produz um snapshot e registra sua versão de origem. Desfazer/refazer seleciona snapshots, sem renderizar novamente ou destruir o histórico. Ramificações e a trilha de refazer são preservadas ao recarregar. Projetos antigos sem identificadores de origem continuam navegáveis por ordem linear.
 
 ## Transmissão + Limite −3 dB
@@ -43,9 +51,38 @@ A implementação usa crossover Linkwitz–Riley de 4ª ordem, compressão RMS p
 
 O EQ possui bandas em 100, 250, 1.000, 3.500 e 10.000 Hz, de −12 a +12 dB, e corte de graves ajustável. Os presets Neutro, Corpo e calor, Voz em destaque e Brilho e abertura são pontos de partida editáveis. Reserva-se margem antes dos realces para reduzir o risco de clipping. O gráfico mostra ganhos por banda, não uma medição do espectro ou resposta exata do filtro.
 
-Os presets Diálogo limpo, Locução encorpada, Podcast equilibrado, Sibilância suave e Diálogo com hum de rede combinam a restauração neural com EQ de voz, compressor, limitador e de-esser conforme controles. Hum usa notches na fundamental 50/60 Hz e três harmônicos. Isso não recupera gravações saturadas ou ausentes nem equivale a todas as funções RX/Ozone.
+Os presets Diálogo limpo, Locução encorpada, Podcast equilibrado, Sibilância suave e Diálogo com hum de rede combinam a restauração neural com EQ de voz, compressor, limitador e de-esser conforme controles. Hum usa notches na fundamental 50/60 Hz e três harmônicos. A reconstrução de picos identificáveis está no Tratamento completo; esses presets de voz não recuperam conteúdo ausente nem equivalem a todas as funções RX/Ozone.
 
 “Meus presets” guarda as configurações por ferramenta no navegador. Não inclui o áudio, não é sincronizado em nuvem e possui limite de 20 presets por ferramenta.
+
+## Destinos de entrega
+
+Os destinos estão em Preparar entrega e também no Tratamento completo. Neste último, a opção NOSSOM mantém a cadeia de referência anterior; escolher um destino acrescenta normalização em duas passagens depois da cadeia, com medição posterior e correção de ganho limitada pelo true peak. A meta não é certificação. Para obter a entrega final, aplique os efeitos criativos antes da normalização do destino.
+
+Todos os renders descarregam o look-ahead dos filtros com 100 ms de padding e cortam a saída na contagem exata de amostras a 48 kHz. Isso corrige a perda de aproximadamente 8,6 ms encontrada ao combinar a cadeia automática e a normalização de destino. Efeitos preservam a duração já acrescida de sua cauda. Nas regiões, o corte usa a duração da seleção antes da concatenação.
+
+| Destino                           | Meta integrada             | Teto de true peak | Escopo                                                                  |
+| --------------------------------- | -------------------------- | ----------------- | ----------------------------------------------------------------------- |
+| Podcast estéreo                   | −16 LUFS                   | −1 dBTP           | Orientação editorial                                                    |
+| Redes sociais / vídeo de conteúdo | −14 LUFS                   | −1 dBTP           | Ponto de partida para Reels, TikTok e Shorts                            |
+| YouTube / entrevistas             | −14 LUFS                   | −1 dBTP           | Orientação editorial, não exigência de upload                           |
+| Netflix / referência de diálogo   | −27 LUFS                   | −2 dBTP           | Apenas diálogo isolado; não mede automaticamente diálogo em uma mixagem |
+| TV / EBU R128                     | −23 LUFS                   | −1 dBTP           | Confirmar a especificação da emissora                                   |
+| TV / ATSC A/85                    | −24 LUFS (referência LKFS) | −2 dBTP           | Confirmar medição/canais e exigências do projeto                        |
+
+O medidor usa loudnorm/EBU R128 sobre o arquivo inteiro, não um classificador de diálogo. O preset Netflix identifica explicitamente essa limitação. WAV permanece PCM16 a 48 kHz: entregas que exigem PCM24, stems, multicanal, metadados ou testes específicos precisam de uma etapa externa.
+
+Fontes para conferência: [FFmpeg adeclip](https://ffmpeg.org/ffmpeg-filters.html#adeclip), [implementação oficial](https://github.com/FFmpeg/FFmpeg/blob/master/libavfilter/af_adeclick.c), [EBU R128](https://tech.ebu.ch/docs/r/r128.pdf), [YouTube — codificação](https://support.google.com/youtube/answer/1722171?hl=pt-BR) e especificação de entrega do projeto no Netflix Partner Help. Nesta execução foi possível ler o código oficial do FFmpeg no GitHub e consultar o filtro WASM real; o proxy bloqueou com HTTP 403 os sites Adobe, EBU, Google Help e Netflix Partner Help. As revisões atuais dessas páginas e a arquitetura proprietária do Enhance Speech v2 não foram verificadas. Não se atribui à Adobe um algoritmo interno específico.
+
+## Efeitos criativos
+
+`/studio/efeitos` oferece Sem efeito, Sala de estúdio, Capela, Igreja, Auditório, Rádio vintage, Rádio FM e Telefone. O único controle de intensidade mistura sinal seco e processado de 0 a 100%. Em 0%, o render de efeito é um bypass sem cauda. O original não é alterado; a exportação PCM16 pode introduzir arredondamento de quantização.
+
+Ambientes usam uma rede Schroeder: seis combs paralelos com realimentação amortecida, três difusores all-pass, predelay e pequenas diferenças entre canais. RT60 nominal: sala 0,35 s, capela 1,3 s, igreja 4,2 s, auditório 2,2 s; amortecimento por frequência altera a cauda efetiva. A cauda é acrescentada ao arquivo, não cortada no fim. Não são respostas impulsivas medidas em igrejas reais nem emulações licenciadas.
+
+Telefone soma o sinal molhado em mono e filtra 300–3.400 Hz. Rádio vintage filtra 180–4.500 Hz; FM, 70–12.000 Hz. Ambos usam compressão de envelope (ataque 3 ms, release 120 ms, ratio 3:1) e ganho de compensação. O sinal é transportado em float e passa por limitador com oversampling 4× antes da exportação. São texturas criativas aproximadas, não padrões técnicos de transmissão.
+
+Trocar um efeito sobre a versão ativa de Efeitos parte da mesma versão pai. Isso evita acumular caudas; Remover efeito seleciona o pai sem apagar snapshots. A biblioteca pessoal salva efeito e intensidade e pode recarregá-los. Seleção regional é recusada nessa ferramenta para preservar a cauda completa.
 
 ## Qualidade e comparação
 
