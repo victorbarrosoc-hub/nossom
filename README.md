@@ -56,9 +56,9 @@ No painel ElevenLabs, configure o agente para português, restrinja as origens a
 
 O projeto usa Next.js e pode ser importado diretamente na Vercel. Build: `npm run build`; instalação: `npm ci`. As configurações de headers em `next.config.ts` são necessárias ao worker, à mídia local e à política de recursos.
 
-O endereço desejado é `nossom-teal.vercel.app`; sua disponibilidade e vinculação precisam ser verificadas na conta Vercel. A autorização para publicar já foi fornecida pelo usuário. Neste ambiente, não há sessão Vercel ou `VERCEL_TOKEN` injetado, e as APIs/referências externas retornaram bloqueio da política de rede. Não houve deploy confirmado.
+O endereço desejado é `nossom-teal.vercel.app`. O envio à branch `main` acionou uma integração GitHub–Vercel existente, que retornou “Deployment has completed” para o commit inicial desta implementação. O endereço desejado, porém, respondeu HTTP 404 na verificação pública. A vinculação do domínio e o endereço ativo precisam ser conferidos nas configurações do projeto Vercel. A autorização para publicar já foi fornecida pelo usuário; não há sessão ou `VERCEL_TOKEN` disponível neste ambiente para gerenciar aliases.
 
-Depois de disponibilizar acesso seguro à conta, execute o deploy a partir desta pasta usando a CLI oficial autenticada ou importe o repositório no projeto Vercel. Não imprima tokens e não os coloque no Git. Nunca considere um build local como evidência de publicação.
+A integração existente publica novos commits de `main`. Para corrigir o domínio ou ajustar configurações, disponibilize acesso seguro ao projeto e utilize a CLI/API oficial autenticada. Não imprima tokens e não os coloque no Git. Diferencie o status de deploy do provedor da verificação funcional do domínio público.
 
 ## Validação
 

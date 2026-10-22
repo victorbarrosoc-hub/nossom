@@ -26,6 +26,6 @@ Ambiente: Node.js 24, Next.js 16, Chromium Linux, FFmpeg core 0.12.10. A valida�
 - Navegadores Safari/Firefox, dispositivos físicos móveis ou arquivos próximos dos limites de memória.
 - Voz ElevenLabs: ausência do ID de agente autorizado.
 - Conta, armazenamento de nuvem, colaboração, billing e IA neural: fora do MVP local, identificados como futuros.
-- Publicação Vercel: não confirmada; ausência de sessão/token Vercel e restrição de rede às APIs externas.
+- Domínio público: `nossom-teal.vercel.app` retornou HTTP 404. O status da integração Vercel no GitHub confirmou “Deployment has completed” para a implementação enviada; o alias público ainda não foi validado. A API de gerenciamento Vercel requer autenticação indisponível no ambiente.
 
-O workflow CI foi adicionado ao repositório. A execução remota não foi observada neste ambiente.
+O workflow CI foi adicionado ao repositório. A execução remota não chegou a iniciar por uma restrição da conta GitHub; o job não executou testes nem build. A validação acima foi executada localmente.
