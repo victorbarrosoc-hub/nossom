@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import AIMotion from './ai-motion';
 import { useDialog } from '@/lib/use-dialog';
 import { useConversation } from '@elevenlabs/react';
 import { ArrowUp, AudioLines, Mic, PhoneOff, X, Sparkles, ArrowRight } from 'lucide-react';
@@ -14,8 +15,8 @@ export default function Assistant({
   context?: Record<string, number | null>;
 }) {
   const [cloud, setCloud] = useState(false),
-    [cloudAvailable, setCloudAvailable] = useState(false),
-    [managed, setManaged] = useState(false),
+    [authenticated, setAuthenticated] = useState(false),
+    [loading, setLoading] = useState(true),
     [thinking, setThinking] = useState(false);
   const [recommended, setRecommended] = useState<{ intensity?: number; eqPreset?: string }>({});
   const pending = useRef<AbortController | null>(null);
@@ -36,11 +37,13 @@ export default function Assistant({
     fetch('/api/ai/status', { cache: 'no-store', signal: controller.signal })
       .then((r) => r.json())
       .then((s) => {
-        setCloudAvailable(s.configured && s.authorized);
+        setAuthenticated(s.authorized === true);
         setCloud(s.configured && s.authorized);
-        setManaged(s.mode === 'managed');
       })
-      .catch(() => {});
+      .catch(() => {})
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
     return () => {
       controller.abort();
       pending.current?.abort();
@@ -68,6 +71,7 @@ export default function Assistant({
   );
   const connected = conversation.status === 'connected';
   async function suggest(value: string) {
+    if (loading || !authenticated) return;
     setText(value);
     setError('');
     setRecommended({});
@@ -133,10 +137,21 @@ export default function Assistant({
             <X size={19} />
           </button>
         </header>
-        <div className={`voice-orb ${conversation.isSpeaking ? 'speaking' : ''}`}>
-          <div />
-          <AudioLines size={48} />
-        </div>
+        <AIMotion
+          state={
+            error
+              ? 'error'
+              : conversation.isSpeaking
+                ? 'speaking'
+                : connected
+                  ? 'listening'
+                  : thinking
+                    ? 'thinking'
+                    : reply
+                      ? 'speaking'
+                      : 'idle'
+          }
+        />
         <h2 id="assistant-title">
           O que vamos ouvir
           <br />
@@ -149,38 +164,24 @@ export default function Assistant({
         </p>
         <div className="assistant-mode">
           <Sparkles size={13} />{' '}
-          {cloud
-            ? managed
-              ? 'Seu agente Claude · esforço alto'
-              : 'Claude Sonnet · esforço alto'
-            : 'Sugestões locais por intenção'}
+          {loading
+            ? 'Preparando seu assistente…'
+            : cloud
+              ? 'IA NOSSOM · pronta para conversar'
+              : authenticated
+                ? 'Ajuda básica · IA temporariamente indisponível'
+                : 'Entre na sua conta para conversar'}
         </div>
         {cloud && (
           <p className="field-hint">
             Seu pedido e as medições são enviados à Anthropic. O áudio continua no seu dispositivo.
           </p>
         )}
-        <div className="assistant-provider">
-          {cloudAvailable ? (
-            <button
-              className="text-link"
-              onClick={() => {
-                pending.current?.abort();
-                endManagedConversation();
-                setThinking(false);
-                setCloud(!cloud);
-                setReply('');
-                setPlan(null);
-              }}
-            >
-              {cloud ? 'Usar sugestões locais' : 'Usar Claude Sonnet'}
-            </button>
-          ) : (
-            <a className="text-link" href="/studio/ia">
-              Conectar Claude Sonnet 5.5
-            </a>
-          )}
-        </div>
+        {!loading && !authenticated && (
+          <a className="button primary" href="/entrar?next=%2Fstudio%2Fia">
+            Entrar para conversar
+          </a>
+        )}
         <form
           onSubmit={(e) => {
             e.preventDefault();
@@ -196,11 +197,11 @@ export default function Assistant({
             onChange={(e) => setText(e.target.value)}
             placeholder="Quero reduzir o ruído do meu áudio…"
             maxLength={1500}
-            disabled={thinking}
+            disabled={thinking || loading || !authenticated}
             required
           />
           <button
-            disabled={thinking}
+            disabled={thinking || loading || !authenticated}
             aria-label="Encontrar tratamento"
             className="icon-button solid"
           >
@@ -209,14 +210,18 @@ export default function Assistant({
         </form>
         <div className="suggestion-chips">
           {['Melhorar minha voz', 'Nivelar volumes', 'Preparar para publicar'].map((s) => (
-            <button key={s} disabled={thinking} onClick={() => suggest(s)}>
+            <button
+              key={s}
+              disabled={thinking || loading || !authenticated}
+              onClick={() => suggest(s)}
+            >
               {s}
             </button>
           ))}
         </div>
         {thinking && (
           <p className="field-hint" role="status">
-            Claude está avaliando o pedido e as medições…
+            A NOSSOM está analisando seu pedido e as medições…
           </p>
         )}
         {reply && (
@@ -237,25 +242,27 @@ export default function Assistant({
             )}
           </div>
         )}
-        <div className="voice-connect">
-          <button
-            className={`button ${connected ? 'primary' : 'secondary'}`}
-            disabled={!agentId || conversation.status === 'connecting'}
-            onClick={voice}
-          >
-            {connected ? <PhoneOff size={16} /> : <Mic size={16} />}{' '}
-            {connected
-              ? 'Encerrar conversa'
-              : conversation.status === 'connecting'
-                ? 'Conectando…'
-                : 'Conversar por voz'}
-          </button>
-          <span>
-            {agentId
-              ? 'Voz por ElevenLabs · o microfone é enviado ao provedor durante a conversa.'
-              : 'Voz ElevenLabs disponível após conectar um agente.'}
-          </span>
-        </div>
+        {agentId && (
+          <div className="voice-connect">
+            <button
+              className={`button ${connected ? 'primary' : 'secondary'}`}
+              disabled={!agentId || conversation.status === 'connecting'}
+              onClick={voice}
+            >
+              {connected ? <PhoneOff size={16} /> : <Mic size={16} />}{' '}
+              {connected
+                ? 'Encerrar conversa'
+                : conversation.status === 'connecting'
+                  ? 'Conectando…'
+                  : 'Conversar por voz'}
+            </button>
+            <span>
+              {agentId
+                ? 'Voz por ElevenLabs · o microfone é enviado ao provedor durante a conversa.'
+                : 'Voz ElevenLabs disponível após conectar um agente.'}
+            </span>
+          </div>
+        )}
         {error && (
           <p role="alert" className="error-text">
             {error}

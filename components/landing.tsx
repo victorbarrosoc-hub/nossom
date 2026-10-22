@@ -197,7 +197,7 @@ export default function Landing() {
               </a>
             </div>
             <span className="ns-fine">
-              <ShieldCheck size={14} /> Sem cadastro. Seu áudio fica com você.
+              <ShieldCheck size={14} /> Sua conta, seu espaço. Seu áudio fica com você.
             </span>
           </Reveal>
           <Reveal className="ns-hero-stage" delay={0.1}>
@@ -368,7 +368,7 @@ export default function Landing() {
                 n: '01',
                 icon: FileAudio,
                 title: 'Traga o seu som.',
-                text: 'Arraste um arquivo ou grave uma ideia. Sem instalação, sem cadastro.',
+                text: 'Arraste um arquivo ou grave uma ideia. Crie sua conta e comece, sem instalar nada.',
                 label: 'Importar ou gravar',
               },
               {
@@ -468,7 +468,7 @@ export default function Landing() {
                 {
                   icon: Waves,
                   title: 'Do seu jeito',
-                  text: 'Ferramentas locais, gratuitas e sem cadastro.',
+                  text: 'Sua conta inclui 10 tratamentos de áudio por semana.',
                   action: 'Experimentar grátis',
                 },
               ].map((c) => (

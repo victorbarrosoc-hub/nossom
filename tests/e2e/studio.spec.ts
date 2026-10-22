@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 function waveFixture(seconds = 4, stereo = false) {
   const rate = 48000,
     channels = stereo ? 2 : 1,
@@ -51,7 +51,9 @@ test('landing, responsive navigation, functional demonstration and assistant', a
   await page.getByLabel('Descreva seu objetivo').fill('Reduzir ruído de uma entrevista');
   await page.getByRole('button', { name: 'Encontrar tratamento' }).click();
   await expect(page.getByRole('button', { name: 'Revisar tratamento' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Conversar por voz' })).toBeDisabled();
+  await expect(
+    page.getByRole('link', { name: 'Conectar Claude Sonnet 5.5', exact: true }),
+  ).toHaveCount(0);
   await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');

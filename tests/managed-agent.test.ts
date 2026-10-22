@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   agentConnection,
-  agentCookie,
   askManagedAgent,
   closeManagedConversation,
   verifyManagedAgent,
   validConnection,
 } from '../lib/server/managed-agent';
-import { issueSession } from '../lib/server/ai-access';
-import { POST as connect } from '../app/api/ai/session/route';
+import { authEnvironment, testUser, testCookie } from './helpers/auth';
+import { randomUUID } from 'node:crypto';
+import { GET as status } from '../app/api/ai/status/route';
 
 const config = { agentId: 'agent_test12345678', environmentId: 'env_test12345678' };
 const sessionId = 'sesn_test12345678';
@@ -20,6 +20,7 @@ const makePlan = (reply: string) => ({
   eqPreset: 'presence',
 });
 function fixture() {
+  const restoreAuth = authEnvironment();
   const previous = {
     fetch: globalThis.fetch,
     key: process.env.ANTHROPIC_API_KEY,
@@ -27,7 +28,7 @@ function fixture() {
   };
   process.env.ANTHROPIC_API_KEY = 'managed-test-placeholder';
   process.env.NOSSOM_AI_ACCESS_CODE = 'managed-test-access-not-real';
-  const cookie = issueSession('managed-test-access-not-real')!.split(';')[0];
+  const cookie = testCookie();
   const request = new Request('http://localhost/api/ai/assistant', { headers: { cookie } });
   const calls: { url: URL; method: string; body?: Record<string, unknown> }[] = [];
   let turns = 0;
@@ -38,6 +39,7 @@ function fixture() {
   }
   globalThis.fetch = async (input, init) => {
     const url = new URL(String(input));
+    if (url.origin === 'https://supabase.example.test') return Response.json(testUser);
     assert.equal(url.origin, 'https://api.anthropic.com');
     const method = init?.method ?? 'GET';
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
@@ -122,6 +124,7 @@ function fixture() {
     },
     restore() {
       globalThis.fetch = previous.fetch;
+      restoreAuth();
       if (previous.key === undefined) delete process.env.ANTHROPIC_API_KEY;
       else process.env.ANTHROPIC_API_KEY = previous.key;
       if (previous.code === undefined) delete process.env.NOSSOM_AI_ACCESS_CODE;
@@ -129,37 +132,22 @@ function fixture() {
     },
   };
 }
-test('connecting an existing agent checks read-only resources and signs separate HttpOnly cookies without starting paid generation', async () => {
+test('every signed-in account receives the platform agent without personal connection settings or paid generation', async () => {
   const f = fixture();
   try {
-    const response = await connect(
-      new Request('http://localhost/api/ai/session', {
-        method: 'POST',
-        headers: { origin: 'http://localhost', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: 'managed-test-access-not-real', mode: 'managed', ...config }),
-      }),
-    );
-    assert.equal(response.status, 200);
-    assert.equal((await response.json()).mode, 'managed');
-    const cookies = response.headers.getSetCookie();
-    assert.equal(cookies.length, 2);
-    assert.ok(cookies.every((c) => c.includes('HttpOnly') && c.includes('SameSite=Strict')));
-    assert.ok(f.calls.every((c) => c.method === 'GET'));
-    assert.equal(
-      f.calls.some((c) => c.url.pathname === '/v1/sessions'),
-      false,
-    );
-    const cookie = agentCookie(config).split(';')[0];
-    assert.deepEqual(
-      agentConnection(new Request('http://localhost', { headers: { cookie } })),
-      config,
-    );
-    assert.equal(
-      agentConnection(
-        new Request('http://localhost', { headers: { cookie: cookie + 'modified' } }),
-      ),
-      null,
-    );
+    const response = await status(f.request),
+      data = await response.json();
+    assert.equal(data.authorized, true);
+    assert.equal(data.configured, true);
+    assert.equal(data.mode, 'managed');
+    assert.equal(data.shared, true);
+    assert.equal(data.agentId, undefined);
+    assert.equal(data.environmentId, undefined);
+    const connection = (await agentConnection(f.request))!;
+    assert.equal(connection.agentId, 'agent_01MwL58EV86EVa1QtnRoJJFN');
+    assert.equal(connection.environmentId, 'env_01XJjWsz3E3nym6SNC7ZbtsM');
+    assert.equal(f.calls.length, 0);
+    assert.equal(await agentConnection(new Request('http://localhost')), null);
     assert.throws(() =>
       validConnection({ agentId: '../../other', environmentId: config.environmentId }),
     );
@@ -221,7 +209,9 @@ test('conversation tokens reject another login, another agent and tampering befo
     );
     const count = f.calls.length;
     const other = new Request('http://localhost/api/ai/assistant', {
-      headers: { cookie: issueSession('managed-test-access-not-real')!.split(';')[0] },
+      headers: {
+        cookie: testCookie({ ...testUser, id: randomUUID() }),
+      },
     });
     await assert.rejects(
       askManagedAgent(

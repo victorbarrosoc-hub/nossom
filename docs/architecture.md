@@ -1,5 +1,13 @@
 # Arquitetura e escopo da primeira entrega
 
+## Contas, IA e uso semanal (atualização)
+
+Supabase Auth autentica contas por e-mail/senha. O servidor consulta a identidade, criptografa os tokens no cookie HttpOnly e renova a sessão pelo proxy. Os arquivos continuam locais, em IndexedDB por usuário. O workspace anterior é preservado para a primeira conta no navegador. Não há sincronização de áudio nesta etapa.
+
+O PostgreSQL mantém autorizações de tratamento por semana com RLS e uma função atômica de quota: 10 por usuário, sem limite para o e-mail ADM confirmado. O motor local exige essa autorização antes de iniciar um tratamento. A contabilização de renderização inviolável exigiria processamento em jobs remotos; modelos WASM locais podem ser executados fora da interface.
+
+Todas as contas usam o Managed Agent e a chave Anthropic do servidor. Conversas são isoladas por usuário/login. Motion anima ondas conforme o estado real da interface. A migração e ativação estão em `docs/supabase-setup.md`; configuração do agente em `docs/claude-setup.md`. A descrição abaixo registra a arquitetura inicial do motor, anterior à autenticação.
+
 ## Decisões
 
 O repositório inicialmente continha somente um README. Não havia autenticação, banco, bucket, worker externo, projeto Vercel vinculado ou credenciais de ElevenLabs disponíveis. Por isso, a implementação vertical começa por um estúdio local real e preserva a direção do PRD sem simular serviços externos.

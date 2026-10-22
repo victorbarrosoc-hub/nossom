@@ -1,21 +1,28 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { authorized, issueSession, sameOrigin } from '../lib/server/ai-access';
+import { authorized, sameOrigin } from '../lib/server/ai-access';
 import { askClaude, validPlan } from '../lib/server/claude';
-test('paid assistant requires a signed, expiring server session', () => {
-  const old = process.env.NOSSOM_AI_ACCESS_CODE,
-    oldKey = process.env.ANTHROPIC_API_KEY;
-  process.env.NOSSOM_AI_ACCESS_CODE = 'test-access-code-not-real';
-  process.env.ANTHROPIC_API_KEY = 'test-only-placeholder';
+import { authEnvironment, testUser, testCookie } from './helpers/auth';
+test('paid assistant requires a live verified Supabase session and rejects legacy or tampered cookies', async () => {
+  const restore = authEnvironment(),
+    oldFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json(testUser);
   try {
-    assert.equal(issueSession('wrong'), null);
-    const cookie = issueSession('test-access-code-not-real')!.split(';')[0];
+    const cookie = testCookie();
     assert.equal(
-      authorized(new Request('http://localhost/api/ai/assistant', { headers: { cookie } })),
+      await authorized(
+        new Request('http://localhost/api/ai/assistant', {
+          headers: { cookie: 'nossom-ai=legacy' },
+        }),
+      ),
+      false,
+    );
+    assert.equal(
+      await authorized(new Request('http://localhost/api/ai/assistant', { headers: { cookie } })),
       true,
     );
     assert.equal(
-      authorized(
+      await authorized(
         new Request('http://localhost/api/ai/assistant', {
           headers: { cookie: cookie + 'modified' },
         }),
@@ -24,17 +31,13 @@ test('paid assistant requires a signed, expiring server session', () => {
     );
     assert.equal(
       sameOrigin(
-        new Request('http://localhost/api/ai/session', {
-          headers: { origin: 'https://example.com' },
-        }),
+        new Request('http://localhost/api/account', { headers: { origin: 'https://example.com' } }),
       ),
       false,
     );
   } finally {
-    if (old === undefined) delete process.env.NOSSOM_AI_ACCESS_CODE;
-    else process.env.NOSSOM_AI_ACCESS_CODE = old;
-    if (oldKey === undefined) delete process.env.ANTHROPIC_API_KEY;
-    else process.env.ANTHROPIC_API_KEY = oldKey;
+    globalThis.fetch = oldFetch;
+    restore();
   }
 });
 test('Claude requests verified Sonnet 5.5 with high effort and adaptive thinking; returned operations are constrained', async () => {

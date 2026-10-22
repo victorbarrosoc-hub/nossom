@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { mkdir, writeFile } from 'node:fs/promises';
 test('compact navigation exposes four destinations and switches tools without losing the project', async ({
   page,

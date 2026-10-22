@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { readFile } from 'node:fs/promises';
 test('dedicated tools render EQ, apply the supplied multiband preset, and undo/redo persist without destroying audio', async ({
   page,
@@ -78,19 +78,19 @@ test('dedicated tools render EQ, apply the supplied multiband preset, and undo/r
   ).toBeTruthy();
   await page.screenshot({ path: 'test-results/broadcast-mobile.png', fullPage: true });
 });
-test('Claude setup explains missing server prerequisites and never exposes an API key', async ({
+test('the assistant page has no personal key, access-code or agent configuration', async ({
   page,
-  request,
 }) => {
   await page.goto('/studio/ia');
   await expect(
-    page.getByRole('heading', { name: 'Inteligência NOSSOM', exact: true }),
+    page.getByRole('button', { name: 'Conversar com a IA', exact: false }),
   ).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Conectar Claude', exact: true })).toBeDisabled();
-  const response = await request.post('/api/ai/assistant', {
-    data: { text: 'Melhore minha voz' },
-    headers: { Origin: 'http://127.0.0.1:3000' },
-  });
-  expect(response.status()).toBe(401);
-  expect(await page.getByLabel('Código de acesso da NOSSOM').getAttribute('type')).toBe('password');
+  for (const label of [
+    'Código de acesso da NOSSOM',
+    'Agent ID',
+    'Environment ID',
+    'IA da plataforma',
+  ])
+    await expect(page.getByLabel(label, { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Conectar Claude', exact: true })).toHaveCount(0);
 });

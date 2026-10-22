@@ -1,4 +1,4 @@
-import { openDB, type DBSchema } from 'idb';
+import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { AudioInfo, Measurements } from './audio';
 import type { FilterSettings } from './presets';
 export type Version = {
@@ -40,14 +40,30 @@ export type ProjectSummary = Omit<Project, 'versions' | 'originalFile'> & {
 interface NossomDB extends DBSchema {
   projects: { key: string; value: Project };
 }
-const db = () =>
-  openDB<NossomDB>('nossom-studio', 1, {
-    upgrade(database) {
-      database.createObjectStore('projects', { keyPath: 'id' });
-    },
+const databases = new Map<string, Promise<IDBPDatabase<NossomDB>>>();
+function db(owner: string) {
+  if (!/^[a-f0-9-]{36}$/.test(owner)) throw new Error('Entre na sua conta para abrir os projetos.');
+  const existing = databases.get(owner);
+  if (existing) return existing;
+  const pending = (async () => {
+    const legacyOwner = localStorage.getItem('nossom-legacy-owner');
+    if (!legacyOwner) localStorage.setItem('nossom-legacy-owner', owner);
+    // The first account keeps the original workspace in place; no duplicate blobs or deleted data.
+    const name = !legacyOwner || legacyOwner === owner ? 'nossom-studio' : 'nossom-studio-' + owner;
+    return openDB<NossomDB>(name, 1, {
+      upgrade(database) {
+        database.createObjectStore('projects', { keyPath: 'id' });
+      },
+    });
+  })().catch((error) => {
+    databases.delete(owner);
+    throw error;
   });
-export async function listProjects(): Promise<ProjectSummary[]> {
-  const all = await (await db()).getAll('projects');
+  databases.set(owner, pending);
+  return pending;
+}
+export async function listProjects(owner: string): Promise<ProjectSummary[]> {
+  const all = await (await db(owner)).getAll('projects');
   return all
     .map((p) => ({
       id: p.id,
@@ -60,9 +76,9 @@ export async function listProjects(): Promise<ProjectSummary[]> {
     }))
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
-export async function saveProject(project: Project) {
+export async function saveProject(project: Project, owner: string) {
   try {
-    await (await db()).put('projects', project);
+    await (await db(owner)).put('projects', project);
   } catch (e) {
     if (e instanceof DOMException && e.name === 'QuotaExceededError')
       throw new Error(
@@ -71,9 +87,9 @@ export async function saveProject(project: Project) {
     throw e;
   }
 }
-export async function getProject(id: string) {
-  return (await db()).get('projects', id);
+export async function getProject(id: string, owner: string) {
+  return (await db(owner)).get('projects', id);
 }
-export async function deleteProject(id: string) {
-  await (await db()).delete('projects', id);
+export async function deleteProject(id: string, owner: string) {
+  await (await db(owner)).delete('projects', id);
 }

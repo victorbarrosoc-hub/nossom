@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
   assistantSystem,
@@ -7,9 +6,9 @@ import {
   verifyClaude,
   type AssistantPlan,
 } from './claude';
-import { cookieValue, privateCookie, readToken, signToken } from './ai-access';
+import { readToken, signToken } from './ai-access';
+import { accountSessionOwner, currentAccount } from './account';
 
-const CONFIG_COOKIE = 'nossom-agent';
 export type AgentConnection = { agentId: string; environmentId: string };
 type AgentInfo = {
   id: string;
@@ -39,17 +38,12 @@ export function validConnection(value: unknown): AgentConnection {
     throw new Error('Informe o Agent ID (agent_…) e o Environment ID (env_…) do Console.');
   return { agentId: v.agentId, environmentId: v.environmentId };
 }
-export function agentConnection(request: Request): AgentConnection | null {
-  const config = readToken('agent-config', cookieValue(request, CONFIG_COOKIE));
-  if (!config) return null;
-  try {
-    return validConnection(config);
-  } catch {
-    return null;
-  }
-}
-export function agentCookie(config: AgentConnection | null) {
-  return privateCookie(CONFIG_COOKIE, config ? signToken('agent-config', config) : '', !config);
+export async function agentConnection(request: Request): Promise<AgentConnection | null> {
+  if (!(await currentAccount(request))) return null;
+  return validConnection({
+    agentId: process.env.ANTHROPIC_AGENT_ID || 'agent_01MwL58EV86EVa1QtnRoJJFN',
+    environmentId: process.env.ANTHROPIC_ENVIRONMENT_ID || 'env_01XJjWsz3E3nym6SNC7ZbtsM',
+  });
 }
 async function provider<T>(
   path: string,
@@ -103,9 +97,7 @@ export async function verifyManagedAgent(config: AgentConnection, signal?: Abort
   return agent;
 }
 function owner(request: Request) {
-  return createHash('sha256')
-    .update(cookieValue(request, 'nossom-ai') ?? '')
-    .digest('hex');
+  return accountSessionOwner(request);
 }
 function conversationSession(request: Request, config: AgentConnection, token: unknown) {
   if (token === undefined || token === null) return null;

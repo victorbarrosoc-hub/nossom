@@ -1,11 +1,5 @@
-import {
-  allowRequest,
-  authorized,
-  cookieValue,
-  privateHeaders,
-  sameOrigin,
-} from '@/lib/server/ai-access';
-import { askClaude } from '@/lib/server/claude';
+import { allowRequest, authorized, privateHeaders, sameOrigin } from '@/lib/server/ai-access';
+import { currentAccount } from '@/lib/server/account';
 import {
   agentConnection,
   askManagedAgent,
@@ -13,12 +7,18 @@ import {
 } from '@/lib/server/managed-agent';
 export const maxDuration = 120;
 export async function POST(request: Request) {
-  if (!sameOrigin(request) || !authorized(request))
+  if (!sameOrigin(request) || !(await authorized(request)))
     return Response.json(
-      { error: 'Conecte o Claude na página de IA do estúdio.' },
+      {
+        error:
+          'Entre na sua conta para usar o assistente. Se já entrou, tente novamente mais tarde.',
+      },
       { status: 401, headers: privateHeaders },
     );
-  if (!allowRequest('assistant:' + (cookieValue(request, 'nossom-ai') ?? '')))
+  if (
+    !(await currentAccount(request))!.isAdmin &&
+    !allowRequest('assistant:' + (await currentAccount(request))!.id)
+  )
     return Response.json(
       { error: 'Limite desta sessão atingido. Tente novamente mais tarde.' },
       { status: 429, headers: privateHeaders },
@@ -37,11 +37,10 @@ export async function POST(request: Request) {
       if (typeof body.context?.[key] === 'number' && Number.isFinite(body.context[key]))
         context[key] = body.context[key];
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(100000)]);
-    const config = agentConnection(request);
+    const config = await agentConnection(request);
+    if (!config) throw new Error('Entre novamente para conversar com o assistente.');
     return Response.json(
-      config
-        ? await askManagedAgent(request, config, body.text, context, body.conversation, signal)
-        : await askClaude(body.text, context, signal),
+      await askManagedAgent(request, config, body.text, context, body.conversation, signal),
       { headers: privateHeaders },
     );
   } catch (error) {
@@ -52,9 +51,9 @@ export async function POST(request: Request) {
   }
 }
 export async function DELETE(request: Request) {
-  if (!sameOrigin(request) || !authorized(request))
+  if (!sameOrigin(request) || !(await authorized(request)))
     return Response.json({ error: 'Acesso negado.' }, { status: 401, headers: privateHeaders });
-  const config = agentConnection(request);
+  const config = await agentConnection(request);
   if (!config) return Response.json({ closed: true }, { headers: privateHeaders });
   try {
     const raw = await request.text();

@@ -1,17 +1,20 @@
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
-const COOKIE = 'nossom-ai';
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { accountConfigured, currentAccount, sessionSecret } from './account';
 const attempts = new Map<string, { count: number; reset: number }>();
-function code() {
-  return process.env.NOSSOM_AI_ACCESS_CODE ?? '';
-}
 export function aiConfigured() {
-  return !!process.env.ANTHROPIC_API_KEY && code().length >= 16;
+  return !!process.env.ANTHROPIC_API_KEY && accountConfigured();
+}
+export function requestOrigin(request: Request) {
+  const url = new URL(request.url);
+  const host = request.headers.get('host') || url.host;
+  if (!/^[a-zA-Z0-9.:[\]\-]+$/.test(host)) return url.origin;
+  return new URL(url.protocol + '//' + host).origin;
 }
 export function sameOrigin(request: Request) {
-  return request.headers.get('origin') === new URL(request.url).origin;
+  return request.headers.get('origin') === requestOrigin(request);
 }
 function signature(value: string) {
-  return createHmac('sha256', code()).update(value).digest('base64url');
+  return createHmac('sha256', sessionSecret()).update(value).digest('base64url');
 }
 export function cookieValue(request: Request, name: string) {
   return request.headers
@@ -31,7 +34,7 @@ export function readToken(
   scope: string,
   token: string | undefined,
 ): Record<string, unknown> | null {
-  if (!token || token.length > 4000) return null;
+  if (!accountConfigured() || !token || token.length > 4000) return null;
   const [value, sig, extra] = token.split('.');
   if (!value || !sig || extra) return null;
   const expected = Buffer.from(signature(scope + ':' + value)),
@@ -48,38 +51,8 @@ export function readToken(
     return null;
   }
 }
-export function privateCookie(name: string, value: string, clear = false) {
-  return `${name}=${value}; HttpOnly; SameSite=Strict; Path=/api/ai; Max-Age=${clear ? 0 : 3600}${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
-}
-export function authorized(request: Request) {
-  if (!aiConfigured()) return false;
-  const token = request.headers
-    .get('cookie')
-    ?.split(';')
-    .map((s) => s.trim())
-    .find((s) => s.startsWith(COOKIE + '='))
-    ?.slice(COOKIE.length + 1);
-  if (!token) return false;
-  const [expires, nonce, sig] = token.split('.');
-  if (
-    !expires ||
-    !nonce ||
-    !sig ||
-    Number(expires) < Date.now() ||
-    Number(expires) > Date.now() + 3601000
-  )
-    return false;
-  const expected = Buffer.from(signature(`${expires}.${nonce}`)),
-    actual = Buffer.from(sig);
-  return expected.length === actual.length && timingSafeEqual(expected, actual);
-}
-export function issueSession(input: string) {
-  if (!aiConfigured()) return null;
-  const a = Buffer.from(input),
-    b = Buffer.from(code());
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  const value = `${Date.now() + 3600000}.${randomBytes(16).toString('base64url')}`;
-  return `${COOKIE}=${value}.${signature(value)}; HttpOnly; SameSite=Strict; Path=/api/ai; Max-Age=3600${process.env.NODE_ENV === 'production' ? '; Secure' : ''}`;
+export async function authorized(request: Request) {
+  return aiConfigured() && !!(await currentAccount(request));
 }
 export function allowRequest(key: string, limit = 20, period = 3600000) {
   const now = Date.now();

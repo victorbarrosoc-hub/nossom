@@ -4,7 +4,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { toolPath, routeOperation } from '@/lib/studio-routes';
 import { activateVersion, activeIndex, previousIndex, nextIndex } from '@/lib/history';
 import { EqualizerControls, BroadcastControls } from './preset-controls';
-import ClaudeSettings from './claude-settings';
+import AssistantHome from './assistant-home';
+import type { Account } from '@/lib/accounts';
 import { eqPresets, type EqGains } from '@/lib/equalizer';
 import { freshBroadcast, type BroadcastSettings } from '@/lib/broadcast';
 import PresetLibrary from './preset-library';
@@ -51,6 +52,7 @@ import { Brand } from './brand';
 import { useDialog } from '@/lib/use-dialog';
 import Assistant from './assistant';
 import { WavePlayer } from './wave-player';
+import { usageLabel, type AudioUsage } from '@/lib/usage';
 import { operations, deliveryPresets, type Operation, type DenoiseMode } from '@/lib/presets';
 import { estimateNoiseFloor } from '@/lib/noise-profile';
 import {
@@ -142,7 +144,7 @@ function RangeControl({
     </label>
   );
 }
-export default function Studio() {
+export default function Studio({ account }: { account: Account }) {
   const pathname = usePathname(),
     router = useRouter();
   const routeTool = routeOperation(pathname);
@@ -267,6 +269,27 @@ export default function Studio() {
     operationLock = useRef(false),
     noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   useDialog(!!deleteId || renaming);
+  const [usage, setUsage] = useState<AudioUsage | null>(null);
+  const [usageError, setUsageError] = useState('');
+  async function refreshUsage() {
+    try {
+      const response = await fetch('/api/usage', { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      setUsage(data);
+      setUsageError('');
+    } catch {
+      setUsageError('Limite temporariamente indisponível');
+    }
+  }
+  useEffect(() => {
+    void refreshUsage();
+    const focus = () => {
+      void refreshUsage();
+    };
+    window.addEventListener('focus', focus);
+    return () => window.removeEventListener('focus', focus);
+  }, []);
   const version = project?.versions[versionIndex];
   const selectedTool = operations.find((o) => o.id === operation)!;
   useEffect(() => {
@@ -284,7 +307,7 @@ export default function Studio() {
       setView(project ? 'editor' : 'tool');
       const id = new URLSearchParams(location.search).get('project');
       if (id && project?.id !== id)
-        void getProject(id)
+        void getProject(id, account.id)
           .then((p) => {
             if (p) {
               setProject(p);
@@ -297,7 +320,7 @@ export default function Studio() {
     setSidebar(false);
   }, [pathname]);
   useEffect(() => {
-    listProjects()
+    listProjects(account.id)
       .then(setProjects)
       .catch(() =>
         setError('O armazenamento local está indisponível. Permita dados neste navegador.'),
@@ -344,7 +367,7 @@ export default function Studio() {
     noticeTimer.current = setTimeout(() => setNotice(''), 6000);
   }
   async function refresh() {
-    setProjects(await listProjects());
+    setProjects(await listProjects(account.id));
   }
   async function run(task: () => Promise<void>) {
     if (operationLock.current || recording) return;
@@ -380,7 +403,7 @@ export default function Studio() {
         originalName: file.name,
         versions: [{ id: crypto.randomUUID(), label: 'Original', createdAt: now, ...result }],
       };
-      await saveProject(created);
+      await saveProject(created, account.id);
       setProject(created);
       setVersionIndex(0);
       setRegion(null);
@@ -395,7 +418,7 @@ export default function Studio() {
   async function open(id: string) {
     if (busy || recording) return;
     try {
-      const p = await getProject(id);
+      const p = await getProject(id, account.id);
       if (p) {
         setProject(p);
         setVersionIndex(activeIndex(p));
@@ -440,7 +463,7 @@ export default function Studio() {
           project.redoVersionIds?.[0] === project.versions[index].id
             ? project.redoVersionIds.slice(1)
             : [];
-      await saveProject(updated);
+      await saveProject(updated, account.id);
       setProject(updated);
       setVersionIndex(index);
       await refresh();
@@ -497,6 +520,16 @@ export default function Studio() {
           ? (project.versions.find((v) => v.id === version.parentId) ?? version)
           : version;
       const inputVersion = autoEnabled ? project.versions[0] : effectBase;
+      setBusy('Autorizando seu tratamento…');
+      const authorization = await fetch('/api/usage', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operation }),
+      });
+      const nextUsage = await authorization.json();
+      if (typeof nextUsage.used === 'number') setUsage(nextUsage);
+      if (!authorization.ok)
+        throw new Error(nextUsage.error || 'Não foi possível autorizar o tratamento.');
       const result = await processAudio(inputVersion.blob, {
         operation,
         intensity,
@@ -556,7 +589,7 @@ export default function Studio() {
         activeVersionId: newVersion.id,
         redoVersionIds: [],
       };
-      await saveProject(updated);
+      await saveProject(updated, account.id);
       setProject(updated);
       setVersionIndex(updated.versions.length - 1);
       await refresh();
@@ -622,7 +655,7 @@ export default function Studio() {
   async function remove() {
     if (!deleteId) return;
     try {
-      await deleteProject(deleteId);
+      await deleteProject(deleteId, account.id);
       if (project?.id === deleteId) {
         setProject(null);
         setView('projects');
@@ -638,7 +671,7 @@ export default function Studio() {
     if (!project || !newName.trim()) return;
     try {
       const updated = { ...project, name: newName.trim().slice(0, 100), updatedAt: Date.now() };
-      await saveProject(updated);
+      await saveProject(updated, account.id);
       setProject(updated);
       await refresh();
       setRenaming(false);
@@ -701,7 +734,7 @@ export default function Studio() {
         originalName: file.name,
         versions: [{ id: crypto.randomUUID(), label: 'Original', createdAt: now, ...result }],
       };
-      await saveProject(p);
+      await saveProject(p, account.id);
       setProject(p);
       setVersionIndex(0);
       setRegion(null);
@@ -768,11 +801,34 @@ export default function Studio() {
           <Brand />
         </Link>
         <div className="workspace-label">
-          <span className="workspace-avatar">N</span>
+          <span className="workspace-avatar">{account.name.slice(0, 1).toUpperCase()}</span>
           <div>
-            Meu espaço<small>Estúdio local</small>
+            {account.name}
+            <small>{account.email}</small>
           </div>
-          <span className="local-badge">BETA</span>
+          <span className="local-badge">{account.isAdmin ? 'ADM' : 'CONTA'}</span>
+        </div>
+        <div className="weekly-usage" role="status">
+          <span>{usage ? usageLabel(usage) : usageError || 'Consultando tratamentos…'}</span>
+          {usage && !usage.unlimited && (
+            <>
+              <progress max={10} value={usage.used} aria-label="Tratamentos usados nesta semana" />
+              <small>
+                Renova segunda,{' '}
+                {new Intl.DateTimeFormat('pt-BR', {
+                  day: '2-digit',
+                  month: '2-digit',
+                  timeZone: 'America/Fortaleza',
+                }).format(new Date(usage.resetAt))}
+                , à 0h · Brasília
+              </small>
+            </>
+          )}
+          {usageError && (
+            <button className="text-link" onClick={refreshUsage}>
+              Tentar novamente
+            </button>
+          )}
         </div>
         <button
           className="button primary new-project"
@@ -808,6 +864,19 @@ export default function Studio() {
           </button>
         </nav>
         <div className="sidebar-bottom">
+          <button
+            className="text-link account-signout"
+            disabled={!!busy || recording}
+            onClick={() =>
+              void run(async () => {
+                const response = await fetch('/api/account', { method: 'DELETE' });
+                if (!response.ok) throw new Error('Não foi possível sair da conta.');
+                location.assign('/entrar');
+              })
+            }
+          >
+            Sair da conta
+          </button>
           <InstallApp />
           <div className="local-note">
             <ShieldCheck size={17} />
@@ -914,6 +983,13 @@ export default function Studio() {
               if (f) void addMusic(f);
             }}
           />
+          <div className="mobile-usage" role="status">
+            {usage
+              ? usage.unlimited
+                ? 'ADM · sem limite semanal de tratamentos'
+                : `Seu saldo: ${usage.remaining} tratamentos nesta semana`
+              : usageError || 'Consultando seu saldo…'}
+          </div>
           {error && (
             <div className="alert error" role="alert">
               <Info size={18} />
@@ -1133,7 +1209,7 @@ export default function Studio() {
               </div>
             </>
           )}
-          {view === 'ai' && <ClaudeSettings />}
+          {view === 'ai' && <AssistantHome onOpen={() => setAssistant(true)} />}
           {view === 'projects' && (
             <>
               <div className="studio-welcome">
@@ -1905,6 +1981,7 @@ export default function Studio() {
                     <>
                       <PresetLibrary
                         operation={operation}
+                        owner={account.id}
                         disabled={!!busy}
                         onLoad={loadSavedPreset}
                         current={{
@@ -2021,16 +2098,26 @@ export default function Studio() {
                   <button
                     className="button primary process-button"
                     onClick={applyTreatment}
-                    disabled={!!busy}
+                    disabled={
+                      !!busy || (usage !== null && !usage.unlimited && usage.remaining === 0)
+                    }
                   >
                     {busy ? <LoaderCircle size={17} className="spin" /> : <Sparkles size={17} />}{' '}
                     {busy
                       ? 'Processando…'
-                      : autoEnabled
-                        ? 'Analisar e tratar'
-                        : 'Aplicar tratamento'}{' '}
+                      : usage && !usage.unlimited && usage.remaining === 0
+                        ? 'Limite semanal atingido'
+                        : autoEnabled
+                          ? 'Analisar e tratar'
+                          : 'Aplicar tratamento'}{' '}
                     {!busy && <ArrowRight size={15} />}
                   </button>
+                  {!usage?.unlimited && (
+                    <p className="usage-apply-hint">
+                      Cada aplicação iniciada usa 1 tratamento. Desfazer, reproduzir e baixar não
+                      gastam saldo.
+                    </p>
+                  )}
                   <span className="treatment-footnote">
                     <ShieldCheck size={12} />{' '}
                     {autoEnabled

@@ -5,11 +5,13 @@ import { validRecipe, type SavedRecipe } from '@/lib/saved-presets';
 import type { Operation } from '@/lib/presets';
 export default function PresetLibrary({
   operation,
+  owner,
   current,
   onLoad,
   disabled,
 }: {
   operation: Operation;
+  owner: string;
   current: Omit<SavedRecipe, 'id' | 'name'>;
   onLoad: (recipe: SavedRecipe) => void;
   disabled: boolean;
@@ -17,12 +19,16 @@ export default function PresetLibrary({
   const [items, setItems] = useState<SavedRecipe[]>([]),
     [name, setName] = useState(''),
     [message, setMessage] = useState('');
-  const key = 'nossom-presets-' + operation;
+  const key = 'nossom-presets-' + owner + '-' + operation;
   useEffect(() => {
     setName('');
     setMessage('');
     try {
-      const raw = localStorage.getItem(key);
+      let raw = localStorage.getItem(key);
+      if (raw === null && localStorage.getItem('nossom-legacy-owner') === owner) {
+        raw = localStorage.getItem('nossom-presets-' + operation);
+        if (raw) localStorage.setItem(key, raw);
+      }
       const parsed = raw && raw.length < 200000 ? JSON.parse(raw) : [];
       setItems(
         Array.isArray(parsed)

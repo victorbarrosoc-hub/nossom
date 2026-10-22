@@ -20,7 +20,7 @@ npm run build
 npm run start
 ```
 
-Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile para `public/ffmpeg` e os modelos locais RNNoise (aproximadamente 4,6 MB) e DeepFilterNet3 (aproximadamente 33 MB) para `public/audio`. Desenvolvimento e build usam Webpack para compatibilidade com o worker FFmpeg. O motor (~31 MB) é carregado na primeira operação de áudio. Não é necessário token para usar o estúdio local. O core e os workers são servidos pelo próprio domínio, com verificação de integridade de pacotes durante `npm ci` e sem CDNs de runtime.
+Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile para `public/ffmpeg` e os modelos locais RNNoise (aproximadamente 4,6 MB) e DeepFilterNet3 (aproximadamente 33 MB) para `public/audio`. Desenvolvimento e build usam Webpack para compatibilidade com o worker FFmpeg. O motor (~31 MB) é carregado na primeira operação de áudio. O estúdio exige login Supabase e autorização de tratamento; configure as variáveis e aplique a migração descrita em [docs/supabase-setup.md](docs/supabase-setup.md). O core e os workers são servidos pelo próprio domínio, com verificação de integridade de pacotes durante `npm ci` e sem CDNs de runtime.
 
 ## O que funciona
 
@@ -53,7 +53,7 @@ Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile 
 
 A limpeza padrão usa o modelo neural aberto DeepFilterNet3; RNNoise continua disponível para compatibilidade. A cadeia, os presets e a interface são NOSSOM; os modelos de aprendizado não foram treinados do zero por este projeto. O modo geral usa redução espectral adaptativa. Não é o motor do Adobe Podcast v2, e não há comprovação de qualidade igual ou superior ao Adobe. Nenhum dos modos garante reconstrução de fala ausente, remoção total de reverberação ou resultado igual ao Adobe, Resolve ou RX em todas as gravações. Vento combina passa-altas e redução espectral; não se promete recuperar fala ausente. O ducking reage ao sinal da faixa principal e não distingue semanticamente fala de ruído. A trilha de música se repete até a duração da faixa principal. Mixagem multicanal e stems ainda não estão disponíveis.
 
-Todos os tratamentos são serializados para um único motor por aba. A UI apresenta progresso reportado pelo motor quando disponível, pode cancelar a operação e preserva versões salvas em caso de falha. Em dispositivos com pouca memória, use arquivos menores. Original e versões ficam apenas no navegador, sem backup automático, login, sincronização ou isolamento entre pessoas que compartilham o mesmo perfil do navegador.
+Todos os tratamentos são serializados para um único motor por aba. A UI apresenta progresso reportado pelo motor quando disponível, pode cancelar a operação e preserva versões salvas em caso de falha. Em dispositivos com pouca memória, use arquivos menores. Original e versões ficam apenas no navegador, sem backup ou sincronização dos arquivos. Contas e cotas estão no Supabase; os espaços locais são separados por conta, sem criptografia contra acesso físico ao mesmo perfil do navegador.
 
 O volume A/B é igualado atenuando o arquivo mais alto para a menor leitura de LUFS. O ganho de reprodução não altera arquivos exportados. LUFS/LRA podem não ser significativos em sinais muito curtos ou silenciosos. Não há certificação automática de conformidade: os perfis são referências editoriais. TV exige confirmação das especificações do cliente; cinema e ATSC não recebem alvos universais. O relatório mede o WAV renderizado; não certifica o MP3 codificado, cujos picos podem diferir.
 
@@ -63,7 +63,7 @@ Cada versão recebe a operação, o perfil, os controles e o identificador de su
 
 Copie `.env.example` para `.env.local` e preencha apenas `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` com o ID público de um agente de Conversational AI. Reinicie o desenvolvimento ou gere um novo build. Esta variável é pública por projeto; nunca coloque uma API key nela.
 
-No painel ElevenLabs, configure o agente para português, restrinja as origens ao domínio da aplicação e defina limites de custo. A voz envia o microfone ao provedor somente quando o usuário inicia a conversa. Sem o ID, o botão de voz é desabilitado com uma explicação. Não há custo de API nos tratamentos locais. A conversa pode consumir a conta ElevenLabs; nenhum agente foi provisionado ou crédito gasto nesta entrega. A integração de voz só pode ser validada de ponta a ponta com um agente autorizado.
+No painel ElevenLabs, configure o agente para português, restrinja as origens ao domínio da aplicação e defina limites de custo. A voz envia o microfone ao provedor somente quando o usuário inicia a conversa. Sem o ID, a interface oferece a IA por texto e não exibe uma configuração de voz para usuários. Não há custo de API nos tratamentos locais. A conversa pode consumir a conta ElevenLabs; nenhum agente foi provisionado ou crédito gasto nesta entrega. A integração de voz só pode ser validada de ponta a ponta com um agente autorizado.
 
 ## Vercel
 
@@ -81,9 +81,10 @@ Não é necessário um token Vercel adicional para publicar pela integração ex
 npm run typecheck
 npm test
 npm run build
-npm run start
-# Em outro terminal; Chromium já instalado neste ambiente:
+# O Playwright inicia e encerra o servidor local de teste automaticamente:
 npm run test:e2e
+# Opcional, com Docker:
+npm run test:quota
 ```
 
 `CHROMIUM_PATH` permite indicar outro Chromium. Os testes E2E usam arquivos WAV reais sintetizados no teste, mono/estéreo, e verificam importação inválida, ruído, seleção, mixagem, medições pós-masterização, downloads WAV/MP3/JSON, persistência, renomeação, exclusão, navegação e layout móvel. Capturas e traces ficam em `test-results/`, fora do Git.
@@ -112,18 +113,12 @@ O guia SOBEDESCE orienta a hierarquia de telas, peças reutilizáveis, navegaç�
 
 DeepFilterNet3 via `@lofcz/deepfilternet-web@0.1.0` (MIT/Apache-2.0), com licença servida em `/audio/DEEPFILTER-LICENSE.txt`; detalhes em [docs/audio-engine.md](docs/audio-engine.md). RNNoise via `@shiguredo/rnnoise-wasm@2025.1.5` (Apache-2.0); núcleo RNNoise (BSD, em `public/licenses/rnnoise.txt`). A licença do wrapper é servida em `/audio/RNNOISE-WASM-LICENSE.txt`. Processamento local, sem nova chave nem cobrança por API. O fixture de regressão usa voz sintética Flite, não gravação de uma pessoa; detalhes em `tests/fixtures/README.md`.
 
-## Claude Sonnet 5.5 · esforço alto
+## Contas, IA compartilhada e tratamentos semanais
 
-A integração está em `/studio/ia`. Em Vercel → projeto NOSSOM → Settings → Environment Variables, configure em Production:
+Login/cadastro por e-mail e senha no Supabase; contas existentes no projeto entram normalmente. Toda conta usa a chave Anthropic e o Managed Agent do administrador, configurados apenas no servidor. A IA tem ondas interativas em Motion e conversas individuais, sem formulário de credenciais do provedor. Voz é opcional, com um agente ElevenLabs único configurado pela plataforma.
 
-- `ANTHROPIC_API_KEY`: chave privada do Console Anthropic, com créditos e acesso ao modelo.
-- `ANTHROPIC_MODEL=claude-sonnet-5-5`.
-- `NOSSOM_AI_ACCESS_CODE`: ao menos 16 caracteres aleatórios, para liberar a sessão no estúdio.
+Cada usuário tem 10 autorizações de tratamento por semana, renovadas segunda-feira à 0h (Brasília). O PostgreSQL impõe a cota de forma atômica entre abas, dispositivos e deploys. `victorbarrosoc@gmail.com`, com e-mail confirmado no Supabase, tem tratamentos ilimitados. Importar, reproduzir, baixar e usar o histórico não consomem cota. A interface continua permitindo acesso aos projetos após atingir o limite.
 
-Para associar um Managed Agent existente, escolha **Meu agente do Console** nessa página e preencha Agent ID, Environment ID e o código da NOSSOM. A validação inicial não cria uma conversa paga. O assistente mantém o contexto por conversa, usa as instruções do agente e Sonnet 5.5/high por override da sessão, e mantém a revisão antes de aplicar tratamentos. A associação dura uma hora neste navegador; ferramentas externas do agente não são acionadas. Detalhes em [docs/claude-setup.md](docs/claude-setup.md).
+Configuração e migração: [docs/supabase-setup.md](docs/supabase-setup.md). Integração do agente: [docs/claude-setup.md](docs/claude-setup.md). Nenhum segredo fica no cliente. Claude orienta o tratamento por texto/medições; o motor de áudio continua local. A cota não impede executar os modelos públicos fora do produto.
 
-Faça um novo deploy. Abra `/studio/ia`, digite somente o código de acesso e conecte. As chaves nunca são pedidas na interface nem enviadas ao cliente. O servidor verifica acesso ao modelo e envia `thinking: { type: 'adaptive' }` e `output_config: { effort: 'high' }`. A sessão usa cookie HttpOnly assinado de uma hora e o endpoint exige a mesma origem. O limite em memória é adicional; não substitui quotas de conta, gateway ou rate limiting distribuído para um produto multiusuário.
-
-Claude recebe pedido e medições, não o áudio. Retorna uma sugestão restrita de ferramenta/intensidade/preset, que o usuário revisa. Não renderiza a restauração neural, não executa filtros livres e não aplica efeitos automaticamente. Sem configuração, o assistente continua identificado como sugestões locais por intenção. A assinatura do aplicativo Claude não substitui créditos de API.
-
-Os contratos foram conferidos no SDK oficial Anthropic: [Model e OutputConfig](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/messages/messages.ts) e [capacidades dos modelos](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/models.ts). Testes usam um provedor simulado; não houve chamada paga nem validação com credencial real.
+Testes de banco real isolado: `npm run test:quota` (Docker/PostgreSQL 17). Os E2E iniciam automaticamente um Supabase simulado e o build de produção, sem cadastrar usuários no banco real nem gerar custos de IA. Migração local validada não equivale a migração aplicada em produção.

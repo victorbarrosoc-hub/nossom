@@ -6,8 +6,14 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   reporter: 'list',
+  webServer: {
+    command: 'node scripts/test-server.mjs',
+    url: 'http://localhost:3000/entrar',
+    reuseExistingServer: false,
+    timeout: 120000,
+  },
   use: {
-    baseURL: 'http://127.0.0.1:3000',
+    baseURL: 'http://localhost:3000',
     headless: true,
     viewport: { width: 1440, height: 1000 },
     launchOptions: {

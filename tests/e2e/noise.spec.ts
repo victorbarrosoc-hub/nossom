@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './fixtures';
 import { readFile } from 'node:fs/promises';
 function samples(wav: Buffer) {
   let offset = 12;
