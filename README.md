@@ -56,9 +56,11 @@ No painel ElevenLabs, configure o agente para português, restrinja as origens a
 
 O projeto usa Next.js e pode ser importado diretamente na Vercel. Build: `npm run build`; instalação: `npm ci`. As configurações de headers em `next.config.ts` são necessárias ao worker, à mídia local e à política de recursos.
 
-O endereço desejado é `nossom-teal.vercel.app`. O envio à branch `main` acionou uma integração GitHub–Vercel existente, que retornou “Deployment has completed” para o commit inicial desta implementação. O endereço desejado, porém, respondeu HTTP 404 na verificação pública. A vinculação do domínio e o endereço ativo precisam ser conferidos nas configurações do projeto Vercel. A autorização para publicar já foi fornecida pelo usuário; não há sessão ou `VERCEL_TOKEN` disponível neste ambiente para gerenciar aliases.
+A aplicação está publicada em **https://nossom-teal.vercel.app**. A integração GitHub–Vercel publica novos commits de `main`. O arquivo `vercel.json` declara explicitamente Next.js, comandos de instalação/build e saída `.next`; isso corrigiu o HTTP 404 observado após o primeiro deploy de um projeto originalmente vazio.
 
-A integração existente publica novos commits de `main`. Para corrigir o domínio ou ajustar configurações, disponibilize acesso seguro ao projeto e utilize a CLI/API oficial autenticada. Não imprima tokens e não os coloque no Git. Diferencie o status de deploy do provedor da verificação funcional do domínio público.
+A página inicial, `/studio`, `/privacidade` e o motor WASM foram verificados por HTTPS em produção, com HTTP 200 e os headers esperados. Os fluxos completos de áudio foram validados no Chromium local com o build de produção. A navegação automatizada contra o domínio público não foi concluída devido à configuração de confiança do proxy no navegador do ambiente.
+
+Não é necessário um token Vercel adicional para publicar pela integração existente. Acesso autenticado à CLI/API só é necessário para gerenciar configurações da conta/projeto fora do Git. Nunca imprima tokens ou os coloque no repositório.
 
 ## Validação
 

@@ -1,6 +1,6 @@
 # Validação da primeira entrega
 
-Ambiente: Node.js 24, Next.js 16, Chromium Linux, FFmpeg core 0.12.10. A validação foi local; não comprova deploy na Vercel, nova tarefa restaurada ou sessão ElevenLabs.
+Ambiente: Node.js 24, Next.js 16, Chromium Linux, FFmpeg core 0.12.10. Os testes de navegador foram executados localmente. O deploy Vercel e as respostas HTTPS públicas também foram verificados; isso não comprova restauração em nova tarefa ou sessão ElevenLabs.
 
 - TypeScript: sem erros.
 - Build de produção: concluído; páginas /, /studio e /privacidade pré-renderizadas.
@@ -20,12 +20,16 @@ Ambiente: Node.js 24, Next.js 16, Chromium Linux, FFmpeg core 0.12.10. A valida�
 - Formatação: Prettier aprovado.
 - Dependências de produção: `npm audit --omit=dev --audit-level=high` retornou zero vulnerabilidades conhecidas no momento da consulta.
 
+## Produção
+
+A integração Vercel confirmou “Deployment has completed” após declarar o framework em `vercel.json` (commit `460e517`). Em **https://nossom-teal.vercel.app**, `/`, `/studio`, `/privacidade` e `/ffmpeg/ffmpeg-core.wasm` responderam HTTP 200, com títulos/conteúdos esperados e headers COOP/COEP. O motor WASM servido tem 32.232.419 bytes. A integração GitHub–Vercel já dispõe da autenticação necessária para novos deploys.
+
 ## Não verificado
 
 - Qualidade perceptual em gravações reais de fala, vento e reverberação.
 - Navegadores Safari/Firefox, dispositivos físicos móveis ou arquivos próximos dos limites de memória.
 - Voz ElevenLabs: ausência do ID de agente autorizado.
 - Conta, armazenamento de nuvem, colaboração, billing e IA neural: fora do MVP local, identificados como futuros.
-- Domínio público: `nossom-teal.vercel.app` retornou HTTP 404. O status da integração Vercel no GitHub confirmou “Deployment has completed” para a implementação enviada; o alias público ainda não foi validado. A API de gerenciamento Vercel requer autenticação indisponível no ambiente.
+- Navegação automatizada contra o domínio público: não concluída devido à confiança do proxy no Chromium. A verificação de certificados não foi desativada; os testes E2E foram executados no build local.
 
 O workflow CI foi adicionado ao repositório. A execução remota não chegou a iniciar por uma restrição da conta GitHub; o job não executou testes nem build. A validação acima foi executada localmente.
