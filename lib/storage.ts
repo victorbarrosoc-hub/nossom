@@ -1,5 +1,6 @@
 import { openDB, type DBSchema } from 'idb';
 import type { AudioInfo, Measurements } from './audio';
+import type { FilterSettings } from './presets';
 export type Version = {
   id: string;
   label: string;
@@ -7,9 +8,10 @@ export type Version = {
   blob: Blob;
   info: AudioInfo;
   metrics: Measurements;
+  parentId?: string;
   operation?: string;
   preset?: string;
-  processing?: {
+  processing?: FilterSettings & {
     engine: string;
     strength: number;
     noiseFloor: number;
@@ -25,6 +27,8 @@ export type Project = {
   name: string;
   createdAt: number;
   updatedAt: number;
+  activeVersionId?: string;
+  redoVersionIds?: string[];
   originalFile: Blob;
   originalName: string;
   versions: Version[];

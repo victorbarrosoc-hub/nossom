@@ -1,5 +1,15 @@
 'use client';
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { toolPath, routeOperation } from '@/lib/studio-routes';
+import { activateVersion, activeIndex, previousIndex, nextIndex } from '@/lib/history';
+import { EqualizerControls, BroadcastControls } from './preset-controls';
+import ClaudeSettings from './claude-settings';
+import { eqPresets, type EqGains } from '@/lib/equalizer';
+import { freshBroadcast, type BroadcastSettings } from '@/lib/broadcast';
+import PresetLibrary from './preset-library';
+import type { SavedRecipe } from '@/lib/saved-presets';
+import { voicePresets } from '@/lib/voice-presets';
 import { useEffect, useRef, useState } from 'react';
 import {
   ArrowUpRight,
@@ -62,6 +72,7 @@ import {
 } from '@/lib/storage';
 const toolIcons = {
   denoise: Sparkles,
+  eq: SlidersHorizontal,
   clarity: Mic,
   wind: AudioLines,
   level: SlidersHorizontal,
@@ -127,11 +138,58 @@ function RangeControl({
   );
 }
 export default function Studio() {
-  const [denoiseMode, setDenoiseMode] = useState<DenoiseMode>('voice');
+  const pathname = usePathname(),
+    router = useRouter();
+  const routeTool = routeOperation(pathname);
+  const [eqPreset, setEqPreset] = useState('neutral'),
+    [eqGains, setEqGains] = useState<EqGains>([0, 0, 0, 0, 0]),
+    [eqHighpass, setEqHighpass] = useState(30);
+  const [masterRecipe, setMasterRecipe] = useState('podcast');
+  const [broadcast, setBroadcast] = useState<BroadcastSettings>(freshBroadcast);
+  const [voicePreset, setVoicePreset] = useState('dialogue'),
+    [deess, setDeess] = useState(25),
+    [hum, setHum] = useState(0);
+  function selectEq(id: string) {
+    const p = eqPresets.find((p) => p.id === id);
+    if (!p) return;
+    setEqPreset(id);
+    setEqGains([...p.gains]);
+    setEqHighpass(p.highpass);
+  }
+  function selectVoice(id: string) {
+    const p = voicePresets.find((p) => p.id === id);
+    if (!p) return;
+    setVoicePreset(id);
+    setPresence(p.presence);
+    setCompression(p.compression);
+    setDeess(p.deess);
+    setHum(p.hum);
+    setIntensity(p.strength);
+    setDenoiseMode('studio');
+  }
+  function selectMaster(id: string) {
+    setMasterRecipe(id);
+    if (id === 'broadcast') {
+      setBroadcast(freshBroadcast());
+      setIntensity(100);
+      return;
+    }
+    const p = deliveryPresets.find((p) => p.id === id);
+    if (p) {
+      setPreset(id);
+      setTarget(p.lufs);
+      setPeak(p.peak);
+    }
+    setIntensity(80);
+    setCompression(id === 'social' ? 3 : 2);
+  }
+
+  const [denoiseMode, setDenoiseMode] = useState<DenoiseMode>('studio');
   const [noiseFloor, setNoiseFloor] = useState<number | null>(null);
   const [noiseReduction, setNoiseReduction] = useState(36);
-  const [presence, setPresence] = useState(5);
-  const [compression, setCompression] = useState(4);
+  const [neuralAttenuation, setNeuralAttenuation] = useState(60);
+  const [presence, setPresence] = useState(2);
+  const [compression, setCompression] = useState(2);
   const [highpass, setHighpass] = useState(140);
   const [analysisNote, setAnalysisNote] = useState('');
   const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('dark');
@@ -151,12 +209,20 @@ export default function Studio() {
       /* Optional preference. */
     }
   }
-  const [view, setView] = useState<'home' | 'projects' | 'editor'>('home'),
+  const [view, setView] = useState<'home' | 'projects' | 'editor' | 'tool' | 'ai'>(
+      pathname === '/studio/ia'
+        ? 'ai'
+        : pathname === '/studio/projetos'
+          ? 'projects'
+          : routeTool
+            ? 'tool'
+            : 'home',
+    ),
     [projects, setProjects] = useState<ProjectSummary[]>([]),
     [project, setProject] = useState<Project | null>(null),
     [versionIndex, setVersionIndex] = useState(0);
-  const [operation, setOperation] = useState<Operation>('denoise'),
-    [intensity, setIntensity] = useState(90),
+  const [operation, setOperation] = useState<Operation>(routeTool ?? 'denoise'),
+    [intensity, setIntensity] = useState(100),
     [preset, setPreset] = useState('podcast'),
     [target, setTarget] = useState(-16),
     [peak, setPeak] = useState(-1),
@@ -187,13 +253,43 @@ export default function Studio() {
   const version = project?.versions[versionIndex];
   const selectedTool = operations.find((o) => o.id === operation)!;
   useEffect(() => {
+    if (pathname === '/studio/ia') {
+      setView('ai');
+      return;
+    }
+    if (pathname === '/studio/projetos') {
+      setView('projects');
+      return;
+    }
+    const tool = routeOperation(pathname);
+    if (tool) {
+      setOperation(tool);
+      setView(project ? 'editor' : 'tool');
+      const id = new URLSearchParams(location.search).get('project');
+      if (id && project?.id !== id)
+        void getProject(id)
+          .then((p) => {
+            if (p) {
+              setProject(p);
+              setVersionIndex(activeIndex(p));
+              setView('editor');
+            }
+          })
+          .catch(() => setError('Não foi possível abrir este projeto.'));
+    } else setView('home');
+    setSidebar(false);
+  }, [pathname]);
+  useEffect(() => {
     listProjects()
       .then(setProjects)
       .catch(() =>
         setError('O armazenamento local está indisponível. Permita dados neste navegador.'),
       );
     const tool = new URLSearchParams(location.search).get('tool');
-    if (operations.some((o) => o.id === tool)) setOperation(tool as Operation);
+    if (operations.some((o) => o.id === tool)) {
+      setOperation(tool as Operation);
+      router.replace(toolPath(tool as Operation));
+    }
     return () => {
       recordStream.current?.getTracks().forEach((t) => t.stop());
       if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -273,6 +369,7 @@ export default function Studio() {
       setRegion(null);
       setMusic(null);
       setView('editor');
+      router.push(toolPath(operation, created.id), { scroll: false });
       await refresh();
       notify('Áudio importado. Seu original está preservado.');
     });
@@ -283,10 +380,11 @@ export default function Studio() {
       const p = await getProject(id);
       if (p) {
         setProject(p);
-        setVersionIndex(p.versions.length - 1);
+        setVersionIndex(activeIndex(p));
         setRegion(null);
         setMusic(null);
         setView('editor');
+        router.push(toolPath(operation, p.id), { scroll: false });
       }
     } catch {
       setError('Não foi possível abrir esse projeto.');
@@ -294,18 +392,73 @@ export default function Studio() {
   }
   function navigate(next: 'home' | 'projects' | 'editor') {
     if (busy || recording) return;
-    setView(next);
     setSidebar(false);
+    router.push(
+      next === 'projects'
+        ? '/studio/projetos'
+        : next === 'home'
+          ? '/studio'
+          : toolPath(operation, project?.id),
+      { scroll: false },
+    );
   }
   function chooseTool(next: Operation) {
     if (busy || recording) return;
     setOperation(next);
     setSidebar(false);
-    if (project) setView('editor');
-    else {
-      setView('home');
-      notify(`${operations.find((o) => o.id === next)?.label}: envie um áudio para começar.`);
+    router.push(toolPath(next, project?.id), { scroll: false });
+  }
+  async function selectVersion(index: number, action: 'select' | 'undo' | 'redo' = 'select') {
+    if (!project || busy || recording || index < 0 || index >= project.versions.length) return;
+    await run(async () => {
+      const updated = activateVersion(project, index);
+      if (action === 'undo')
+        updated.redoVersionIds = [
+          project.versions[versionIndex].id,
+          ...(project.redoVersionIds ?? []),
+        ];
+      else if (action === 'redo')
+        updated.redoVersionIds =
+          project.redoVersionIds?.[0] === project.versions[index].id
+            ? project.redoVersionIds.slice(1)
+            : [];
+      await saveProject(updated);
+      setProject(updated);
+      setVersionIndex(index);
+      await refresh();
+      notify(
+        index === 0
+          ? 'Original restaurado. O histórico continua disponível.'
+          : 'Versão ativa alterada. Você pode refazer pelo histórico.',
+      );
+    });
+  }
+  function loadSavedPreset(p: SavedRecipe) {
+    setIntensity(Math.max(0, Math.min(100, p.intensity)));
+    setDenoiseMode(p.mode);
+    setTarget(Math.max(-30, Math.min(-10, p.target)));
+    setPeak(Math.max(-6, Math.min(-1, p.peak)));
+    setMusicGain(Math.max(0, Math.min(1, p.musicGain)));
+    const s = p.settings;
+    setNoiseFloor(s.noiseFloor ?? null);
+    setNoiseReduction(s.noiseReduction ?? 36);
+    setNeuralAttenuation(s.neuralAttenuation ?? 60);
+    setPresence(s.presence ?? 2);
+    setCompression(s.compression ?? 2);
+    setHighpass(s.highpass ?? 140);
+    setDeess(s.deess ?? 25);
+    setHum(s.hum ?? 0);
+    setVoicePreset('custom');
+    if (s.eq) {
+      setEqGains(s.eq);
+      setEqHighpass(s.highpass ?? 30);
+      setEqPreset('custom');
     }
+    if (s.masterPreset) {
+      setMasterRecipe(s.masterPreset);
+      if (s.masterPreset !== 'broadcast') setPreset(s.masterPreset);
+    }
+    if (s.broadcast) setBroadcast(structuredClone(s.broadcast));
   }
   async function applyTreatment() {
     if (!project || !version) return;
@@ -325,9 +478,15 @@ export default function Studio() {
         settings: {
           noiseFloor: noiseFloor ?? version.info.noiseFloor,
           noiseReduction,
+          neuralAttenuation,
           presence,
           compression,
-          highpass,
+          highpass: operation === 'eq' ? eqHighpass : highpass,
+          eq: operation === 'eq' ? eqGains : undefined,
+          masterPreset: operation === 'master' ? masterRecipe : undefined,
+          broadcast: operation === 'master' && masterRecipe === 'broadcast' ? broadcast : undefined,
+          deess: operation === 'clarity' ? deess : undefined,
+          hum: operation === 'clarity' ? hum : undefined,
         },
         target,
         peak,
@@ -339,19 +498,28 @@ export default function Studio() {
       });
       const newVersion: Version = {
         id: crypto.randomUUID(),
+        parentId: version.id,
         label: `${selectedTool.label} · V${project.versions.length}`,
         createdAt: Date.now(),
         operation,
         preset:
           operation === 'master'
-            ? `${preset} / alvo ${target} LUFS / pico ${peak} dBTP / v1`
-            : undefined,
+            ? masterRecipe === 'broadcast'
+              ? 'Transmissão + Limite −3 dB'
+              : `${preset} / alvo ${target} LUFS / pico ${peak} dBTP / v2`
+            : operation === 'eq'
+              ? `EQ: ${eqPresets.find((p) => p.id === eqPreset)?.label ?? 'Personalizado'}`
+              : operation === 'clarity'
+                ? `Voz: ${voicePresets.find((p) => p.id === voicePreset)?.label ?? 'Personalizado'}`
+                : undefined,
         ...result,
       };
       const updated = {
         ...project,
         updatedAt: Date.now(),
         versions: [...project.versions, newVersion],
+        activeVersionId: newVersion.id,
+        redoVersionIds: [],
       };
       await saveProject(updated);
       setProject(updated);
@@ -380,7 +548,8 @@ export default function Studio() {
     if (!project || !version) return;
     const body = {
       product: 'NOSSOM',
-      reportVersion: '1.0',
+      reportVersion: '2.0',
+      activeVersionId: version.id,
       algorithm: 'FFmpeg loudnorm / EBU R128 measurement',
       createdAt: new Date().toISOString(),
       project: project.name,
@@ -401,6 +570,7 @@ export default function Studio() {
       history: project.versions.map((v) => ({
         label: v.label,
         operation: v.operation ?? 'import',
+        parentId: v.parentId ?? null,
         processing: v.processing ?? null,
         preset: v.preset ?? null,
         createdAt: new Date(v.createdAt).toISOString(),
@@ -541,7 +711,10 @@ export default function Studio() {
     </div>
   );
   return (
-    <div className="studio-shell" data-theme={theme}>
+    <div
+      className={`studio-shell ${routeTool ? `tool-editor tool-${routeTool}` : ''}`}
+      data-theme={theme}
+    >
       <a className="skip-link" href="#studio-main">
         Pular para o estúdio
       </a>
@@ -586,7 +759,7 @@ export default function Studio() {
             return (
               <button
                 key={o.id}
-                className={view === 'editor' && operation === o.id ? 'active' : ''}
+                className={routeTool === o.id ? 'active' : ''}
                 onClick={() => chooseTool(o.id)}
               >
                 <Icon size={17} />
@@ -594,6 +767,14 @@ export default function Studio() {
               </button>
             );
           })}
+          <button
+            className={view === 'ai' ? 'active' : ''}
+            onClick={() => {
+              if (!busy && !recording) router.push('/studio/ia');
+            }}
+          >
+            <AudioLines size={17} /> Inteligência NOSSOM
+          </button>
           <span className="sidebar-caption">EM BREVE</span>
           <span className="future-nav">
             <Layers size={17} /> Separação por IA <small>Em breve</small>
@@ -632,7 +813,13 @@ export default function Studio() {
             <span>Meu espaço</span>
             <ChevronRight size={12} />
             <strong>
-              {view === 'editor' ? project?.name : view === 'projects' ? 'Meus projetos' : 'Início'}
+              {routeTool
+                ? selectedTool.label
+                : view === 'ai'
+                  ? 'Inteligência NOSSOM'
+                  : view === 'projects'
+                    ? 'Meus projetos'
+                    : 'Início'}
             </strong>
           </div>
           <div className="studio-header-actions">
@@ -721,50 +908,58 @@ export default function Studio() {
               </button>
             </div>
           )}
-          {view === 'home' && (
+          {(view === 'home' || view === 'tool') && (
             <>
               <div className="studio-welcome">
                 <div>
                   <span className="eyebrow">TUDO ACONTECE NO SOM</span>
-                  <h1>Seu espaço de criação.</h1>
-                  <p>Grave uma ideia, cuide do som e prepare a próxima entrega.</p>
+                  <h1>{view === 'tool' ? selectedTool.label : 'Seu espaço de criação.'}</h1>
+                  <p>
+                    {view === 'tool'
+                      ? selectedTool.description
+                      : 'Grave uma ideia, cuide do som e prepare a próxima entrega.'}
+                  </p>
                 </div>
                 <div className="workspace-indicator">
                   <span className="status-light" /> Seu estúdio está aberto
                 </div>
               </div>
-              <div className="studio-stats">
-                <div>
-                  <span className="stat-icon purple">
-                    <Folder size={19} />
-                  </span>
+              {view === 'home' && (
+                <div className="studio-stats">
                   <div>
-                    <span>Seus projetos</span>
-                    <strong>{projects.length}</strong>
-                    <small>Salvos neste navegador</small>
+                    <span className="stat-icon purple">
+                      <Folder size={19} />
+                    </span>
+                    <div>
+                      <span>Seus projetos</span>
+                      <strong>{projects.length}</strong>
+                      <small>Salvos neste navegador</small>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="stat-icon blue">
+                      <Clock size={19} />
+                    </span>
+                    <div>
+                      <span>Áudio no seu espaço</span>
+                      <strong>
+                        {formatTime(projects.reduce((sum, p) => sum + p.duration, 0))}
+                      </strong>
+                      <small>Duração dos originais</small>
+                    </div>
+                  </div>
+                  <div>
+                    <span className="stat-icon green">
+                      <ShieldCheck size={19} />
+                    </span>
+                    <div>
+                      <span>Seu áudio, com você</span>
+                      <strong>Local</strong>
+                      <small>Sem envio para servidores</small>
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <span className="stat-icon blue">
-                    <Clock size={19} />
-                  </span>
-                  <div>
-                    <span>Áudio no seu espaço</span>
-                    <strong>{formatTime(projects.reduce((sum, p) => sum + p.duration, 0))}</strong>
-                    <small>Duração dos originais</small>
-                  </div>
-                </div>
-                <div>
-                  <span className="stat-icon green">
-                    <ShieldCheck size={19} />
-                  </span>
-                  <div>
-                    <span>Seu áudio, com você</span>
-                    <strong>Local</strong>
-                    <small>Sem envio para servidores</small>
-                  </div>
-                </div>
-              </div>
+              )}
               <div className="studio-start-grid">
                 <section
                   className={`upload-zone ${dragging ? 'dragging' : ''}`}
@@ -834,28 +1029,30 @@ export default function Studio() {
                   </ol>
                 </aside>
               </div>
-              <div className="quick-section">
-                <div className="subheading">
-                  <h2>O que você quer melhorar?</h2>
-                  <span>ESCOLHA UM TRATAMENTO</span>
+              {view === 'home' && (
+                <div className="quick-section">
+                  <div className="subheading">
+                    <h2>O que você quer melhorar?</h2>
+                    <span>ESCOLHA UM TRATAMENTO</span>
+                  </div>
+                  <div className="quick-grid">
+                    {operations.slice(0, 5).map((o) => {
+                      const Icon = toolIcons[o.id];
+                      return (
+                        <button
+                          key={o.id}
+                          className={operation === o.id ? 'selected' : ''}
+                          onClick={() => chooseTool(o.id)}
+                        >
+                          <Icon size={21} strokeWidth={1.5} />
+                          <span>{o.label}</span>
+                          <ArrowUpRight size={13} />
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-                <div className="quick-grid">
-                  {operations.slice(0, 5).map((o) => {
-                    const Icon = toolIcons[o.id];
-                    return (
-                      <button
-                        key={o.id}
-                        className={operation === o.id ? 'selected' : ''}
-                        onClick={() => chooseTool(o.id)}
-                      >
-                        <Icon size={21} strokeWidth={1.5} />
-                        <span>{o.label}</span>
-                        <ArrowUpRight size={13} />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+              )}
               <div className="studio-lower">
                 <section className="recent-projects">
                   <div className="subheading">
@@ -876,7 +1073,10 @@ export default function Studio() {
                       <button
                         className="text-link"
                         disabled={!!busy || recording}
-                        onClick={() => void upload(makeDemo())}
+                        onClick={() => {
+                          setDenoiseMode('general');
+                          void upload(makeDemo());
+                        }}
                       >
                         Experimentar com um áudio de teste <ArrowRight size={14} />
                       </button>
@@ -887,6 +1087,7 @@ export default function Studio() {
               </div>
             </>
           )}
+          {view === 'ai' && <ClaudeSettings />}
           {view === 'projects' && (
             <>
               <div className="studio-welcome">
@@ -954,7 +1155,7 @@ export default function Studio() {
                     <ArrowLeft size={14} /> Meus projetos
                   </button>
                   <div className="editor-title-line">
-                    <h1>{project.name}</h1>
+                    <h1>{routeTool ? selectedTool.label : project.name}</h1>
                     <button
                       className="icon-button"
                       onClick={() => {
@@ -968,6 +1169,7 @@ export default function Studio() {
                     </button>
                   </div>
                   <p>
+                    <strong>{project.name}</strong> <span>·</span>
                     {formatTime(version.info.duration)} <span>·</span>{' '}
                     {version.info.channels === 1 ? 'Mono' : 'Estéreo'} <span>·</span>{' '}
                     {version.info.sampleRate / 1000} kHz <span>·</span> WAV 16-bit{' '}
@@ -983,6 +1185,30 @@ export default function Studio() {
                 >
                   <Download size={16} /> Baixar WAV
                 </button>
+              </div>
+              <div className="effect-toolbar" role="group" aria-label="Histórico de tratamentos">
+                <button
+                  className="button secondary small"
+                  disabled={!!busy || previousIndex(project, versionIndex) < 0}
+                  onClick={() => void selectVersion(previousIndex(project, versionIndex), 'undo')}
+                >
+                  <Undo2 size={15} /> Desfazer efeito
+                </button>
+                <button
+                  className="button secondary small"
+                  disabled={!!busy || nextIndex(project, versionIndex) < 0}
+                  onClick={() => void selectVersion(nextIndex(project, versionIndex), 'redo')}
+                >
+                  Refazer efeito <ArrowRight size={15} />
+                </button>
+                <button
+                  className="text-link"
+                  disabled={!!busy || versionIndex === 0}
+                  onClick={() => void selectVersion(0)}
+                >
+                  Restaurar original
+                </button>
+                <span>{versionIndex === 0 ? 'Original ativo' : version.label}</span>
               </div>
               <div className="editor-layout">
                 <div className="editor-main">
@@ -1040,23 +1266,25 @@ export default function Studio() {
                             : 'Nenhuma amostra saturada detectada no WAV. Confira também o true peak e a especificação de entrega.'}
                       </p>
                     </div>
-                    {operation === 'master' && version.operation === 'master' && (
-                      <div className="delivery-result">
-                        <span className="eyebrow">COMPARAÇÃO COM O ALVO ATUAL</span>
-                        <p>
-                          {version.metrics.lufs !== null &&
-                          version.metrics.truePeak !== null &&
-                          Math.abs(version.metrics.lufs - target) <= 1 &&
-                          version.metrics.truePeak <= peak + 0.2
-                            ? 'Dentro da referência selecionada (±1 LU / +0,2 dBTP).'
-                            : 'Atenção: o resultado precisa ser revisto em relação ao alvo selecionado.'}
-                        </p>
-                        <small>
-                          Alvo: {target} LUFS · teto {peak} dBTP. Confira as exigências do
-                          destinatário.
-                        </small>
-                      </div>
-                    )}
+                    {operation === 'master' &&
+                      version.operation === 'master' &&
+                      version.processing?.masterPreset !== 'broadcast' && (
+                        <div className="delivery-result">
+                          <span className="eyebrow">COMPARAÇÃO COM O ALVO ATUAL</span>
+                          <p>
+                            {version.metrics.lufs !== null &&
+                            version.metrics.truePeak !== null &&
+                            Math.abs(version.metrics.lufs - target) <= 1 &&
+                            version.metrics.truePeak <= peak + 0.2
+                              ? 'Dentro da referência selecionada (±1 LU / +0,2 dBTP).'
+                              : 'Atenção: o resultado precisa ser revisto em relação ao alvo selecionado.'}
+                          </p>
+                          <small>
+                            Alvo: {target} LUFS · teto {peak} dBTP. Confira as exigências do
+                            destinatário.
+                          </small>
+                        </div>
+                      )}
                   </section>
                   <section className="history-panel">
                     <div className="subheading">
@@ -1071,7 +1299,7 @@ export default function Studio() {
                         className={`version-row ${i === versionIndex ? 'active' : ''}`}
                         key={v.id}
                         disabled={!!busy}
-                        onClick={() => setVersionIndex(i)}
+                        onClick={() => void selectVersion(i)}
                       >
                         <span className="version-marker">
                           {i === 0 ? <ShieldCheck size={15} /> : <AudioLines size={15} />}
@@ -1126,26 +1354,87 @@ export default function Studio() {
                 <aside className="treatment-panel">
                   <div className="panel-heading">
                     <Sparkles size={18} />
-                    <h2>Encontre seu som.</h2>
+                    <h2>{selectedTool.label}</h2>
                   </div>
-                  <p className="panel-subtitle">Um ajuste pode mudar tudo.</p>
-                  <label className="field-label" htmlFor="operation">
-                    O QUE VAMOS MELHORAR?
-                  </label>
-                  <select
-                    id="operation"
-                    value={operation}
-                    disabled={!!busy}
-                    onChange={(e) => setOperation(e.target.value as Operation)}
-                  >
-                    {operations.map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.label}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="operation-description">{selectedTool.description}</p>
+                  <p className="panel-subtitle">{selectedTool.description}</p>
                   <div className="treatment-controls">
+                    {operation === 'eq' && (
+                      <EqualizerControls
+                        gains={eqGains}
+                        highpass={eqHighpass}
+                        preset={eqPreset}
+                        onPreset={selectEq}
+                        onGains={(g) => {
+                          setEqGains(g);
+                          setEqPreset('custom');
+                        }}
+                        onHighpass={setEqHighpass}
+                        disabled={!!busy}
+                      />
+                    )}
+                    {operation === 'clarity' && (
+                      <div
+                        className="preset-grid voice-presets"
+                        role="group"
+                        aria-label="Presets de voz"
+                      >
+                        {voicePresets.map((p) => (
+                          <button
+                            key={p.id}
+                            className={voicePreset === p.id ? 'active' : ''}
+                            aria-pressed={voicePreset === p.id}
+                            disabled={!!busy}
+                            onClick={() => selectVoice(p.id)}
+                          >
+                            <strong>{p.label}</strong>
+                            <span>{p.description}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {operation === 'master' && (
+                      <>
+                        <div
+                          className="preset-grid master-presets"
+                          role="group"
+                          aria-label="Presets de masterização"
+                        >
+                          <button
+                            className={masterRecipe === 'broadcast' ? 'active' : ''}
+                            aria-pressed={masterRecipe === 'broadcast'}
+                            disabled={!!busy}
+                            onClick={() => selectMaster('broadcast')}
+                          >
+                            <strong>Transmissão + Limite −3 dB</strong>
+                            <span>
+                              Sua cadeia do Premiere, com quatro bandas e dois limitadores.
+                            </span>
+                          </button>
+                          {deliveryPresets.map((p) => (
+                            <button
+                              key={p.id}
+                              disabled={!!busy}
+                              className={masterRecipe === p.id ? 'active' : ''}
+                              aria-pressed={masterRecipe === p.id}
+                              onClick={() => selectMaster(p.id)}
+                            >
+                              <strong>{p.label}</strong>
+                              <span>
+                                {p.lufs} LUFS · {p.peak} dBTP
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                        {masterRecipe === 'broadcast' && (
+                          <BroadcastControls
+                            settings={broadcast}
+                            onChange={setBroadcast}
+                            disabled={!!busy}
+                          />
+                        )}
+                      </>
+                    )}
+
                     {(operation === 'denoise' || operation === 'clarity') && (
                       <>
                         <span className="field-label">MODO DE LIMPEZA</span>
@@ -1154,6 +1443,16 @@ export default function Studio() {
                           role="group"
                           aria-label="Modo de limpeza"
                         >
+                          <button
+                            aria-pressed={denoiseMode === 'studio'}
+                            className={denoiseMode === 'studio' ? 'active' : ''}
+                            disabled={!!busy}
+                            onClick={() => setDenoiseMode('studio')}
+                          >
+                            <Sparkles size={18} />
+                            <strong>NOSSOM Voice</strong>
+                            <span>DeepFilterNet3 · qualidade</span>
+                          </button>
                           <button
                             aria-pressed={denoiseMode === 'voice'}
                             className={denoiseMode === 'voice' ? 'active' : ''}
@@ -1176,16 +1475,32 @@ export default function Studio() {
                           </button>
                         </div>
                         <p className="field-hint">
-                          {denoiseMode === 'voice'
-                            ? 'O modelo RNNoise distingue fala de ruído. Para música e instrumentos, use Áudio geral.'
-                            : 'Atenua ruído contínuo preservando conteúdo musical. Ajuste o piso para o seu ambiente.'}
+                          {denoiseMode === 'studio'
+                            ? 'Restauração neural em banda completa, a 48 kHz. Modelo DeepFilterNet3 executado localmente. O primeiro uso baixa cerca de 33 MB.'
+                            : denoiseMode === 'voice'
+                              ? 'O modelo RNNoise distingue fala de ruído. Para música e instrumentos, use Áudio geral.'
+                              : 'Atenua ruído contínuo preservando conteúdo musical. Ajuste o piso para o seu ambiente.'}
                         </p>
                       </>
                     )}
+                    {denoiseMode === 'studio' &&
+                      (operation === 'denoise' || operation === 'clarity') && (
+                        <RangeControl
+                          label="Supressão neural máxima"
+                          value={neuralAttenuation}
+                          min={0}
+                          max={80}
+                          unit=" dB"
+                          disabled={!!busy}
+                          onChange={setNeuralAttenuation}
+                        />
+                      )}
                     <RangeControl
                       label={
                         operation === 'master'
-                          ? 'Controle de dinâmica'
+                          ? masterRecipe === 'broadcast'
+                            ? 'Mistura do preset'
+                            : 'Controle de dinâmica'
                           : operation === 'mix'
                             ? 'Redução da trilha durante a fala'
                             : 'Intensidade do tratamento'
@@ -1219,13 +1534,15 @@ export default function Studio() {
                     </div>
                     <p className="field-hint">
                       {operation === 'master'
-                        ? 'Controla a faixa dinâmica pedida ao normalizador. O resultado medido aparece ao lado.'
+                        ? masterRecipe === 'broadcast'
+                          ? 'Mistura o sinal original com a cadeia de transmissão. Em 100%, utiliza somente o resultado tratado.'
+                          : 'Controla a faixa dinâmica pedida ao normalizador. Confira o resultado nas medições abaixo.'
                         : operation === 'mix'
                           ? 'Quanto maior, mais a trilha recua enquanto há sinal na voz.'
                           : intensity === 0
-                            ? 'Sem tratamento adicional. Na entrega, a meta de volume continua valendo.'
+                            ? 'Sem tratamento adicional.'
                             : intensity > 85
-                              ? 'Limpeza intensa. Compare a voz para conferir se os detalhes continuam naturais.'
+                              ? 'Tratamento intenso. Compare com o original para conferir se os detalhes continuam naturais.'
                               : 'Ajuste livremente, aplique e compare o resultado com o original.'}
                     </p>
                     {['denoise', 'clarity', 'wind'].includes(operation) &&
@@ -1279,6 +1596,32 @@ export default function Studio() {
                         </>
                       )}
                     {operation === 'clarity' && (
+                      <>
+                        <RangeControl
+                          label="Controle de sibilância"
+                          value={deess}
+                          min={0}
+                          max={100}
+                          unit="%"
+                          disabled={!!busy}
+                          onChange={setDeess}
+                        />
+                        <label className="field-label" htmlFor="hum-mode">
+                          HUM DE REDE
+                        </label>
+                        <select
+                          id="hum-mode"
+                          value={hum}
+                          disabled={!!busy}
+                          onChange={(e) => setHum(Number(e.target.value))}
+                        >
+                          <option value={0}>Desligado</option>
+                          <option value={50}>50 Hz + harmônicos</option>
+                          <option value={60}>60 Hz + harmônicos</option>
+                        </select>
+                      </>
+                    )}
+                    {operation === 'clarity' && (
                       <RangeControl
                         label="Presença da voz"
                         value={presence}
@@ -1315,7 +1658,7 @@ export default function Studio() {
                       />
                     )}
                   </div>
-                  {operation === 'master' && (
+                  {operation === 'master' && masterRecipe !== 'broadcast' && (
                     <>
                       <label className="field-label" htmlFor="destination">
                         ONDE ESSE SOM VAI CHEGAR?
@@ -1325,6 +1668,7 @@ export default function Studio() {
                         value={preset}
                         disabled={!!busy}
                         onChange={(e) => {
+                          setMasterRecipe(e.target.value);
                           const p = deliveryPresets.find((p) => p.id === e.target.value)!;
                           setPreset(p.id);
                           setTarget(p.lufs);
@@ -1407,6 +1751,35 @@ export default function Studio() {
                       </p>
                     </>
                   )}
+                  <PresetLibrary
+                    operation={operation}
+                    disabled={!!busy}
+                    onLoad={loadSavedPreset}
+                    current={{
+                      operation,
+                      intensity,
+                      mode: denoiseMode,
+                      target,
+                      peak,
+                      musicGain,
+                      settings: {
+                        noiseFloor: noiseFloor ?? version.info.noiseFloor,
+                        noiseReduction,
+                        neuralAttenuation,
+                        presence,
+                        compression,
+                        highpass: operation === 'eq' ? eqHighpass : highpass,
+                        eq: operation === 'eq' ? eqGains : undefined,
+                        masterPreset: operation === 'master' ? masterRecipe : undefined,
+                        broadcast:
+                          operation === 'master' && masterRecipe === 'broadcast'
+                            ? broadcast
+                            : undefined,
+                        deess: operation === 'clarity' ? deess : undefined,
+                        hum: operation === 'clarity' ? hum : undefined,
+                      },
+                    }}
+                  />
                   <button
                     className="advanced-toggle"
                     onClick={() => setAdvanced(!advanced)}
@@ -1529,7 +1902,25 @@ export default function Studio() {
           <span>Projetos</span>
         </button>
       </nav>
-      {assistant && <Assistant onClose={() => setAssistant(false)} onPlan={chooseTool} />}{' '}
+      {assistant && (
+        <Assistant
+          onClose={() => setAssistant(false)}
+          onPlan={(next, amount, eq) => {
+            if (typeof amount === 'number') setIntensity(amount);
+            if (eq) selectEq(eq);
+            chooseTool(next);
+          }}
+          context={
+            version
+              ? {
+                  ...version.metrics,
+                  duration: version.info.duration,
+                  channels: version.info.channels,
+                }
+              : undefined
+          }
+        />
+      )}{' '}
       {deleteId && (
         <div className="modal-backdrop">
           <section

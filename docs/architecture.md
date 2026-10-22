@@ -8,16 +8,16 @@ Next.js/React/TypeScript entregam a aplicação. FFmpeg WebAssembly roda em um W
 
 ## Matriz de capacidade
 
-| Área                 | Implementado                                                | Continuação                                                 |
-| -------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
-| Início e projetos    | Upload/drag-and-drop, gravação, busca, renomeação, exclusão | Contas, equipes e sincronização                             |
-| Editor               | Waveform real, A/B, loudness matching, trecho, versões      | Fade de bordas e edição multitrecho                         |
-| Voz                  | RNNoise neural, FFT adaptativo, EQ, dinâmica ajustável      | De-reverb neural, de-click adaptativo, de-esser dedicado    |
-| Mixagem              | Voz + música com sidechain ducking, nível da trilha         | Multitrilha, efeitos, automação e VAD                       |
-| Entrega              | Loudnorm, LUFS, dBTP, LRA, relatório JSON, WAV/MP3          | Perfis por cliente, PDF e homologação por especificação     |
-| Assistente           | Regras de intenção e adaptador de conversa ElevenLabs       | Planejador generativo autorizado e ferramentas do agente    |
-| Separação            | Identificada como futura                                    | Avaliação de provedor/modelo, licenças, privacidade e custo |
-| Plataforma comercial | Acesso local gratuito                                       | Auth, nuvem, créditos, assinaturas, admin e lote            |
+| Área                 | Implementado                                                   | Continuação                                                 |
+| -------------------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
+| Início e projetos    | Upload/drag-and-drop, gravação, busca, renomeação, exclusão    | Contas, equipes e sincronização                             |
+| Editor               | Waveform real, A/B, loudness matching, trecho, versões         | Fade de bordas e edição multitrecho                         |
+| Voz                  | DeepFilterNet3/RNNoise, FFT adaptativo, EQ, de-esser, dinâmica | De-reverb dedicado, de-click adaptativo                     |
+| Mixagem              | Voz + música com sidechain ducking, nível da trilha            | Multitrilha, efeitos, automação e VAD                       |
+| Entrega              | Loudnorm, LUFS, dBTP, LRA, relatório JSON, WAV/MP3             | Perfis por cliente, PDF e homologação por especificação     |
+| Assistente           | Regras de intenção e adaptador de conversa ElevenLabs          | Planejador generativo autorizado e ferramentas do agente    |
+| Separação            | Identificada como futura                                       | Avaliação de provedor/modelo, licenças, privacidade e custo |
+| Plataforma comercial | Acesso local gratuito                                          | Auth, nuvem, créditos, assinaturas, admin e lote            |
 
 ## Garantias e limites
 
@@ -56,3 +56,5 @@ RNNoise roda em worker separado; mantém estado independente por canal, usa PCM 
 O modo espectral estima piso por percentil inferior de RMS em janelas de 20 ms quando há contraste de nível suficiente. Sem pausas claras, informa incerteza; não apresenta estimativa como identificação garantida de ruído.
 
 A normalização usa análise e render de loudnorm, seguida por ajuste constante apenas quando há margem de true peak medida. A correção final não se aplica a tratamento regional. `Version.processing` e o relatório guardam os controles e motor.
+
+A revisão atual usa DeepFilterNet3 como padrão e RNNoise como compatibilidade. As rotas `/studio/[tool]` preservam o projeto no layout; histórico, presets pessoais e a cadeia multibanda são descritos em [audio-engine.md](audio-engine.md). A integração opcional Sonnet 5.5/high, com acesso privado e retorno estruturado, está em [claude-setup.md](claude-setup.md). Os presets de voz agora incluem de-esser e hum de rede; isso não constitui equivalência a RX/Ozone.

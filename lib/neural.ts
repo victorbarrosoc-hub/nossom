@@ -5,10 +5,15 @@ export function cancelNeural() {
 export function denoiseVoice(
   buffer: AudioBuffer,
   progress?: (n: number) => void,
+  model: 'rnnoise' | 'deepfilter' = 'rnnoise',
+  attenuation = 60,
 ): Promise<Float32Array[]> {
   if (buffer.sampleRate !== 48000) throw new Error('O modelo de voz requer áudio em 48 kHz.');
   return new Promise((resolve, reject) => {
-    const worker = new Worker('/audio/neural-worker.js', { type: 'module' });
+    const worker = new Worker(
+      model === 'deepfilter' ? '/audio/deepfilter-worker.js' : '/audio/neural-worker.js',
+      { type: 'module' },
+    );
     const finish = () => {
       clearTimeout(timer);
       worker.terminate();
@@ -20,7 +25,7 @@ export function denoiseVoice(
     };
     const timer = setTimeout(
       () => fail('O modelo de voz excedeu o tempo limite. Tente um trecho menor.'),
-      180000,
+      300000,
     );
     activeCancel = () =>
       fail('Processamento cancelado. O original e as versões salvas foram preservados.');
@@ -40,7 +45,7 @@ export function denoiseVoice(
       buffer.getChannelData(c).slice(),
     );
     worker.postMessage(
-      { channels },
+      { channels, attenuation },
       channels.map((c) => c.buffer),
     );
   });

@@ -24,19 +24,28 @@ export default function Privacy() {
         dados do site no navegador também apaga os projetos. Exporte seus arquivos antes de fazer
         isso.
       </p>
+      <p>
+        Os presets pessoais ficam no armazenamento local deste navegador. Eles guardam ajustes e
+        nomes, sem cópias do áudio. Limpar os dados do site também remove esses presets.
+      </p>
       <h2>Processamento local</h2>
       <p>
-        O motor FFmpeg é baixado do próprio site e executa no seu dispositivo. A primeira utilização
-        exige o download desse motor. A decodificação e os tratamentos usam memória e processamento
-        locais. Esta versão aceita arquivos mono ou estéreo, de até 100 MB e 10 minutos.
+        O motor FFmpeg e os modelos DeepFilterNet3/RNNoise são baixados do próprio site e executam
+        no seu dispositivo. A primeira utilização exige o download desse motor. A decodificação e os
+        tratamentos usam memória e processamento locais. Esta versão aceita arquivos mono ou
+        estéreo, de até 100 MB e 10 minutos.
       </p>
       <h2>Microfone e assistente</h2>
       <p>
         A gravação no estúdio só acessa o microfone depois de sua permissão e armazena o resultado
-        localmente. As sugestões por texto são interpretadas localmente por regras de intenção. A
-        conversa por voz com ElevenLabs é opcional, depende de um agente configurado e só começa
-        após sua ação. Nessa conversa, o áudio do microfone é enviado ao ElevenLabs e tratado
-        conforme as políticas e a configuração do agente do provedor.
+        localmente. Sem Claude conectado, as sugestões por texto usam regras locais. Quando você
+        conecta sua conta Anthropic e envia um pedido, o texto e as medições disponíveis de
+        loudness, pico, duração e canais são enviados à Anthropic para gerar uma sugestão. O arquivo
+        de áudio não é enviado ao Claude. As chaves da API ficam somente no servidor. Uma sessão de
+        acesso assinada é guardada em cookie HttpOnly por até uma hora. A conversa por voz com
+        ElevenLabs é opcional, depende de um agente configurado e só começa após sua ação. Nessa
+        conversa, o áudio do microfone é enviado ao ElevenLabs e tratado conforme as políticas e a
+        configuração do agente do provedor.
       </p>
       <h2>Dados de acesso</h2>
       <p>

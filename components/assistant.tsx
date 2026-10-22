@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useDialog } from '@/lib/use-dialog';
 import { useConversation } from '@elevenlabs/react';
 import { ArrowUp, AudioLines, Mic, PhoneOff, X, Sparkles, ArrowRight } from 'lucide-react';
@@ -7,10 +7,31 @@ import { inferPlan, operations, type Operation } from '@/lib/presets';
 export default function Assistant({
   onClose,
   onPlan,
+  context,
 }: {
   onClose: () => void;
-  onPlan?: (operation: Operation) => void;
+  onPlan?: (operation: Operation, intensity?: number, eqPreset?: string) => void;
+  context?: Record<string, number | null>;
 }) {
+  const [cloud, setCloud] = useState(false),
+    [cloudAvailable, setCloudAvailable] = useState(false),
+    [thinking, setThinking] = useState(false);
+  const [recommended, setRecommended] = useState<{ intensity?: number; eqPreset?: string }>({});
+  const pending = useRef<AbortController | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/ai/status', { cache: 'no-store', signal: controller.signal })
+      .then((r) => r.json())
+      .then((s) => {
+        setCloudAvailable(s.configured && s.authorized);
+        setCloud(s.configured && s.authorized);
+      })
+      .catch(() => {});
+    return () => {
+      controller.abort();
+      pending.current?.abort();
+    };
+  }, []);
   const [text, setText] = useState(''),
     [reply, setReply] = useState(''),
     [plan, setPlan] = useState<Operation | null>(null),
@@ -31,8 +52,36 @@ export default function Assistant({
     [conversation.endSession],
   );
   const connected = conversation.status === 'connected';
-  function suggest(value: string) {
+  async function suggest(value: string) {
     setText(value);
+    setError('');
+    setRecommended({});
+    if (cloud) {
+      setThinking(true);
+      setPlan(null);
+      pending.current?.abort();
+      const controller = new AbortController();
+      pending.current = controller;
+      try {
+        const response = await fetch('/api/ai/assistant', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: value, context }),
+          signal: controller.signal,
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.error);
+        setReply(result.reply);
+        setPlan(operations.some((o) => o.id === result.operation) ? result.operation : null);
+        setRecommended({ intensity: result.intensity, eqPreset: result.eqPreset });
+      } catch (e) {
+        if (!controller.signal.aborted)
+          setError(e instanceof Error ? e.message : 'O Claude não concluiu a sugestão.');
+      } finally {
+        if (!controller.signal.aborted) setThinking(false);
+      }
+      return;
+    }
     const selected = inferPlan(value);
     setPlan(selected);
     setReply(
@@ -82,7 +131,33 @@ export default function Assistant({
           Eu encontro um ponto de partida para o seu som.
         </p>
         <div className="assistant-mode">
-          <Sparkles size={13} /> Sugestões locais por intenção · sem IA generativa
+          <Sparkles size={13} />{' '}
+          {cloud ? 'Claude Sonnet · esforço alto' : 'Sugestões locais por intenção'}
+        </div>
+        {cloud && (
+          <p className="field-hint">
+            Seu pedido e as medições são enviados à Anthropic. O áudio continua no seu dispositivo.
+          </p>
+        )}
+        <div className="assistant-provider">
+          {cloudAvailable ? (
+            <button
+              className="text-link"
+              onClick={() => {
+                pending.current?.abort();
+                setThinking(false);
+                setCloud(!cloud);
+                setReply('');
+                setPlan(null);
+              }}
+            >
+              {cloud ? 'Usar sugestões locais' : 'Usar Claude Sonnet'}
+            </button>
+          ) : (
+            <a className="text-link" href="/studio/ia">
+              Conectar Claude Sonnet 5.5
+            </a>
+          )}
         </div>
         <form
           onSubmit={(e) => {
@@ -98,20 +173,30 @@ export default function Assistant({
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="Quero reduzir o ruído do meu áudio…"
-            maxLength={500}
+            maxLength={1500}
+            disabled={thinking}
             required
           />
-          <button aria-label="Encontrar tratamento" className="icon-button solid">
+          <button
+            disabled={thinking}
+            aria-label="Encontrar tratamento"
+            className="icon-button solid"
+          >
             <ArrowUp size={18} />
           </button>
         </form>
         <div className="suggestion-chips">
           {['Melhorar minha voz', 'Nivelar volumes', 'Preparar para publicar'].map((s) => (
-            <button key={s} onClick={() => suggest(s)}>
+            <button key={s} disabled={thinking} onClick={() => suggest(s)}>
               {s}
             </button>
           ))}
         </div>
+        {thinking && (
+          <p className="field-hint" role="status">
+            Claude está avaliando o pedido e as medições…
+          </p>
+        )}
         {reply && (
           <div className="assistant-reply" aria-live="polite">
             <p>{reply}</p>
@@ -120,7 +205,7 @@ export default function Assistant({
                 className="button small primary"
                 onClick={() => {
                   if (onPlan) {
-                    onPlan(plan);
+                    onPlan(plan, recommended.intensity, recommended.eqPreset);
                     onClose();
                   } else location.href = `/studio?tool=${plan}`;
                 }}

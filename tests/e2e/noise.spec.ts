@@ -39,7 +39,9 @@ test('neural speech cleanup reduces measured background noise while preserving v
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles({ name: 'fala-com-ruido.wav', mimeType: 'audio/wav', buffer: noisy });
-  await expect(page.getByRole('heading', { name: 'fala-com-ruido', exact: true })).toBeVisible({
+  await expect(
+    page.locator('.editor-heading p').getByText('fala-com-ruido', { exact: true }),
+  ).toBeVisible({
     timeout: 90000,
   });
   const slider = page.getByRole('slider', { name: 'Intensidade do tratamento', exact: true });
@@ -67,16 +69,31 @@ test('neural speech cleanup reduces measured background noise while preserving v
   const wet = samples(await readFile((await (await wetPromise).path())!)).data;
   expect(Math.abs(wet.length - original.length)).toBeLessThanOrEqual(1);
   const reductionDb =
-    20 * Math.log10(rms(original, 0.25, 0.85) / Math.max(1e-9, rms(wet, 0.25, 0.85)));
+    20 * Math.log10(rms(original, 0.25, 0.85) / Math.max(1 / 32768, rms(wet, 0.25, 0.85)));
   const voiceRetention = rms(wet, 2, 5) / rms(source.data, 2, 5);
   expect(reductionDb).toBeGreaterThan(12);
   expect(voiceRetention).toBeGreaterThan(0.35);
   expect(voiceRetention).toBeLessThan(1.6);
+  let bestLag = 0,
+    bestScore = -Infinity;
+  for (let lag = -2400; lag <= 2400; lag += 16) {
+    let correlation = 0;
+    for (let i = 96000; i < 240000; i += 8) correlation += source.data[i] * wet[i + lag];
+    if (correlation > bestScore) {
+      bestScore = correlation;
+      bestLag = lag;
+    }
+  }
+  console.log('DeepFilter alignment:', bestLag, 'samples');
+  expect(Math.abs(bestLag)).toBeLessThanOrEqual(96);
   await testInfo.attach('noise-measurement.json', {
     body: JSON.stringify({
       fixture: 'Flite synthetic speech + seeded white noise; not an Adobe comparison',
       reductionDb,
       voiceRetention,
+      digitalSilence: rms(wet, 0.25, 0.85) === 0,
+      reductionIsLowerBound: rms(wet, 0.25, 0.85) < 1 / 32768,
+      bestLagSamples: bestLag,
       maxDryError: maxError,
     }),
     contentType: 'application/json',

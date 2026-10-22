@@ -204,7 +204,13 @@ async function deliveryFilter(ff: FFmpeg, options: ProcessOptions): Promise<stri
   const logs: string[] = [];
   const listener = ({ message }: { message: string }) => logs.push(message);
   ff.on('log', listener);
-  const base = treatmentFilter('master', options.intensity, options.target, options.peak);
+  const base = treatmentFilter(
+    'master',
+    options.intensity,
+    options.target,
+    options.peak,
+    options.settings,
+  );
   const range = options.region
     ? `atrim=start=${options.region.start}:end=${options.region.end},asetpts=PTS-STARTPTS,`
     : '';
@@ -307,7 +313,7 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
     const profile = estimateNoiseFloor(source.getChannelData(0), source.sampleRate);
     const strength = strengthValue(options.intensity);
     const neural =
-      (options.mode ?? 'voice') === 'voice' &&
+      (options.mode ?? 'studio') !== 'general' &&
       ['denoise', 'clarity'].includes(options.operation) &&
       strength > 0;
     const settings = {
@@ -316,8 +322,17 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
       neural,
     };
     if (neural) {
-      options.onStatus?.('Separando fala e ruído com IA local…');
-      const cleaned = await denoiseVoice(source, (n) => options.onProgress?.(Math.round(n * 0.65)));
+      options.onStatus?.(
+        options.mode === 'voice'
+          ? 'Limpando fala com RNNoise…'
+          : 'Restaurando fala com NOSSOM Voice · DeepFilterNet3…',
+      );
+      const cleaned = await denoiseVoice(
+        source,
+        (n) => options.onProgress?.(Math.round(n * 0.65)),
+        options.mode === 'voice' ? 'rnnoise' : 'deepfilter',
+        options.settings?.neuralAttenuation ?? 60,
+      );
       checkCancellation(epoch);
       const start = Math.round((options.region?.start ?? 0) * source.sampleRate);
       const end = Math.min(
@@ -359,7 +374,7 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
         );
       } else {
         const filter =
-          options.operation === 'master'
+          options.operation === 'master' && options.settings?.masterPreset !== 'broadcast'
             ? await deliveryFilter(ff, options)
             : treatmentFilter(
                 options.operation,
@@ -397,6 +412,7 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
       // render only within verified true-peak headroom. Never alter outside a selected region.
       if (
         options.operation === 'master' &&
+        options.settings?.masterPreset !== 'broadcast' &&
         !options.region &&
         metrics.lufs !== null &&
         metrics.truePeak !== null
@@ -432,10 +448,14 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
         info,
         metrics,
         processing: {
-          engine: neural ? 'RNNoise + FFmpeg' : 'FFmpeg',
+          engine: neural
+            ? options.mode === 'voice'
+              ? 'RNNoise + FFmpeg'
+              : 'NOSSOM Voice / DeepFilterNet3 + FFmpeg'
+            : 'FFmpeg',
           strength,
           noiseFloor: settings.noiseFloor,
-          mode: options.mode ?? 'voice',
+          mode: options.mode ?? 'studio',
           ...options.settings,
         },
       };

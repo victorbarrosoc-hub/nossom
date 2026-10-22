@@ -20,14 +20,18 @@ npm run build
 npm run start
 ```
 
-Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile para `public/ffmpeg` e o modelo RNNoise (aproximadamente 4,6 MB) para `public/audio`. Desenvolvimento e build usam Webpack para compatibilidade com o worker FFmpeg. O motor (~31 MB) é carregado na primeira operação de áudio. Não é necessário token para usar o estúdio local. O core e os workers são servidos pelo próprio domínio, com verificação de integridade de pacotes durante `npm ci` e sem CDNs de runtime.
+Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile para `public/ffmpeg` e os modelos locais RNNoise (aproximadamente 4,6 MB) e DeepFilterNet3 (aproximadamente 33 MB) para `public/audio`. Desenvolvimento e build usam Webpack para compatibilidade com o worker FFmpeg. O motor (~31 MB) é carregado na primeira operação de áudio. Não é necessário token para usar o estúdio local. O core e os workers são servidos pelo próprio domínio, com verificação de integridade de pacotes durante `npm ci` e sem CDNs de runtime.
 
 ## O que funciona
 
 - Página pública responsiva com motion, demonstração sonora real, perguntas frequentes e entrada no estúdio.
+- Rotas próprias para limpeza, voz, equalização, vento, nivelamento, masterização e mixagem. O layout preserva o projeto durante a navegação.
+- EQ em cinco bandas, presets editáveis, biblioteca de presets pessoais por ferramenta e presets de voz com de-esser/hum 50 ou 60 Hz.
+- Preset Transmissão + Limite −3 dB, baseado nas duas capturas Premiere fornecidas; implementação documentada em docs/audio-engine.md.
+- Desfazer, refazer e restaurar original com histórico e versão ativa persistidos. Novos ajustes podem formar ramificações sem apagar as versões anteriores.
 - Importação de WAV, MP3, M4A, FLAC, OGG e áudio de MP4/MOV conforme codec. O conteúdo é decodificado e validado, independentemente da extensão. Máximo de 100 MB, 10 minutos, mono ou estéreo.
 - Gravação por microfone, mediante permissão. Máximo de 10 minutos.
-- RNNoise neural em worker local para limpeza de fala, com intensidade contínua e compensação de latência. Modo espectral separado para música e áudio geral.
+- NOSSOM Voice: DeepFilterNet3 em worker local, 48 kHz, intensidade e supressão máxima ajustáveis, atraso compensado. RNNoise é a opção de compatibilidade. O modo espectral atende áudio geral.
 - Controles de 0–100%, redução máxima/piso de ruído, presença, compressão, corte de graves, volume final, teto de pico e ducking. Estimativa de piso por análise das janelas silenciosas.
 - FFmpeg WebAssembly executado em worker local: redução espectral de ruído contínuo, EQ de presença, passa-altas para vento, compressão, normalização de loudness e mixagem com sidechain ducking.
 - Waveform real, busca de posição, seleção de trecho, reprodução A/B sincronizada e compensação de loudness na escuta.
@@ -40,13 +44,13 @@ Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile 
 
 ## Limites técnicos
 
-A limpeza de fala usa o modelo neural RNNoise, especializado em supressão de ruído. O modo geral usa redução espectral adaptativa. Não é o motor do Adobe Podcast v2, e não há comprovação de qualidade igual ou superior ao Adobe. RNNoise não faz reconstrução de voz nem remoção garantida de reverberação. Vento combina passa-altas e redução espectral; não se promete recuperar fala ausente. O ducking reage ao sinal da faixa principal e não distingue semanticamente fala de ruído. A trilha de música se repete até a duração da faixa principal. Mixagem multicanal e stems ainda não estão disponíveis.
+A limpeza padrão usa o modelo neural aberto DeepFilterNet3; RNNoise continua disponível para compatibilidade. A cadeia, os presets e a interface são NOSSOM; os modelos de aprendizado não foram treinados do zero por este projeto. O modo geral usa redução espectral adaptativa. Não é o motor do Adobe Podcast v2, e não há comprovação de qualidade igual ou superior ao Adobe. Nenhum dos modos garante reconstrução de fala ausente, remoção total de reverberação ou resultado igual ao Adobe, Resolve ou RX em todas as gravações. Vento combina passa-altas e redução espectral; não se promete recuperar fala ausente. O ducking reage ao sinal da faixa principal e não distingue semanticamente fala de ruído. A trilha de música se repete até a duração da faixa principal. Mixagem multicanal e stems ainda não estão disponíveis.
 
 Todos os tratamentos são serializados para um único motor por aba. A UI apresenta progresso reportado pelo motor quando disponível, pode cancelar a operação e preserva versões salvas em caso de falha. Em dispositivos com pouca memória, use arquivos menores. Original e versões ficam apenas no navegador, sem backup automático, login, sincronização ou isolamento entre pessoas que compartilham o mesmo perfil do navegador.
 
 O volume A/B é igualado atenuando o arquivo mais alto para a menor leitura de LUFS. O ganho de reprodução não altera arquivos exportados. LUFS/LRA podem não ser significativos em sinais muito curtos ou silenciosos. Não há certificação automática de conformidade: os perfis são referências editoriais. TV exige confirmação das especificações do cliente; cinema e ATSC não recebem alvos universais. O relatório mede o WAV renderizado; não certifica o MP3 codificado, cujos picos podem diferir.
 
-Cada versão recebe a operação, o perfil e os controles aplicados. A entrega usa loudnorm em duas passagens, medição do resultado e correção final limitada pela margem de true peak. Se o teto de pico impedir a meta de loudness, o relatório mantém a medição real. Em trechos selecionados, não se aplica correção global que alteraria o restante do arquivo. Ao processar um trecho, a linha do tempo e o restante do áudio são preservados. A mixagem requer o áudio inteiro.
+Cada versão recebe a operação, o perfil, os controles e o identificador de sua versão de origem. A versão ativa e a trilha de refazer ficam no projeto, sem reprocessamento para desfazer/refazer. A entrega usa loudnorm em duas passagens, medição do resultado e correção final limitada pela margem de true peak. Se o teto de pico impedir a meta de loudness, o relatório mantém a medição real. Em trechos selecionados, não se aplica correção global que alteraria o restante do arquivo. Ao processar um trecho, a linha do tempo e o restante do áudio são preservados. A mixagem requer o áudio inteiro.
 
 ## ElevenLabs
 
@@ -99,4 +103,18 @@ O guia SOBEDESCE orienta a hierarquia de telas, peças reutilizáveis, navegaç�
 
 ## Modelo neural e licenças
 
-RNNoise via `@shiguredo/rnnoise-wasm@2025.1.5` (Apache-2.0); núcleo RNNoise (BSD, em `public/licenses/rnnoise.txt`). A licença do wrapper é servida em `/audio/RNNOISE-WASM-LICENSE.txt`. Processamento local, sem nova chave nem cobrança por API. O fixture de regressão usa voz sintética Flite, não gravação de uma pessoa; detalhes em `tests/fixtures/README.md`.
+DeepFilterNet3 via `@lofcz/deepfilternet-web@0.1.0` (MIT/Apache-2.0), com licença servida em `/audio/DEEPFILTER-LICENSE.txt`; detalhes em [docs/audio-engine.md](docs/audio-engine.md). RNNoise via `@shiguredo/rnnoise-wasm@2025.1.5` (Apache-2.0); núcleo RNNoise (BSD, em `public/licenses/rnnoise.txt`). A licença do wrapper é servida em `/audio/RNNOISE-WASM-LICENSE.txt`. Processamento local, sem nova chave nem cobrança por API. O fixture de regressão usa voz sintética Flite, não gravação de uma pessoa; detalhes em `tests/fixtures/README.md`.
+
+## Claude Sonnet 5.5 · esforço alto
+
+A integração está em `/studio/ia`. Em Vercel → projeto NOSSOM → Settings → Environment Variables, configure em Production:
+
+- `ANTHROPIC_API_KEY`: chave privada do Console Anthropic, com créditos e acesso ao modelo.
+- `ANTHROPIC_MODEL=claude-sonnet-5-5`.
+- `NOSSOM_AI_ACCESS_CODE`: ao menos 16 caracteres aleatórios, para liberar a sessão no estúdio.
+
+Faça um novo deploy. Abra `/studio/ia`, digite somente o código de acesso e conecte. As chaves nunca são pedidas na interface nem enviadas ao cliente. O servidor verifica acesso ao modelo e envia `thinking: { type: 'adaptive' }` e `output_config: { effort: 'high' }`. A sessão usa cookie HttpOnly assinado de uma hora e o endpoint exige a mesma origem. O limite em memória é adicional; não substitui quotas de conta, gateway ou rate limiting distribuído para um produto multiusuário.
+
+Claude recebe pedido e medições, não o áudio. Retorna uma sugestão restrita de ferramenta/intensidade/preset, que o usuário revisa. Não renderiza a restauração neural, não executa filtros livres e não aplica efeitos automaticamente. Sem configuração, o assistente continua identificado como sugestões locais por intenção. A assinatura do aplicativo Claude não substitui créditos de API.
+
+Os contratos foram conferidos no SDK oficial Anthropic: [Model e OutputConfig](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/messages/messages.ts) e [capacidades dos modelos](https://github.com/anthropics/anthropic-sdk-typescript/blob/main/src/resources/models.ts). Testes usam um provedor simulado; não houve chamada paga nem validação com credencial real.

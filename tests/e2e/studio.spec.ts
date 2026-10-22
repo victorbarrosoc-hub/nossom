@@ -66,7 +66,7 @@ test('landing, responsive navigation, functional demonstration and assistant', a
   ).toBeTruthy();
   expect(errors).toEqual([]);
 });
-test('real audio workflow: import, neural denoise, A/B, master, report, export, persist, rename and delete', async ({
+test('real audio workflow: import, general denoise, A/B, master, report, export, persist, rename and delete', async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -76,10 +76,13 @@ test('real audio workflow: import, neural denoise, A/B, master, report, export, 
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles({ name: 'entrevista.wav', mimeType: 'audio/wav', buffer: waveFixture(5, true) });
-  await expect(page.getByRole('heading', { name: 'entrevista', exact: true })).toBeVisible({
+  await expect(
+    page.locator('.editor-heading p').getByText('entrevista', { exact: true }),
+  ).toBeVisible({
     timeout: 90000,
   });
   await expect(page.getByText('Estéreo', { exact: false }).first()).toBeVisible();
+  await page.getByRole('button', { name: 'Áudio geral', exact: false }).click();
   await expect(page.getByRole('button', { name: 'Aplicar tratamento' })).toBeEnabled();
   await page.getByRole('button', { name: 'Reproduzir áudio' }).click();
   await expect(page.getByRole('button', { name: 'Pausar áudio' })).toBeVisible();
@@ -91,7 +94,7 @@ test('real audio workflow: import, neural denoise, A/B, master, report, export, 
   await page.getByRole('button', { name: 'A · Original', exact: true }).click();
   await expect(page.getByRole('heading', { name: 'Arquivo original', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'B · Resultado', exact: true }).click();
-  await page.getByLabel('O QUE VAMOS MELHORAR?').selectOption('master');
+  await page.getByRole('button', { name: 'Preparar entrega', exact: true }).click();
   await page.getByRole('button', { name: 'Aplicar tratamento' }).click();
   await expect(
     page.getByRole('heading', { name: 'Preparar entrega · V2', exact: true }),
@@ -126,10 +129,13 @@ test('real audio workflow: import, neural denoise, A/B, master, report, export, 
   await page.getByRole('button', { name: 'Renomear projeto' }).click();
   await page.getByLabel('Nome do projeto').fill('Podcast NOSSOM');
   await page.getByRole('button', { name: 'Salvar nome', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Podcast NOSSOM', exact: true })).toBeVisible();
+  await expect(
+    page.locator('.editor-heading p').getByText('Podcast NOSSOM', { exact: true }),
+  ).toBeVisible();
   await page.reload();
-  await page.getByRole('button', { name: /^Podcast NOSSOM/ }).click();
-  await expect(page.getByRole('heading', { name: 'Podcast NOSSOM', exact: true })).toBeVisible();
+  await expect(
+    page.locator('.editor-heading p').getByText('Podcast NOSSOM', { exact: true }),
+  ).toBeVisible();
   await page.getByRole('button', { name: 'Meus projetos', exact: true }).click();
   await page.getByRole('button', { name: 'Excluir Podcast NOSSOM' }).click();
   await page.getByRole('button', { name: 'Excluir projeto', exact: true }).click();
@@ -152,19 +158,19 @@ test('rejects invalid uploads without losing a project, supports selection and a
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles({ name: 'voz.wav', mimeType: 'audio/wav', buffer: waveFixture(3) });
-  await expect(page.getByRole('heading', { name: 'voz', exact: true })).toBeVisible({
+  await expect(page.locator('.editor-heading p').getByText('voz', { exact: true })).toBeVisible({
     timeout: 90000,
   });
   await page.getByRole('button', { name: 'Selecionar trecho', exact: true }).click();
   await page.getByLabel('Início do trecho em segundos').fill('0.5');
   await page.getByLabel('Fim do trecho em segundos').fill('2');
-  await page.getByLabel('O QUE VAMOS MELHORAR?').selectOption('wind');
+  await page.getByRole('button', { name: 'Atenuar vento', exact: true }).click();
   await page.getByRole('button', { name: 'Aplicar tratamento' }).click();
   await expect(page.getByRole('heading', { name: 'Atenuar vento · V1', exact: true })).toBeVisible({
     timeout: 90000,
   });
   await page.getByRole('button', { name: 'Áudio inteiro', exact: true }).click();
-  await page.getByLabel('O QUE VAMOS MELHORAR?').selectOption('mix');
+  await page.getByRole('button', { name: 'Mixar com música', exact: true }).click();
   await page
     .getByLabel('Importar trilha de música', { exact: true })
     .setInputFiles({ name: 'trilha.wav', mimeType: 'audio/wav', buffer: waveFixture(2, true) });
@@ -207,12 +213,16 @@ test('cancelling an import preserves saved projects and lets the user retry', as
     .setInputFiles({ name: 'cancelar.wav', mimeType: 'audio/wav', buffer: waveFixture(10) });
   await page.getByRole('button', { name: 'Cancelar', exact: true }).click();
   await expect(page.locator('.processing-banner')).toHaveCount(0, { timeout: 65000 });
-  await expect(page.getByRole('heading', { name: 'cancelar', exact: true })).toHaveCount(0);
+  await expect(
+    page.locator('.editor-heading p').getByText('cancelar', { exact: true }),
+  ).toHaveCount(0);
   await expect(page.locator('.alert.error')).toContainText('cancelado');
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles({ name: 'nova-tentativa.wav', mimeType: 'audio/wav', buffer: waveFixture(2) });
-  await expect(page.getByRole('heading', { name: 'nova-tentativa', exact: true })).toBeVisible({
+  await expect(
+    page.locator('.editor-heading p').getByText('nova-tentativa', { exact: true }),
+  ).toBeVisible({
     timeout: 90000,
   });
 });
@@ -227,13 +237,15 @@ test('microphone recording can be imported, enhanced and leveled', async ({ page
     timeout: 5000,
   });
   await page.getByRole('button', { name: /Finalizar/ }).click();
-  await expect(page.getByRole('heading', { name: /^Gravação / })).toBeVisible({ timeout: 90000 });
-  await page.getByLabel('O QUE VAMOS MELHORAR?').selectOption('clarity');
+  await expect(page.locator('.editor-heading p').getByText(/^Gravação /)).toBeVisible({
+    timeout: 90000,
+  });
+  await page.getByRole('button', { name: 'Melhorar voz', exact: true }).click();
   await page.getByRole('button', { name: 'Aplicar tratamento' }).click();
   await expect(page.getByRole('heading', { name: 'Melhorar voz · V1', exact: true })).toBeVisible({
     timeout: 90000,
   });
-  await page.getByLabel('O QUE VAMOS MELHORAR?').selectOption('level');
+  await page.getByRole('button', { name: 'Nivelar volumes', exact: true }).click();
   await page.getByRole('button', { name: 'Aplicar tratamento' }).click();
   await expect(
     page.getByRole('heading', { name: 'Nivelar volumes · V2', exact: true }),
@@ -252,6 +264,11 @@ test('studio themes persist, responsive layouts fit and reduced motion pauses de
   const { default: AxeBuilder } = await import('@axe-core/playwright');
   for (const theme of ['light', 'dark']) {
     await page.getByLabel('Tema do estúdio').selectOption(theme);
+    // Audit settled colors, after the existing 200 ms theme transition.
+    await expect(page.locator('.studio-sidebar nav > button').nth(1)).toHaveCSS(
+      'color',
+      theme === 'light' ? 'rgb(101, 101, 107)' : 'rgb(161, 172, 189)',
+    );
     for (const width of [1440, 1000, 390]) {
       await page.setViewportSize({ width, height: 900 });
       expect(
