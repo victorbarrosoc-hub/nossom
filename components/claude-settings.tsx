@@ -23,6 +23,19 @@ export default function ClaudeSettings() {
       .then(setStatus)
       .catch(() => setError('Não foi possível ler a conexão.'));
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const agent = params.get('agentId'),
+      environment = params.get('environmentId');
+    if (
+      agent &&
+      /^agent_[a-zA-Z0-9]{8,100}$/.test(agent) &&
+      environment &&
+      /^env_[a-zA-Z0-9]{8,100}$/.test(environment)
+    ) {
+      setMode('managed');
+      setAgentId(agent);
+      setEnvironmentId(environment);
+    }
     void refresh();
   }, []);
   async function connect(event: React.FormEvent) {

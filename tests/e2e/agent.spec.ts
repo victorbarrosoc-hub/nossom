@@ -48,10 +48,12 @@ test('Console agent setup sends IDs with the private access code, continues the 
       },
     });
   });
-  await page.goto('/studio/ia');
-  await page.getByLabel('IA da plataforma', { exact: true }).selectOption('managed');
-  await page.getByLabel('Agent ID', { exact: true }).fill(config.agentId);
-  await page.getByLabel('Environment ID', { exact: true }).fill(config.environmentId);
+  await page.goto(`/studio/ia?${new URLSearchParams(config)}`);
+  await expect(page.getByLabel('IA da plataforma', { exact: true })).toHaveValue('managed');
+  await expect(page.getByLabel('Agent ID', { exact: true })).toHaveValue(config.agentId);
+  await expect(page.getByLabel('Environment ID', { exact: true })).toHaveValue(
+    config.environmentId,
+  );
   await page.getByLabel('Código de acesso da NOSSOM').fill('test-access-not-a-real-code');
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
