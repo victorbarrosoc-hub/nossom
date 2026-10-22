@@ -66,7 +66,7 @@ test('landing, responsive navigation, functional demonstration and assistant', a
   ).toBeTruthy();
   expect(errors).toEqual([]);
 });
-test('real audio workflow: import, FFT denoise, A/B, master, report, export, persist, rename and delete', async ({
+test('real audio workflow: import, neural denoise, A/B, master, report, export, persist, rename and delete', async ({
   page,
 }) => {
   const errors: string[] = [];
@@ -102,6 +102,7 @@ test('real audio workflow: import, FFT denoise, A/B, master, report, export, per
   const reportPath = await report.path();
   const fs = await import('node:fs/promises');
   const data = JSON.parse(await fs.readFile(reportPath!, 'utf8'));
+  console.log('Delivery verification:', JSON.stringify(data.after));
   expect(data.after.lufs).not.toBeNull();
   expect(Math.abs(data.after.lufs - -16)).toBeLessThan(1);
   expect(data.after.truePeak).toBeLessThanOrEqual(-0.8);
@@ -238,4 +239,45 @@ test('microphone recording can be imported, enhanced and leveled', async ({ page
     page.getByRole('heading', { name: 'Nivelar volumes · V2', exact: true }),
   ).toBeVisible({ timeout: 90000 });
   await expect(page.locator('.alert.error')).toHaveCount(0);
+});
+
+test('studio themes persist, responsive layouts fit and reduced motion pauses demonstrations', async ({
+  page,
+}) => {
+  await page.goto('/studio');
+  await page.getByLabel('Tema do estúdio').selectOption('dark');
+  await expect(page.locator('.studio-shell')).toHaveAttribute('data-theme', 'dark');
+  await page.reload();
+  await expect(page.getByLabel('Tema do estúdio')).toHaveValue('dark');
+  const { default: AxeBuilder } = await import('@axe-core/playwright');
+  for (const theme of ['light', 'dark']) {
+    await page.getByLabel('Tema do estúdio').selectOption(theme);
+    for (const width of [1440, 1000, 390]) {
+      await page.setViewportSize({ width, height: 900 });
+      expect(
+        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+      ).toBeTruthy();
+      const audit = await new AxeBuilder({ page })
+        .withTags(['wcag2a', 'wcag2aa', 'wcag21aa'])
+        .analyze();
+      expect(audit.violations).toEqual([]);
+    }
+  }
+  await page
+    .getByRole('navigation', { name: 'Navegação rápida' })
+    .getByRole('button', { name: 'Projetos', exact: true })
+    .click();
+  await expect(page.getByRole('heading', { name: 'Meus projetos.' })).toBeVisible();
+  await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
+  await page.goto('/');
+  await expect(page.locator('.ns-hero-stage')).toBeVisible();
+  expect(
+    await page
+      .locator('.ns-hero-ribbon .ribbon-flow')
+      .first()
+      .evaluate((el) => getComputedStyle(el).animationName),
+  ).toBe('none');
+  expect(await page.locator('body').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(
+    'rgb(8, 12, 16)',
+  );
 });

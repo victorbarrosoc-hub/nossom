@@ -6,11 +6,11 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       <svg width="51" height="29" viewBox="0 0 110 56" aria-hidden="true">
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2=".8" y2="1">
-            <stop stopColor="#fff" />
-            <stop offset=".3" stopColor="#a8b4c1" />
-            <stop offset=".5" stopColor="#f5f8ff" />
-            <stop offset=".7" stopColor="#68798a" />
-            <stop offset="1" stopColor="#eef4ff" />
+            <stop stopColor="var(--logo-edge, #111318)" />
+            <stop offset=".3" stopColor="var(--logo-mid, #404b56)" />
+            <stop offset=".5" stopColor="#d7dce3" />
+            <stop offset=".7" stopColor="var(--logo-edge, #111318)" />
+            <stop offset="1" stopColor="var(--logo-mid, #7a8c9d)" />
           </linearGradient>
         </defs>
         <path

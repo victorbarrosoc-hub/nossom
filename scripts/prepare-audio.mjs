@@ -4,3 +4,7 @@ await cp('node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.js', 'public/ffmpeg/ffm
 await cp('node_modules/@ffmpeg/core/dist/esm/ffmpeg-core.wasm', 'public/ffmpeg/ffmpeg-core.wasm');
 await cp('node_modules/@ffmpeg/ffmpeg/dist/esm', 'public/ffmpeg/worker', { recursive: true });
 console.log('Audio engine assets ready.');
+await mkdir('public/audio', { recursive: true });
+await cp('node_modules/@shiguredo/rnnoise-wasm/dist/rnnoise.js', 'public/audio/rnnoise.js');
+await cp('node_modules/@shiguredo/rnnoise-wasm/LICENSE', 'public/audio/RNNOISE-WASM-LICENSE.txt');
+await cp('scripts/neural-worker.mjs', 'public/audio/neural-worker.js');

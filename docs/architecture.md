@@ -12,7 +12,7 @@ Next.js/React/TypeScript entregam a aplicação. FFmpeg WebAssembly roda em um W
 | -------------------- | ----------------------------------------------------------- | ----------------------------------------------------------- |
 | Início e projetos    | Upload/drag-and-drop, gravação, busca, renomeação, exclusão | Contas, equipes e sincronização                             |
 | Editor               | Waveform real, A/B, loudness matching, trecho, versões      | Fade de bordas e edição multitrecho                         |
-| Voz                  | FFT denoise, EQ, compressão, passa-altas                    | De-reverb neural, de-click adaptativo, de-esser dedicado    |
+| Voz                  | RNNoise neural, FFT adaptativo, EQ, dinâmica ajustável      | De-reverb neural, de-click adaptativo, de-esser dedicado    |
 | Mixagem              | Voz + música com sidechain ducking, nível da trilha         | Multitrilha, efeitos, automação e VAD                       |
 | Entrega              | Loudnorm, LUFS, dBTP, LRA, relatório JSON, WAV/MP3          | Perfis por cliente, PDF e homologação por especificação     |
 | Assistente           | Regras de intenção e adaptador de conversa ElevenLabs       | Planejador generativo autorizado e ferramentas do agente    |
@@ -35,7 +35,7 @@ A reprodução original usa a cópia de trabalho decodificada. O download “Ori
 | Armazenamento de projetos local         | Nenhum; limitado pela cota do navegador                           |
 | Hospedagem                              | Depende do plano e do tráfego; primeira carga do motor tem ~31 MB |
 | Conversa ElevenLabs                     | Conforme agente/plano do provedor; não configurado nem mensurado  |
-| IA neural e nuvem                       | Não provisionadas; preço não definido                             |
+| Restauração avançada e nuvem            | Não provisionadas; preço não definido                             |
 
 ## Próxima etapa de infraestrutura
 
@@ -48,3 +48,11 @@ Migrações, políticas RLS e contratos de worker devem ser implementados e vali
 ## Validação manual com fala
 
 Os testes automatizados validam processamento e medições com sinais determinísticos. Antes de lançar uma oferta comercial, avaliar entrevistas, podcasts, vento, reverberação e gravações com diferentes microfones; comparar artefatos e inteligibilidade com escuta em loudness igualado. Nenhuma avaliação perceptual de fala real foi alegada com base no sinal de teste.
+
+## Revisão de áudio e interface
+
+RNNoise roda em worker separado; mantém estado independente por canal, usa PCM 48 kHz, processa quadros de 480 amostras e compensa um quadro de atraso. O mix original/tratado implementa intensidade contínua; 0% faz bypass. Regiões recebem transição de 5 ms e mantêm o restante original. Cancelamento termina ambos os workers. O resultado segue para FFmpeg e medição pós-renderização.
+
+O modo espectral estima piso por percentil inferior de RMS em janelas de 20 ms quando há contraste de nível suficiente. Sem pausas claras, informa incerteza; não apresenta estimativa como identificação garantida de ruído.
+
+A normalização usa análise e render de loudnorm, seguida por ajuste constante apenas quando há margem de true peak medida. A correção final não se aplica a tratamento regional. `Version.processing` e o relatório guardam os controles e motor.

@@ -129,7 +129,7 @@ export function WavePlayer({
               width="2.1"
               height={Math.max(4, value * 124)}
               rx="1"
-              fill={i / 240 < time / duration ? '#b7caff' : '#52678c'}
+              fill={i / 240 < time / duration ? 'var(--up-text)' : 'var(--down-text)'}
             />
           ))}
           {region && (
@@ -138,9 +138,9 @@ export function WavePlayer({
               y="0"
               width={((region.end - region.start) / duration) * 960}
               height="130"
-              fill="#96b5ff"
+              fill="var(--down)"
               fillOpacity=".08"
-              stroke="#8ca9e8"
+              stroke="var(--down)"
               strokeOpacity=".4"
             />
           )}
@@ -149,7 +149,7 @@ export function WavePlayer({
             y1="0"
             x2={(time / duration) * 960}
             y2="130"
-            stroke="#f0f5ff"
+            stroke="var(--text)"
             strokeWidth="1.2"
           />
         </svg>

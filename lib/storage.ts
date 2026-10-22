@@ -9,6 +9,16 @@ export type Version = {
   metrics: Measurements;
   operation?: string;
   preset?: string;
+  processing?: {
+    engine: string;
+    strength: number;
+    noiseFloor: number;
+    mode: string;
+    noiseReduction?: number;
+    presence?: number;
+    compression?: number;
+    highpass?: number;
+  };
 };
 export type Project = {
   id: string;

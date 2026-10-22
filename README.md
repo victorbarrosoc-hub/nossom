@@ -20,13 +20,15 @@ npm run build
 npm run start
 ```
 
-Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile para `public/ffmpeg`. O motor (~31 MB) é carregado na primeira operação de áudio. Não é necessário token para usar o estúdio local. O core e os workers são servidos pelo próprio domínio, com verificação de integridade de pacotes durante `npm ci` e sem CDNs de runtime.
+Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile para `public/ffmpeg` e o modelo RNNoise (aproximadamente 4,6 MB) para `public/audio`. Desenvolvimento e build usam Webpack para compatibilidade com o worker FFmpeg. O motor (~31 MB) é carregado na primeira operação de áudio. Não é necessário token para usar o estúdio local. O core e os workers são servidos pelo próprio domínio, com verificação de integridade de pacotes durante `npm ci` e sem CDNs de runtime.
 
 ## O que funciona
 
 - Página pública responsiva com motion, demonstração sonora real, perguntas frequentes e entrada no estúdio.
 - Importação de WAV, MP3, M4A, FLAC, OGG e áudio de MP4/MOV conforme codec. O conteúdo é decodificado e validado, independentemente da extensão. Máximo de 100 MB, 10 minutos, mono ou estéreo.
 - Gravação por microfone, mediante permissão. Máximo de 10 minutos.
+- RNNoise neural em worker local para limpeza de fala, com intensidade contínua e compensação de latência. Modo espectral separado para música e áudio geral.
+- Controles de 0–100%, redução máxima/piso de ruído, presença, compressão, corte de graves, volume final, teto de pico e ducking. Estimativa de piso por análise das janelas silenciosas.
 - FFmpeg WebAssembly executado em worker local: redução espectral de ruído contínuo, EQ de presença, passa-altas para vento, compressão, normalização de loudness e mixagem com sidechain ducking.
 - Waveform real, busca de posição, seleção de trecho, reprodução A/B sincronizada e compensação de loudness na escuta.
 - Preservação do arquivo originalmente enviado. O editor utiliza uma cópia de trabalho WAV PCM 16-bit/48 kHz. Cada tratamento cria uma versão, sem sobrescrever o original.
@@ -38,13 +40,13 @@ Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile 
 
 ## Limites técnicos
 
-A redução de ruído é DSP espectral, não restauração neural. Vento é atenuado por passa-altas; não se promete recuperar fala ausente. O ducking reage ao sinal da faixa principal e não distingue semanticamente fala de ruído. A trilha de música se repete até a duração da faixa principal. Mixagem multicanal e stems ainda não estão disponíveis.
+A limpeza de fala usa o modelo neural RNNoise, especializado em supressão de ruído. O modo geral usa redução espectral adaptativa. Não é o motor do Adobe Podcast v2, e não há comprovação de qualidade igual ou superior ao Adobe. RNNoise não faz reconstrução de voz nem remoção garantida de reverberação. Vento combina passa-altas e redução espectral; não se promete recuperar fala ausente. O ducking reage ao sinal da faixa principal e não distingue semanticamente fala de ruído. A trilha de música se repete até a duração da faixa principal. Mixagem multicanal e stems ainda não estão disponíveis.
 
 Todos os tratamentos são serializados para um único motor por aba. A UI apresenta progresso reportado pelo motor quando disponível, pode cancelar a operação e preserva versões salvas em caso de falha. Em dispositivos com pouca memória, use arquivos menores. Original e versões ficam apenas no navegador, sem backup automático, login, sincronização ou isolamento entre pessoas que compartilham o mesmo perfil do navegador.
 
 O volume A/B é igualado atenuando o arquivo mais alto para a menor leitura de LUFS. O ganho de reprodução não altera arquivos exportados. LUFS/LRA podem não ser significativos em sinais muito curtos ou silenciosos. Não há certificação automática de conformidade: os perfis são referências editoriais. TV exige confirmação das especificações do cliente; cinema e ATSC não recebem alvos universais. O relatório mede o WAV renderizado; não certifica o MP3 codificado, cujos picos podem diferir.
 
-Cada versão recebe a operação e o perfil aplicados. Ao processar um trecho, a linha do tempo e o restante do áudio são preservados. A mixagem requer o áudio inteiro.
+Cada versão recebe a operação, o perfil e os controles aplicados. A entrega usa loudnorm em duas passagens, medição do resultado e correção final limitada pela margem de true peak. Se o teto de pico impedir a meta de loudness, o relatório mantém a medição real. Em trechos selecionados, não se aplica correção global que alteraria o restante do arquivo. Ao processar um trecho, a linha do tempo e o restante do áudio são preservados. A mixagem requer o áudio inteiro.
 
 ## ElevenLabs
 
@@ -90,3 +92,11 @@ npm run test:e2e
 ## Licenças
 
 As dependências permanecem sujeitas às respectivas licenças. FFmpeg core inclui componentes sob GPL; revise `THIRD_PARTY_NOTICES.md` antes de redistribuir uma versão modificada do motor. O SDK ElevenLabs não concede direitos sobre vozes. Esta entrega não utiliza gravações, depoimentos, métricas comerciais ou logotipos de terceiros como prova social.
+
+## Estrutura e identidade visual
+
+O guia SOBEDESCE orienta a hierarquia de telas, peças reutilizáveis, navegação móvel e ritmos de movimento. A identidade é NOSSOM: grafite, prata, luz azul/violeta e ondas fluidas. Os estilos estão separados em tokens, kit, estúdio e site. O estúdio tem tema escuro inicial, claro e automático; a escolha fica no navegador. Reduzir movimento desativa loops e deslocamentos. Demos decorativas só animam visíveis.
+
+## Modelo neural e licenças
+
+RNNoise via `@shiguredo/rnnoise-wasm@2025.1.5` (Apache-2.0); núcleo RNNoise (BSD, em `public/licenses/rnnoise.txt`). A licença do wrapper é servida em `/audio/RNNOISE-WASM-LICENSE.txt`. Processamento local, sem nova chave nem cobrança por API. O fixture de regressão usa voz sintética Flite, não gravação de uma pessoa; detalhes em `tests/fixtures/README.md`.

@@ -34,12 +34,14 @@ import {
   PenLine,
   Info,
 } from 'lucide-react';
-import { Brand, SoundRibbon } from './brand';
+import { Brand } from './brand';
 import { useDialog } from '@/lib/use-dialog';
 import Assistant from './assistant';
 import { WavePlayer } from './wave-player';
-import { operations, deliveryPresets, type Operation, type Intensity } from '@/lib/presets';
+import { operations, deliveryPresets, type Operation, type DenoiseMode } from '@/lib/presets';
+import { estimateNoiseFloor } from '@/lib/noise-profile';
 import {
+  decode,
   importAudio,
   processAudio,
   exportMp3,
@@ -72,13 +74,89 @@ function metric(value: number | null, suffix = '') {
 function date(value: number) {
   return new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(value);
 }
+function RangeControl({
+  label,
+  value,
+  min,
+  max,
+  step = 1,
+  unit = '',
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  min: number;
+  max: number;
+  step?: number;
+  unit?: string;
+  disabled: boolean;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="audio-range">
+      <span>
+        {label}
+        <output>
+          {value}
+          {unit}
+        </output>
+      </span>
+      <input
+        type="range"
+        aria-label={label}
+        aria-valuetext={`${value}${unit}`}
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      <span className="range-scale">
+        <small>
+          {min}
+          {unit}
+        </small>
+        <small>
+          {max}
+          {unit}
+        </small>
+      </span>
+    </label>
+  );
+}
 export default function Studio() {
+  const [denoiseMode, setDenoiseMode] = useState<DenoiseMode>('voice');
+  const [noiseFloor, setNoiseFloor] = useState<number | null>(null);
+  const [noiseReduction, setNoiseReduction] = useState(36);
+  const [presence, setPresence] = useState(5);
+  const [compression, setCompression] = useState(4);
+  const [highpass, setHighpass] = useState(140);
+  const [analysisNote, setAnalysisNote] = useState('');
+  const [theme, setTheme] = useState<'system' | 'light' | 'dark'>('dark');
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('nossom-theme');
+      if (saved === 'light' || saved === 'dark') setTheme(saved);
+    } catch {
+      /* The studio also works with preference storage disabled. */
+    }
+  }, []);
+  function changeTheme(value: 'system' | 'light' | 'dark') {
+    setTheme(value);
+    try {
+      localStorage.setItem('nossom-theme', value);
+    } catch {
+      /* Optional preference. */
+    }
+  }
   const [view, setView] = useState<'home' | 'projects' | 'editor'>('home'),
     [projects, setProjects] = useState<ProjectSummary[]>([]),
     [project, setProject] = useState<Project | null>(null),
     [versionIndex, setVersionIndex] = useState(0);
   const [operation, setOperation] = useState<Operation>('denoise'),
-    [intensity, setIntensity] = useState<Intensity>('balanced'),
+    [intensity, setIntensity] = useState(90),
     [preset, setPreset] = useState('podcast'),
     [target, setTarget] = useState(-16),
     [peak, setPeak] = useState(-1),
@@ -243,6 +321,14 @@ export default function Studio() {
       const result = await processAudio(version.blob, {
         operation,
         intensity,
+        mode: denoiseMode,
+        settings: {
+          noiseFloor: noiseFloor ?? version.info.noiseFloor,
+          noiseReduction,
+          presence,
+          compression,
+          highpass,
+        },
         target,
         peak,
         music: music?.blob,
@@ -301,6 +387,7 @@ export default function Studio() {
       source: project.originalName,
       version: version.label,
       processingPreset: version.preset ?? null,
+      processingSettings: version.processing ?? null,
       output: {
         format: 'WAV PCM 16-bit',
         sampleRate: version.info.sampleRate,
@@ -314,6 +401,7 @@ export default function Studio() {
       history: project.versions.map((v) => ({
         label: v.label,
         operation: v.operation ?? 'import',
+        processing: v.processing ?? null,
         preset: v.preset ?? null,
         createdAt: new Date(v.createdAt).toISOString(),
       })),
@@ -453,7 +541,7 @@ export default function Studio() {
     </div>
   );
   return (
-    <div className="studio-shell">
+    <div className="studio-shell" data-theme={theme}>
       <a className="skip-link" href="#studio-main">
         Pular para o estúdio
       </a>
@@ -492,7 +580,7 @@ export default function Studio() {
           >
             <Folder size={18} /> Meus projetos <small>{projects.length}</small>
           </button>
-          <span className="sidebar-caption">SEU SOM, SUAS POSSIBILIDADES</span>
+          <span className="sidebar-caption">FERRAMENTAS</span>
           {operations.map((o) => {
             const Icon = toolIcons[o.id];
             return (
@@ -506,7 +594,7 @@ export default function Studio() {
               </button>
             );
           })}
-          <span className="sidebar-caption">EM DESENVOLVIMENTO</span>
+          <span className="sidebar-caption">EM BREVE</span>
           <span className="future-nav">
             <Layers size={17} /> Separação por IA <small>Em breve</small>
           </span>
@@ -547,11 +635,29 @@ export default function Studio() {
               {view === 'editor' ? project?.name : view === 'projects' ? 'Meus projetos' : 'Início'}
             </strong>
           </div>
-          <button className="assistant-top" onClick={() => setAssistant(true)}>
-            <AudioLines size={17} />
-            <span>Assistente NOSSOM</span>
-            <span className="keycap">↗</span>
-          </button>
+          <div className="studio-header-actions">
+            <label className="theme-control">
+              <span className="sr-only">Tema do estúdio</span>
+              <select
+                aria-label="Tema do estúdio"
+                value={theme}
+                onChange={(e) => changeTheme(e.target.value as 'system' | 'light' | 'dark')}
+              >
+                <option value="system">Tema do aparelho</option>
+                <option value="light">Claro</option>
+                <option value="dark">Escuro</option>
+              </select>
+            </label>
+            <button
+              className="assistant-top"
+              aria-label="Assistente NOSSOM"
+              onClick={() => setAssistant(true)}
+            >
+              <AudioLines size={17} />
+              <span>Assistente NOSSOM</span>
+              <span className="keycap">↗</span>
+            </button>
+          </div>
         </header>
         <main id="studio-main" className="studio-main">
           <input
@@ -620,62 +726,118 @@ export default function Studio() {
               <div className="studio-welcome">
                 <div>
                   <span className="eyebrow">TUDO ACONTECE NO SOM</span>
-                  <h1>
-                    O que vamos criar <span className="text-gradient">hoje?</span>
-                  </h1>
-                  <p>Uma ideia, um arquivo, infinitas possibilidades.</p>
+                  <h1>Seu espaço de criação.</h1>
+                  <p>Grave uma ideia, cuide do som e prepare a próxima entrega.</p>
                 </div>
                 <div className="workspace-indicator">
                   <span className="status-light" /> Seu estúdio está aberto
                 </div>
               </div>
-              <section
-                className={`upload-zone ${dragging ? 'dragging' : ''}`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragging(true);
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragging(false);
-                  const f = e.dataTransfer.files[0];
-                  if (f && !busy && !recording) void upload(f);
-                }}
-              >
-                <div className="upload-art">
-                  <SoundRibbon small />
+              <div className="studio-stats">
+                <div>
+                  <span className="stat-icon purple">
+                    <Folder size={19} />
+                  </span>
+                  <div>
+                    <span>Seus projetos</span>
+                    <strong>{projects.length}</strong>
+                    <small>Salvos neste navegador</small>
+                  </div>
                 </div>
-                <span className="upload-icon">
-                  <Upload size={25} strokeWidth={1.4} />
-                </span>
-                <h2>Seu próximo som começa aqui.</h2>
-                <p>Arraste um arquivo ou escolha por onde começar.</p>
-                <div className="upload-actions">
-                  <button
-                    className="button primary"
-                    disabled={!!busy || recording}
-                    onClick={() => fileInput.current?.click()}
-                  >
-                    <Plus size={16} /> Enviar áudio
-                  </button>
-                  <button
-                    className={`button secondary ${recording ? 'recording' : ''}`}
-                    onClick={record}
-                    disabled={!!busy}
-                  >
-                    {recording ? <Square size={14} fill="currentColor" /> : <Mic size={16} />}{' '}
-                    {recording ? `Finalizar · ${formatTime(recordSeconds)}` : 'Gravar uma ideia'}
-                  </button>
+                <div>
+                  <span className="stat-icon blue">
+                    <Clock size={19} />
+                  </span>
+                  <div>
+                    <span>Áudio no seu espaço</span>
+                    <strong>{formatTime(projects.reduce((sum, p) => sum + p.duration, 0))}</strong>
+                    <small>Duração dos originais</small>
+                  </div>
                 </div>
-                <span className="upload-formats">
-                  WAV, MP3, M4A, FLAC, OGG, MP4 e MOV · até 100 MB / 10 min
-                </span>
-              </section>
+                <div>
+                  <span className="stat-icon green">
+                    <ShieldCheck size={19} />
+                  </span>
+                  <div>
+                    <span>Seu áudio, com você</span>
+                    <strong>Local</strong>
+                    <small>Sem envio para servidores</small>
+                  </div>
+                </div>
+              </div>
+              <div className="studio-start-grid">
+                <section
+                  className={`upload-zone ${dragging ? 'dragging' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    const f = e.dataTransfer.files[0];
+                    if (f && !busy && !recording) void upload(f);
+                  }}
+                >
+                  <span className="upload-icon">
+                    <Upload size={25} strokeWidth={1.4} />
+                  </span>
+                  <h2>Vamos dar o primeiro play.</h2>
+                  <p>Arraste um arquivo ou escolha por onde começar.</p>
+                  <div className="upload-actions">
+                    <button
+                      className="button primary"
+                      disabled={!!busy || recording}
+                      onClick={() => fileInput.current?.click()}
+                    >
+                      <Plus size={16} /> Enviar áudio
+                    </button>
+                    <button
+                      className={`button secondary ${recording ? 'recording' : ''}`}
+                      onClick={record}
+                      disabled={!!busy}
+                    >
+                      {recording ? <Square size={14} fill="currentColor" /> : <Mic size={16} />}{' '}
+                      {recording ? `Finalizar · ${formatTime(recordSeconds)}` : 'Gravar uma ideia'}
+                    </button>
+                  </div>
+                  <span className="upload-formats">
+                    WAV, MP3, M4A, FLAC, OGG, MP4 e MOV · até 100 MB / 10 min
+                  </span>
+                </section>
+                <aside className="studio-start-guide">
+                  <span className="eyebrow">DO ARQUIVO AO ÁUDIO PRONTO</span>
+                  <h2>Um passo de cada vez.</h2>
+                  <ol>
+                    <li>
+                      <span>1</span>
+                      <div>
+                        <strong>Traga o seu áudio</strong>
+                        <p>Importe um arquivo ou grave aqui.</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span>2</span>
+                      <div>
+                        <strong>Encontre o ponto</strong>
+                        <p>Ajuste e compare com o original.</p>
+                      </div>
+                    </li>
+                    <li>
+                      <span>3</span>
+                      <div>
+                        <strong>Prepare a entrega</strong>
+                        <p>Baixe em WAV ou MP3.</p>
+                      </div>
+                    </li>
+                  </ol>
+                </aside>
+              </div>
               <div className="quick-section">
                 <div className="subheading">
-                  <h2>Encontre sua frequência.</h2>
-                  <span>O QUE VOCÊ QUER MELHORAR?</span>
+                  <h2>O que você quer melhorar?</h2>
+                  <span>ESCOLHA UM TRATAMENTO</span>
                 </div>
                 <div className="quick-grid">
                   {operations.slice(0, 5).map((o) => {
@@ -697,7 +859,7 @@ export default function Studio() {
               <div className="studio-lower">
                 <section className="recent-projects">
                   <div className="subheading">
-                    <h2>Seus últimos sons</h2>
+                    <h2>Projetos recentes</h2>
                     <button className="text-link" onClick={() => navigate('projects')}>
                       Ver todos <ArrowRight size={13} />
                     </button>
@@ -722,28 +884,6 @@ export default function Studio() {
                     </div>
                   )}
                 </section>
-                <aside className="studio-tip">
-                  <span className="eyebrow">
-                    <Sparkles size={14} /> UM BOM COMEÇO
-                  </span>
-                  <h3>
-                    Menos ruído.
-                    <br />
-                    Mais <span className="text-gradient">você.</span>
-                  </h3>
-                  <p>
-                    Comece com um tratamento leve. Compare o resultado e encontre o equilíbrio sem
-                    perder a naturalidade.
-                  </p>
-                  <button className="text-link" onClick={() => setAssistant(true)}>
-                    Encontre um tratamento <ArrowUpRight size={14} />
-                  </button>
-                  <div className="tip-wave" aria-hidden="true">
-                    {Array.from({ length: 28 }, (_, i) => (
-                      <i key={i} style={{ height: 12 + Math.sin(i * 0.25) ** 2 * 40 }} />
-                    ))}
-                  </div>
-                </aside>
               </div>
             </>
           )}
@@ -1005,34 +1145,176 @@ export default function Studio() {
                     ))}
                   </select>
                   <p className="operation-description">{selectedTool.description}</p>
-                  {operation !== 'master' && operation !== 'mix' && (
-                    <>
-                      <span className="field-label">INTENSIDADE</span>
-                      <div className="intensity-selector">
-                        {(
-                          [
-                            ['light', 'Leve'],
-                            ['balanced', 'Equilibrado'],
-                            ['strong', 'Forte'],
-                          ] as const
-                        ).map(([value, label]) => (
+                  <div className="treatment-controls">
+                    {(operation === 'denoise' || operation === 'clarity') && (
+                      <>
+                        <span className="field-label">MODO DE LIMPEZA</span>
+                        <div
+                          className="audio-mode-options"
+                          role="group"
+                          aria-label="Modo de limpeza"
+                        >
                           <button
-                            key={value}
+                            aria-pressed={denoiseMode === 'voice'}
+                            className={denoiseMode === 'voice' ? 'active' : ''}
                             disabled={!!busy}
-                            className={intensity === value ? 'active' : ''}
-                            onClick={() => setIntensity(value)}
+                            onClick={() => setDenoiseMode('voice')}
                           >
-                            {label}
+                            <Mic size={18} />
+                            <strong>Voz · IA local</strong>
+                            <span>Modelo neural para fala</span>
                           </button>
-                        ))}
-                      </div>
-                      <p className="field-hint">
-                        {intensity === 'strong'
-                          ? 'Tratamentos fortes podem criar artefatos ou reduzir a naturalidade.'
-                          : 'Comece com pouco e deixe sua escuta guiar o ajuste.'}
-                      </p>
-                    </>
-                  )}
+                          <button
+                            aria-pressed={denoiseMode === 'general'}
+                            className={denoiseMode === 'general' ? 'active' : ''}
+                            disabled={!!busy}
+                            onClick={() => setDenoiseMode('general')}
+                          >
+                            <AudioLines size={18} />
+                            <strong>Áudio geral</strong>
+                            <span>Redução espectral</span>
+                          </button>
+                        </div>
+                        <p className="field-hint">
+                          {denoiseMode === 'voice'
+                            ? 'O modelo RNNoise distingue fala de ruído. Para música e instrumentos, use Áudio geral.'
+                            : 'Atenua ruído contínuo preservando conteúdo musical. Ajuste o piso para o seu ambiente.'}
+                        </p>
+                      </>
+                    )}
+                    <RangeControl
+                      label={
+                        operation === 'master'
+                          ? 'Controle de dinâmica'
+                          : operation === 'mix'
+                            ? 'Redução da trilha durante a fala'
+                            : 'Intensidade do tratamento'
+                      }
+                      value={intensity}
+                      min={0}
+                      max={100}
+                      unit="%"
+                      disabled={!!busy}
+                      onChange={setIntensity}
+                    />
+                    <div
+                      className="intensity-selector"
+                      role="group"
+                      aria-label="Atalhos de intensidade"
+                    >
+                      {[
+                        [30, 'Suave'],
+                        [65, 'Equilibrado'],
+                        [100, 'Máximo'],
+                      ].map(([value, label]) => (
+                        <button
+                          key={value}
+                          disabled={!!busy}
+                          className={intensity === value ? 'active' : ''}
+                          onClick={() => setIntensity(Number(value))}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="field-hint">
+                      {operation === 'master'
+                        ? 'Controla a faixa dinâmica pedida ao normalizador. O resultado medido aparece ao lado.'
+                        : operation === 'mix'
+                          ? 'Quanto maior, mais a trilha recua enquanto há sinal na voz.'
+                          : intensity === 0
+                            ? 'Sem tratamento adicional. Na entrega, a meta de volume continua valendo.'
+                            : intensity > 85
+                              ? 'Limpeza intensa. Compare a voz para conferir se os detalhes continuam naturais.'
+                              : 'Ajuste livremente, aplique e compare o resultado com o original.'}
+                    </p>
+                    {['denoise', 'clarity', 'wind'].includes(operation) &&
+                      (denoiseMode === 'general' || operation === 'wind') && (
+                        <>
+                          <RangeControl
+                            label="Redução máxima de ruído"
+                            value={noiseReduction}
+                            min={0}
+                            max={48}
+                            unit=" dB"
+                            disabled={!!busy}
+                            onChange={setNoiseReduction}
+                          />
+                          <RangeControl
+                            label="Piso de ruído"
+                            value={noiseFloor ?? version.info.noiseFloor ?? -50}
+                            min={-80}
+                            max={-20}
+                            unit=" dB"
+                            disabled={!!busy}
+                            onChange={setNoiseFloor}
+                          />
+                          <button
+                            className="text-link analyze-noise"
+                            disabled={!!busy}
+                            onClick={() =>
+                              void run(async () => {
+                                setBusy('Analisando os trechos mais silenciosos…');
+                                const buffer = await decode(version.blob);
+                                const profile = estimateNoiseFloor(
+                                  buffer.getChannelData(0),
+                                  buffer.sampleRate,
+                                );
+                                setNoiseFloor(profile.floorDb);
+                                setAnalysisNote(
+                                  profile.confidence === 'estimated'
+                                    ? `Piso estimado: ${profile.floorDb} dB. Ajuste pela escuta antes de aplicar.`
+                                    : 'Não encontrei uma pausa clara para estimar o ruído. Mantive −50 dB como ponto de partida.',
+                                );
+                              })
+                            }
+                          >
+                            <Activity size={14} /> Estimar pelo áudio
+                          </button>
+                          {analysisNote && (
+                            <p className="field-hint" role="status">
+                              {analysisNote}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    {operation === 'clarity' && (
+                      <RangeControl
+                        label="Presença da voz"
+                        value={presence}
+                        min={0}
+                        max={9}
+                        step={0.5}
+                        unit=" dB"
+                        disabled={!!busy}
+                        onChange={setPresence}
+                      />
+                    )}
+                    {(operation === 'clarity' || operation === 'level') && (
+                      <RangeControl
+                        label="Compressão"
+                        value={compression}
+                        min={1}
+                        max={8}
+                        step={0.5}
+                        unit=":1"
+                        disabled={!!busy}
+                        onChange={setCompression}
+                      />
+                    )}
+                    {operation === 'wind' && (
+                      <RangeControl
+                        label="Corte de graves"
+                        value={highpass}
+                        min={30}
+                        max={300}
+                        step={5}
+                        unit=" Hz"
+                        disabled={!!busy}
+                        onChange={setHighpass}
+                      />
+                    )}
+                  </div>
                   {operation === 'master' && (
                     <>
                       <label className="field-label" htmlFor="destination">
@@ -1058,6 +1340,26 @@ export default function Studio() {
                       <p className="field-hint">
                         {deliveryPresets.find((p) => p.id === preset)?.note}
                       </p>
+                      <RangeControl
+                        label="Volume final"
+                        value={target}
+                        min={-30}
+                        max={-10}
+                        step={0.5}
+                        unit=" LUFS"
+                        disabled={!!busy}
+                        onChange={setTarget}
+                      />
+                      <RangeControl
+                        label="Teto de pico"
+                        value={peak}
+                        min={-6}
+                        max={-1}
+                        step={0.1}
+                        unit=" dBTP"
+                        disabled={!!busy}
+                        onChange={setPeak}
+                      />
                       <div className="target-preview">
                         <span>
                           Atual
@@ -1151,11 +1453,11 @@ export default function Studio() {
                       ) : (
                         <p>
                           {operation === 'denoise'
-                            ? 'Redução espectral FFT (afftdn), com piso adaptativo. Atenuação: 6 / 12 / 18 dB.'
+                            ? 'RNNoise neural para fala ou afftdn espectral adaptativo. Intensidade contínua, alinhamento temporal preservado e processamento local.'
                             : operation === 'clarity'
-                              ? 'Filtro passa-altas de 75 Hz, presença em 2,8 kHz e compressão suave.'
+                              ? 'Limpeza neural ou espectral, corte em 70 Hz, redução de graves médios, presença em 3 kHz, compressor e limitador.'
                               : operation === 'wind'
-                                ? 'Filtro passa-altas de segunda ordem: 80 / 120 / 180 Hz.'
+                                ? 'Corte de graves ajustável de 30 a 300 Hz com redução espectral de ruído.'
                                 : operation === 'level'
                                   ? 'Compressor: threshold 0,12; ratio 2 / 3 / 4; ataque 10 ms; release 220 ms. Limiter de pico amostral em −1 dBFS.'
                                   : 'Sidechain compressor: threshold 0,02; ratio 6:1; ataque 20 ms; release 500 ms. Não usa detecção semântica de fala.'}
@@ -1206,6 +1508,27 @@ export default function Studio() {
           </button>
         </div>
       )}
+      <nav className="studio-tabs" aria-label="Navegação rápida">
+        <button className={view === 'home' ? 'active' : ''} onClick={() => navigate('home')}>
+          <House size={19} />
+          <span>Início</span>
+        </button>
+        <button
+          className="tab-create"
+          onClick={() => fileInput.current?.click()}
+          disabled={!!busy || recording}
+          aria-label="Importar novo áudio"
+        >
+          <Plus size={23} />
+        </button>
+        <button
+          className={view === 'projects' ? 'active' : ''}
+          onClick={() => navigate('projects')}
+        >
+          <Folder size={19} />
+          <span>Projetos</span>
+        </button>
+      </nav>
       {assistant && <Assistant onClose={() => setAssistant(false)} onPlan={chooseTool} />}{' '}
       {deleteId && (
         <div className="modal-backdrop">

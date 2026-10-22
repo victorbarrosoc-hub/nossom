@@ -1,25 +1,38 @@
 export type Operation = 'denoise' | 'clarity' | 'wind' | 'level' | 'master' | 'mix';
-export type Intensity = 'light' | 'balanced' | 'strong';
+export type Intensity = number | 'light' | 'balanced' | 'strong';
+export type DenoiseMode = 'voice' | 'general';
+export function strengthValue(value: Intensity): number {
+  const n = typeof value === 'number' ? value : { light: 30, balanced: 65, strong: 100 }[value];
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 65;
+}
+export type FilterSettings = {
+  noiseFloor?: number;
+  noiseReduction?: number;
+  presence?: number;
+  compression?: number;
+  highpass?: number;
+  neural?: boolean;
+};
 export const operations: { id: Operation; label: string; description: string }[] = [
   {
     id: 'denoise',
     label: 'Reduzir ruído',
-    description: 'Atenue ruído contínuo, como ventilação e ar-condicionado.',
+    description: 'Limpeza neural para fala ou redução espectral para áudio geral.',
   },
   {
     id: 'clarity',
     label: 'Melhorar voz',
-    description: 'Realce a presença da voz com equalização e dinâmica.',
+    description: 'Combine limpeza, presença e compressão, com controles independentes.',
   },
   {
     id: 'wind',
     label: 'Atenuar vento',
-    description: 'Reduza graves excessivos. Rajadas fortes podem permanecer.',
+    description: 'Combine corte de graves com redução espectral. Ajuste a frequência de corte.',
   },
   {
     id: 'level',
     label: 'Nivelar volumes',
-    description: 'Controle a diferença entre os trechos altos e baixos.',
+    description: 'Equilibre trechos baixos e altos com ganho adaptativo e compressão.',
   },
   {
     id: 'master',
@@ -63,21 +76,32 @@ export function treatmentFilter(
   intensity: Intensity,
   target = -16,
   peak = -1,
+  settings: FilterSettings = {},
 ) {
-  const amount = { light: 0, balanced: 1, strong: 2 }[intensity];
+  if (operation === 'mix') throw new Error('Mixagem requer duas faixas.');
+  const strength = strengthValue(intensity) / 100;
+  if (strength === 0 && operation !== 'master') return 'anull';
+  const finite = (n: number | undefined, fallback: number, min: number, max: number) =>
+    Number.isFinite(n) ? Math.min(max, Math.max(min, n!)) : fallback;
+  const floor = finite(settings.noiseFloor, -50, -80, -20);
+  const reduction = finite(settings.noiseReduction, 36, 0, 48) * strength;
+  const spectral =
+    reduction === 0
+      ? 'anull'
+      : `afftdn=nr=${Math.max(0.01, reduction)}:nf=${floor}:tn=1:gs=12:ad=0.6`;
+  const ratio = 1 + (finite(settings.compression, 6, 1, 8) - 1) * strength;
+  const presence = finite(settings.presence, 6, 0, 9) * strength;
   switch (operation) {
     case 'denoise':
-      return `afftdn=nr=${[6, 12, 18][amount]}:nf=-40:tn=1`;
+      return settings.neural ? 'anull' : spectral;
     case 'clarity':
-      return `highpass=f=75,equalizer=f=2800:t=q:w=0.8:g=${[2, 3.5, 5][amount]},acompressor=threshold=0.15:ratio=${[1.5, 2, 3][amount]}:attack=15:release=180:makeup=1.2`;
+      return `${settings.neural ? 'anull' : spectral},highpass=f=70:p=2,equalizer=f=280:t=q:w=0.7:g=${(-strength * 3).toFixed(2)},equalizer=f=3000:t=q:w=0.7:g=${presence},acompressor=threshold=0.09:ratio=${ratio}:attack=12:release=180:makeup=${(1 + strength * 0.8).toFixed(2)},alimiter=limit=0.8913:level=0:latency=1`;
     case 'wind':
-      return `highpass=f=${[80, 120, 180][amount]}:p=2`;
+      return `highpass=f=${finite(settings.highpass, Math.round(40 + strength * 220), 30, 300)}:p=2,${spectral}`;
     case 'level':
-      return `acompressor=threshold=0.12:ratio=${[2, 3, 4][amount]}:attack=10:release=220:makeup=1.5,alimiter=limit=0.8913:level=0`;
+      return `dynaudnorm=f=250:g=15:p=0.8:m=${(1 + strength * 7).toFixed(2)}:s=5,acompressor=threshold=0.12:ratio=${ratio}:attack=10:release=220:makeup=1,alimiter=limit=0.8913:level=0:latency=1`;
     case 'master':
-      return `loudnorm=I=${target}:TP=${peak}:LRA=11:print_format=json`;
-    default:
-      throw new Error('Mixagem requer duas faixas.');
+      return `loudnorm=I=${finite(target, -16, -30, -10)}:TP=${finite(peak, -1, -6, -1)}:LRA=${Math.round(14 - strength * 10)}:print_format=json`;
   }
 }
 export function inferPlan(text: string): Operation | null {
