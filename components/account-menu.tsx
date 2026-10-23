@@ -1,5 +1,5 @@
 'use client';
-import Link from 'next/link';
+import StudioLink from './studio-link';
 import { useEffect, useId, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
@@ -235,11 +235,11 @@ export default function AccountMenu({
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: reduced ? 0 : 0.035 * i }}
                           >
-                            <Link href={item.href} onClick={() => setOpen(false)}>
+                            <StudioLink href={item.href} onClick={() => setOpen(false)}>
                               <item.icon size={17} />
                               <span>{item.label}</span>
                               <ArrowRight size={14} />
-                            </Link>
+                            </StudioLink>
                           </motion.div>
                         ))}
                       </nav>

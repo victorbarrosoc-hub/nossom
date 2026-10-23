@@ -1,9 +1,9 @@
 'use client';
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import { Play, Pause, RotateCcw, Volume2, VolumeX, Repeat2 } from 'lucide-react';
 import type { Version } from '@/lib/storage';
 import { formatTime } from '@/lib/audio';
-export function WavePlayer({
+export const WavePlayer = memo(function WavePlayer({
   original,
   version,
   region,
@@ -354,4 +354,4 @@ export function WavePlayer({
       )}
     </div>
   );
-}
+});

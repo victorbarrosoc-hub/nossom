@@ -3,7 +3,9 @@ import Link from 'next/link';
 import AccountMenu from './account-menu';
 import DesktopUpdates from './desktop-updates';
 import AccountSettings from './account-settings';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { visitStudio } from '@/lib/studio-navigation';
+import StudioLink from './studio-link';
 import { toolPath, routeOperation } from '@/lib/studio-routes';
 import { activateVersion, activeIndex, previousIndex, nextIndex } from '@/lib/history';
 import { EqualizerControls, BroadcastControls } from './preset-controls';
@@ -153,7 +155,8 @@ function RangeControl({
 }
 export default function Studio({ account }: { account: Account }) {
   const pathname = usePathname(),
-    router = useRouter();
+    searchParams = useSearchParams();
+  const requestedProjectId = searchParams.get('project');
   const routeTool = routeOperation(pathname);
   const [eqPreset, setEqPreset] = useState('neutral'),
     [eqGains, setEqGains] = useState<EqGains>([0, 0, 0, 0, 0]),
@@ -376,7 +379,7 @@ export default function Studio({ account }: { account: Account }) {
       setMusic(null);
       setOperation('auto');
       setView('editor');
-      router.push(toolPath('auto', recovered.id), { scroll: false });
+      visitStudio(toolPath('auto', recovered.id));
       await refresh();
       notify(
         'Original recuperado. Clique em Retomar restauração para acompanhar e salvar o resultado.',
@@ -438,6 +441,7 @@ export default function Studio({ account }: { account: Account }) {
   const version = project?.versions[versionIndex];
   const selectedTool = operations.find((o) => o.id === operation)!;
   useEffect(() => {
+    let current = true;
     setSidebar(false);
     if (pathname === '/studio/admin') {
       setView('admin');
@@ -459,19 +463,34 @@ export default function Studio({ account }: { account: Account }) {
     if (tool) {
       setOperation(tool);
       setView(project ? 'editor' : 'tool');
-      const id = new URLSearchParams(location.search).get('project');
+      const id = requestedProjectId;
       if (id && project?.id !== id)
         void getProject(id, account.id)
           .then((p) => {
-            if (p) {
+            if (p && current) {
               setProject(p);
               setVersionIndex(activeIndex(p));
               setView('editor');
             }
           })
-          .catch(() => setError('Não foi possível abrir este projeto.'));
+          .catch(() => {
+            if (current) setError('Não foi possível abrir este projeto.');
+          });
     } else setView('home');
     setSidebar(false);
+    return () => {
+      current = false;
+    };
+  }, [pathname, requestedProjectId, account.id]);
+  useEffect(() => {
+    const names: Record<string, string> = {
+      '/studio': 'Seu estúdio',
+      '/studio/conta': 'Minha conta',
+      '/studio/projetos': 'Meus projetos',
+      '/studio/admin': 'Administração',
+      '/studio/ia': 'Inteligência NOSSOM',
+    };
+    document.title = `${names[pathname] ?? operations.find((o) => o.id === routeOperation(pathname))?.label ?? 'Estúdio'} · NOSSOM`;
   }, [pathname]);
   useEffect(() => {
     listProjects(account.id)
@@ -482,7 +501,7 @@ export default function Studio({ account }: { account: Account }) {
     const tool = new URLSearchParams(location.search).get('tool');
     if (operations.some((o) => o.id === tool)) {
       setOperation(tool as Operation);
-      router.replace(toolPath(tool as Operation));
+      visitStudio(toolPath(tool as Operation), true);
     }
     return () => {
       recordStream.current?.getTracks().forEach((t) => t.stop());
@@ -567,8 +586,7 @@ export default function Studio({ account }: { account: Account }) {
       setMusic(null);
       setView(inAssistant ? 'home' : 'editor');
       if (requestedOperation) setOperation(requestedOperation);
-      if (!inAssistant)
-        router.push(toolPath(requestedOperation ?? operation, created.id), { scroll: false });
+      if (!inAssistant) visitStudio(toolPath(requestedOperation ?? operation, created.id));
       await refresh();
       notify('Áudio importado. Seu original está preservado.');
     });
@@ -583,7 +601,7 @@ export default function Studio({ account }: { account: Account }) {
         setRegion(null);
         setMusic(null);
         setView('editor');
-        router.push(toolPath(operation, p.id), { scroll: false });
+        visitStudio(toolPath(operation, p.id));
       }
     } catch {
       setError('Não foi possível abrir esse projeto.');
@@ -593,20 +611,19 @@ export default function Studio({ account }: { account: Account }) {
     setSidebar(false);
     if (busy || recording) return;
     setSidebar(false);
-    router.push(
+    visitStudio(
       next === 'projects'
         ? '/studio/projetos'
         : next === 'home'
           ? '/studio'
           : toolPath(operation, project?.id),
-      { scroll: false },
     );
   }
   function chooseTool(next: Operation) {
     if (busy || recording) return;
     setOperation(next);
     setSidebar(false);
-    router.push(toolPath(next, project?.id), { scroll: false });
+    visitStudio(toolPath(next, project?.id));
   }
   async function selectVersion(index: number, action: 'select' | 'undo' | 'redo' = 'select') {
     if (!project || busy || recording || index < 0 || index >= project.versions.length) return;
@@ -949,7 +966,7 @@ export default function Studio({ account }: { account: Account }) {
       setView('editor');
       const recordingTool = routeTool ?? 'auto';
       setOperation(recordingTool);
-      router.push(toolPath(recordingTool, p.id), { scroll: false });
+      visitStudio(toolPath(recordingTool, p.id));
       await refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Falha ao importar gravação.');
@@ -1090,7 +1107,7 @@ export default function Studio({ account }: { account: Account }) {
             className={view === 'account' ? 'active' : ''}
             onClick={() => {
               setSidebar(false);
-              if (!busy && !recording) router.push('/studio/conta');
+              if (!busy && !recording) visitStudio('/studio/conta');
             }}
           >
             <UserRound size={18} /> Minha conta
@@ -1101,7 +1118,7 @@ export default function Studio({ account }: { account: Account }) {
               disabled={!!busy || recording}
               onClick={() => {
                 setSidebar(false);
-                router.push('/studio/admin');
+                visitStudio('/studio/admin');
               }}
             >
               <Activity size={18} />
@@ -1223,9 +1240,12 @@ export default function Studio({ account }: { account: Account }) {
                 <p>Abra o pedido para acompanhar o estado e salvar o resultado.</p>
               </div>
               {pendingJob.projectId ? (
-                <Link className="button secondary" href={toolPath('auto', pendingJob.projectId)}>
+                <StudioLink
+                  className="button secondary"
+                  href={toolPath('auto', pendingJob.projectId)}
+                >
                   Abrir áudio do pedido <ArrowRight size={15} />
-                </Link>
+                </StudioLink>
               ) : (
                 <button
                   className="button secondary"
@@ -1950,12 +1970,12 @@ export default function Studio({ account }: { account: Account }) {
                               ' Ainda não recebemos confirmação de que o tratamento começou.'}
                           </p>
                           {pendingJob.projectId && pendingJob.projectId !== project.id && (
-                            <Link
+                            <StudioLink
                               className="text-link"
                               href={toolPath('auto', pendingJob.projectId)}
                             >
                               Abrir áudio em andamento
-                            </Link>
+                            </StudioLink>
                           )}
                           {!pendingJob.projectId && (
                             <button
@@ -2681,7 +2701,7 @@ export default function Studio({ account }: { account: Account }) {
         <button
           className={view === 'account' ? 'active' : ''}
           disabled={!!busy || recording}
-          onClick={() => router.push('/studio/conta')}
+          onClick={() => visitStudio('/studio/conta')}
         >
           <MessageCircle size={19} />
           <span>Conta</span>

@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import { accountPlan, type Account } from '@/lib/accounts';
 import PlanCards from './plan-cards';
-import Link from 'next/link';
+import StudioLink from './studio-link';
 import { usageLabel, type AudioUsage } from '@/lib/usage';
 export default function AccountSettings({
   account,
@@ -99,9 +99,9 @@ export default function AccountSettings({
             {account.isAdmin ? 'Administrador' : 'Conta NOSSOM'}
           </span>
           {account.isAdmin && (
-            <Link className="button secondary" href="/studio/admin">
+            <StudioLink className="button secondary" href="/studio/admin">
               Painel de administração <ArrowUpRight size={16} />
-            </Link>
+            </StudioLink>
           )}
         </div>
       </div>
