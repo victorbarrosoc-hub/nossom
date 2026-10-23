@@ -141,3 +141,94 @@ test('restoration verifies identity, owns jobs, fixes D server-side, dispatches 
       else process.env[k] = old[k];
   }
 });
+
+test('RunPod owner diagnostics hide secrets and explicit provider rejection releases the reservation', async () => {
+  const restore = authEnvironment(),
+    previous = globalThis.fetch;
+  const keys = ['RUNPOD_API_KEY', 'RUNPOD_ENDPOINT_ID', 'SUPABASE_SERVICE_ROLE_KEY'];
+  const old = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  process.env.RUNPOD_API_KEY = 'private-diagnostic-placeholder';
+  process.env.RUNPOD_ENDPOINT_ID = 'endpoint-diagnostic';
+  process.env.SUPABASE_SERVICE_ROLE_KEY = 'private-storage-placeholder';
+  let owner = false,
+    code = 404,
+    failed = 0,
+    providerRuns = 0;
+  const job = {
+    id: '33333333-3333-4333-8333-333333333333',
+    user_id: testUser.id,
+    input_parts: 1,
+    input_bytes: 5000,
+    duration: 1,
+    status: 'submitting',
+  };
+  globalThis.fetch = async (input, init) => {
+    const url = String(input),
+      body = init?.body ? JSON.parse(String(init.body)) : {};
+    if (url.endsWith('/auth/v1/user'))
+      return Response.json(owner ? { ...testUser, email: 'victorbarrosoc@gmail.com' } : testUser);
+    if (url.endsWith('/health'))
+      return code === 200
+        ? Response.json({
+            workers: { ready: 0, running: 0, unhealthy: 0 },
+            ignored: 'private-diagnostic-placeholder',
+          })
+        : Response.json({ error: 'private-diagnostic-placeholder' }, { status: code });
+    if (url.endsWith('/rpc/nossom_restoration_job')) {
+      if (body.p_action === 'fail') failed++;
+      return Response.json({ job, claimed: true });
+    }
+    if (url.endsWith('/rpc/nossom_plan_usage')) return Response.json({ allowed: true });
+    if (url.includes('/storage/v1/object/upload/sign/'))
+      return Response.json({ url: new URL(url).pathname + '?token=placeholder' });
+    if (url.includes('/storage/v1/object/sign/'))
+      return Response.json({ signedURL: new URL(url).pathname + '?token=placeholder' });
+    if (url.endsWith('/run')) {
+      providerRuns++;
+      return Response.json({}, { status: code });
+    }
+    throw new Error('Unexpected mocked request');
+  };
+  const req = () =>
+    new Request('http://localhost/api/audio/jobs?diagnostic=1', {
+      headers: { cookie: testCookie() },
+    });
+  try {
+    assert.equal((await GET(req())).status, 403);
+    owner = true;
+    const unavailable = await (await GET(req())).json();
+    assert.equal(unavailable.providerStatus, 404);
+    assert.match(unavailable.hint, /RUNPOD_ENDPOINT_ID/);
+    assert.equal(JSON.stringify(unavailable).includes('private-diagnostic-placeholder'), false);
+    code = 200;
+    const healthy = await (await GET(req())).json();
+    assert.equal(healthy.reachable, true);
+    assert.deepEqual(healthy.workers, { ready: 0, running: 0, unhealthy: 0 });
+    assert.equal(JSON.stringify(healthy).includes('private-diagnostic-placeholder'), false);
+    for (const status of [401, 403, 404, 429, 500]) {
+      code = status;
+      const before = failed;
+      const response = await POST(
+        new Request('http://localhost/api/audio/jobs', {
+          method: 'POST',
+          headers: {
+            cookie: testCookie(),
+            Origin: 'http://localhost',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action: 'submit', id: job.id }),
+        }),
+      );
+      assert.equal(response.status, 503);
+      assert.equal(failed - before, status < 500 ? 1 : 0);
+      assert.equal(JSON.stringify(await response.json()).includes('RUNPOD_API_KEY'), false);
+    }
+    assert.equal(providerRuns, 5);
+  } finally {
+    globalThis.fetch = previous;
+    restore();
+    for (const key of keys)
+      if (old[key] === undefined) delete process.env[key];
+      else process.env[key] = old[key];
+  }
+});

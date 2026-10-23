@@ -26,6 +26,7 @@ export class RestorationError extends Error {
   constructor(
     message: string,
     public status = 503,
+    public providerStatus?: number,
   ) {
     super(message);
   }
@@ -110,10 +111,21 @@ async function runpod(path: string, method = 'GET', body?: unknown) {
     headers: { Authorization: `Bearer ${c.runpodKey}`, 'Content-Type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
-  if (!response.ok)
+  if (!response.ok) {
+    const messages: Record<number, string> = {
+      400: 'Não foi possível iniciar o tratamento. Nossa equipe precisa verificar o serviço.',
+      401: 'Não foi possível conectar ao serviço de áudio. Nossa equipe precisa verificar a conexão.',
+      403: 'O serviço de áudio não autorizou o tratamento. Nossa equipe precisa verificar a conexão.',
+      404: 'Não foi possível encontrar o serviço de áudio. Nossa equipe precisa verificar a conexão.',
+      429: 'Há muitas solicitações agora. Aguarde um pouco antes de tentar novamente.',
+    };
     throw new RestorationError(
-      'O servidor de restauração está indisponível. Tente novamente em instantes.',
+      messages[response.status] ||
+        'O servidor de restauração está indisponível. Tente novamente em instantes.',
+      503,
+      response.status,
     );
+  }
   return response.json();
 }
 export async function prepareJob(user: string, bytes: number, duration: number) {
@@ -183,7 +195,15 @@ export async function submitJob(request: Request, user: string, id: string) {
     await jobAction('update', user, id, { status: 'queued', provider_id: result.id });
     return { id, status: 'queued', usage };
   } catch (error) {
-    if (!dispatched) await jobAction('fail', user, id).catch(() => {});
+    const rejected =
+      error instanceof RestorationError &&
+      error.providerStatus !== undefined &&
+      error.providerStatus >= 400 &&
+      error.providerStatus < 500 &&
+      error.providerStatus !== 408;
+    // An explicit rejection did not accept a job. Network timeouts/5xx remain
+    // ambiguous and must never trigger a blind retry or refund.
+    if (!dispatched || rejected) await jobAction('fail', user, id).catch(() => {});
     throw error;
   }
 }
@@ -256,4 +276,51 @@ export async function cancelJob(user: string, id: string) {
     return { id, status: 'released' };
   }
   return { id, status: job.status };
+}
+
+/** Read-only owner diagnostics: no provider credentials, signed URLs or raw errors. */
+export async function restorationHealth() {
+  const checks = {
+    runpodKey: !!process.env.RUNPOD_API_KEY,
+    endpointId: /^[a-zA-Z0-9_-]{3,100}$/.test(process.env.RUNPOD_ENDPOINT_ID || ''),
+    serviceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    storage: !!supabaseConfig(),
+    cleanupSecret: (process.env.CRON_SECRET?.length || 0) >= 32,
+  };
+  if (!config())
+    return {
+      configured: false,
+      reachable: false,
+      checks,
+      error: 'Há uma variável de restauração ausente ou inválida na Vercel.',
+    };
+  try {
+    const result = await runpod('health');
+    const workers: Record<string, number> = {};
+    for (const key of ['idle', 'initializing', 'ready', 'running', 'throttled', 'unhealthy'])
+      if (Number.isFinite(result.workers?.[key])) workers[key] = result.workers[key];
+    return { configured: true, reachable: true, checks, workers };
+  } catch (error) {
+    return {
+      configured: true,
+      reachable: false,
+      checks,
+      providerStatus: error instanceof RestorationError ? (error.providerStatus ?? null) : null,
+      hint:
+        error instanceof RestorationError
+          ? ((
+              {
+                401: 'Confira RUNPOD_API_KEY na Vercel.',
+                403: 'Confira permissões da API key, saldo e restrições na RunPod.',
+                404: 'Copie RUNPOD_ENDPOINT_ID diretamente da RunPod para a Vercel e faça redeploy.',
+                429: 'Aguarde o limite de solicitações da RunPod.',
+              } as Record<number, string>
+            )[error.providerStatus ?? 0] ?? 'Confira os logs do endpoint na RunPod.')
+          : 'Confira se a RunPod responde e tente novamente.',
+      error:
+        error instanceof RestorationError
+          ? error.message
+          : 'A RunPod não respondeu ao diagnóstico. Tente novamente em instantes.',
+    };
+  }
 }

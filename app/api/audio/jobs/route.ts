@@ -9,6 +9,7 @@ import {
   ownedJob,
   prepareJob,
   restorationConfigured,
+  restorationHealth,
   RestorationError,
   submitJob,
   uploadPlan,
@@ -36,6 +37,16 @@ export async function GET(request: Request) {
       { status: 401, headers: privateHeaders },
     );
   try {
+    if (new URL(request.url).searchParams.get('diagnostic') === '1') {
+      if (!account.isAdmin)
+        return Response.json(
+          { error: 'Acesso restrito ao administrador.' },
+          { status: 403, headers: privateHeaders },
+        );
+      if (!allowRequest('cloud-health:' + account.id, 6, 60000))
+        throw new RestorationError('Aguarde um instante.', 429);
+      return Response.json(await restorationHealth(), { headers: privateHeaders });
+    }
     const id = new URL(request.url).searchParams.get('id');
     if (id) {
       if (!uuid.test(id)) throw new RestorationError('Pedido inválido.', 400);

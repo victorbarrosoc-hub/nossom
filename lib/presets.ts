@@ -46,8 +46,7 @@ export const operations: { id: Operation; label: string; description: string }[]
   {
     id: 'auto',
     label: 'Restaurar com IA',
-    description:
-      'Restaure a fala com NOSSOM Restore D. Depois escolha EQ, corpo, efeitos e o acabamento do seu áudio.',
+    description: 'Deixe sua voz mais limpa e clara. Depois, ajuste o som do seu jeito.',
   },
   {
     id: 'denoise',

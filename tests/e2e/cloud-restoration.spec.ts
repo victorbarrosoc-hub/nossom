@@ -170,8 +170,8 @@ test('unconfigured cloud restoration is explicit and keeps local tools available
   });
   await expect(page.getByRole('button', { name: 'Restaurar com IA', exact: true })).toBeDisabled();
   await expect(
-    page.getByText('NOSSOM Restore D · conexão em preparação', { exact: true }),
+    page.getByText('A melhoria com IA está temporariamente indisponível', { exact: true }),
   ).toBeVisible();
-  await page.getByRole('button', { name: /Usar limpeza local enquanto isso/ }).click();
+  await page.getByRole('button', { name: /Experimentar outra limpeza/ }).click();
   await expect(page).toHaveURL(/\/studio\/limpeza\?project=/);
 });

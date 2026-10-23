@@ -688,7 +688,7 @@ export default function Studio({ account }: { account: Account }) {
         operation,
         preset:
           operation === 'auto'
-            ? 'NOSSOM Restore D · restauração de fala · sem masterização adicional'
+            ? 'Voz restaurada com IA'
             : operation === 'master'
               ? masterRecipe === 'broadcast'
                 ? 'Transmissão + Limite −3 dB'
@@ -1739,7 +1739,7 @@ export default function Studio({ account }: { account: Account }) {
                     <h2>{selectedTool.label}</h2>
                   </div>
                   <p className="panel-subtitle">{selectedTool.description}</p>
-                  {speechTool && (
+                  {speechTool && operation !== 'auto' && (
                     <div className="automatic-card">
                       <div>
                         <Sparkles size={22} />
@@ -1747,35 +1747,30 @@ export default function Studio({ account }: { account: Account }) {
                       </div>
                       <p>
                         {autoEnabled
-                          ? operation === 'auto'
-                            ? 'Restauramos a fala com NOSSOM Restore D. Depois você escolhe se quer encorpar, equalizar ou preparar para publicar. Sem masterização adicional nesta etapa.'
-                            : 'Analisamos a gravação original e adaptamos a limpeza à sua voz, preservando o timbre e o estéreo. O volume e os picos são verificados no resultado.'
+                          ? 'Analisamos a gravação original e adaptamos a limpeza à sua voz, preservando o timbre e o estéreo. O volume e os picos são verificados no resultado.'
                           : 'Personalize o tratamento ou volte à análise automática.'}
                       </p>
-                      {operation !== 'auto' && (
-                        <button
-                          className="text-link"
-                          disabled={!!busy}
-                          onClick={() => setAutomatic(!automatic)}
-                        >
-                          {autoEnabled ? 'Ajustar manualmente' : 'Usar análise automática'}
-                        </button>
-                      )}
+                      <button
+                        className="text-link"
+                        disabled={!!busy}
+                        onClick={() => setAutomatic(!automatic)}
+                      >
+                        {autoEnabled ? 'Ajustar manualmente' : 'Usar análise automática'}
+                      </button>
                     </div>
                   )}
                   {operation === 'auto' && (
                     <div className="cloud-restoration-note">
                       <strong>
                         {cloudReady === null
-                          ? 'Verificando o motor…'
+                          ? 'Preparando…'
                           : cloudReady
-                            ? 'NOSSOM Restore D · pronto para restaurar'
-                            : 'NOSSOM Restore D · conexão em preparação'}
+                            ? 'Pronto para melhorar sua voz'
+                            : 'A melhoria com IA está temporariamente indisponível'}
                       </strong>
                       <p>
-                        Uma cópia temporária do arquivo é enviada para restauração. A GPU inicia sob
-                        demanda. A saída é voz em mono; o original fica preservado. Ouça e revise a
-                        fala antes de publicar.
+                        Seu áudio é enviado com segurança para o tratamento. O original fica
+                        guardado para você comparar o resultado.
                       </p>
                       {!cloudReady && (
                         <button
@@ -1783,23 +1778,23 @@ export default function Studio({ account }: { account: Account }) {
                           disabled={!!busy}
                           onClick={() => chooseTool('denoise')}
                         >
-                          Usar limpeza local enquanto isso <ArrowRight size={15} />
+                          Experimentar outra limpeza <ArrowRight size={15} />
                         </button>
                       )}
                       {pendingJob && (
                         <div className="cloud-pending">
                           <p>
-                            Há uma restauração pendente nesta conta.{' '}
+                            Você tem um áudio em andamento.{' '}
                             {pendingJob.projectId === project.id
-                              ? 'Clique em Retomar para acompanhar e salvar o resultado.'
-                              : 'Retome o projeto ou cancele o pedido anterior.'}
+                              ? 'Clique em Retomar para continuar.'
+                              : 'Abra esse áudio para continuar ou cancele para começar outro.'}
                           </p>
                           {pendingJob.projectId && pendingJob.projectId !== project.id && (
                             <Link
                               className="text-link"
                               href={toolPath('auto', pendingJob.projectId)}
                             >
-                              Abrir projeto pendente
+                              Abrir áudio em andamento
                             </Link>
                           )}
                           <button
@@ -1817,7 +1812,7 @@ export default function Studio({ account }: { account: Account }) {
                                 await refreshCloud();
                                 await refreshUsage();
                                 notify(
-                                  'Pedido de cancelamento enviado. A fila libera a GPU automaticamente.',
+                                  'Cancelamento solicitado. Seu áudio original continua salvo.',
                                 );
                               } catch {
                                 setError(
@@ -1826,14 +1821,14 @@ export default function Studio({ account }: { account: Account }) {
                               }
                             }}
                           >
-                            Cancelar pedido anterior
+                            Cancelar restauração
                           </button>
                           <button
                             className="text-link"
                             disabled={!!busy}
                             onClick={() => void refreshCloud()}
                           >
-                            Atualizar estado
+                            Verificar andamento
                           </button>
                         </div>
                       )}
@@ -2196,12 +2191,6 @@ export default function Studio({ account }: { account: Account }) {
                       />
                     )}
                   </div>
-                  {operation === 'auto' && (
-                    <p className="field-hint">
-                      Depois de restaurar, abra os botões de acabamento para escolher seu EQ, o
-                      preset do Premiere, efeitos e destino de entrega.
-                    </p>
-                  )}
                   {operation === 'master' && masterRecipe !== 'broadcast' && (
                     <>
                       <label className="field-label" htmlFor="destination">
@@ -2444,8 +2433,8 @@ export default function Studio({ account }: { account: Account }) {
                   </button>
                   {!usage?.unlimited && (
                     <p className="usage-apply-hint">
-                      Só a restauração com IA usa a franquia mensal, com mínimo de 1 minuto por
-                      pedido. EQ, efeitos, masterização local e downloads não descontam minutos.
+                      A restauração usa seus minutos de IA (mínimo de 1 minuto). Outros ajustes e
+                      downloads não descontam minutos.
                     </p>
                   )}
                   <span className="treatment-footnote">
