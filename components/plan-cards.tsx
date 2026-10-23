@@ -18,7 +18,6 @@ export default function PlanCards({ current }: { current?: string }) {
   return (
     <section className="plans-section" aria-label="Planos da NOSSOM">
       <div className="plans-intro">
-        <span className="eyebrow">ESPAÇO PARA O SEU SOM CRESCER</span>
         <h2>Um plano para o seu ritmo.</h2>
         <p>
           A franquia é para restauração com IA. Equalização, efeitos e masterização local não

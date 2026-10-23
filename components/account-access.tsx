@@ -1,19 +1,33 @@
 'use client';
 import DesktopUpdates from './desktop-updates';
 import Link from 'next/link';
-import { useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { ArrowRight, LoaderCircle, ShieldCheck, UserRound, Eye, EyeOff } from 'lucide-react';
-import { Brand, SoundRibbon } from './brand';
+import { Brand } from './brand';
+import AIMotion from './ai-motion';
 export function AccountForm({
   next,
   initialMode = 'login',
+  expandable = false,
 }: {
   next: string;
   initialMode?: 'login' | 'register';
+  expandable?: boolean;
 }) {
   const reduced = useReducedMotion(),
     id = useId();
+  const [expanded, setExpanded] = useState(!expandable || initialMode === 'register');
+  useEffect(() => {
+    if (!expandable) return;
+    const query = matchMedia('(hover: hover) and (pointer: fine) and (min-width: 901px)');
+    const update = () => {
+      if (!query.matches) setExpanded(true);
+    };
+    update();
+    query.addEventListener('change', update);
+    return () => query.removeEventListener('change', update);
+  }, [expandable]);
   const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState<'login' | 'register'>(initialMode),
     [name, setName] = useState(''),
@@ -49,7 +63,16 @@ export function AccountForm({
   }
   return (
     <motion.div
-      className="account-form-wrap"
+      className={`account-form-wrap ${expandable ? 'account-expandable' : ''} ${expanded ? 'is-expanded' : ''}`}
+      onMouseEnter={() => setExpanded(true)}
+      onFocusCapture={(event) => {
+        if (expanded) return;
+        const card = event.currentTarget;
+        setExpanded(true);
+        requestAnimationFrame(() =>
+          card.querySelector<HTMLButtonElement>('.account-mode button')?.focus(),
+        );
+      }}
       initial={reduced ? false : { opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
@@ -63,137 +86,151 @@ export function AccountForm({
           ? 'Seu assistente já vem conectado. Comece com 5 minutos de restauração por mês.'
           : 'Entre para continuar seus projetos e conversar com a IA da NOSSOM.'}
       </p>
-      <div className="account-mode" role="group" aria-label="Acesso à conta">
-        {(['login', 'register'] as const).map((value) => (
-          <button
-            key={value}
-            type="button"
-            aria-pressed={mode === value}
-            className={mode === value ? 'active' : ''}
-            disabled={busy}
-            onClick={() => {
-              setMode(value);
-              setPassword('');
-              setShowPassword(false);
-              setError('');
-              setConfirmation(false);
-            }}
-          >
-            {mode === value && (
-              <motion.span
-                className="account-mode-pill"
-                layoutId={id + '-tab'}
-                transition={
-                  reduced ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 32 }
-                }
-              />
-            )}
-            <span className="account-mode-text">
-              {value === 'login' ? 'Entrar' : 'Criar conta'}
-            </span>
-          </button>
-        ))}
-      </div>
-      <motion.form
-        key={mode}
-        onSubmit={submit}
-        initial={reduced ? false : { opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.23 }}
-      >
-        {mode === 'register' && (
-          <label>
-            Nome
-            <input
-              name="name"
-              autoComplete="nickname"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              minLength={2}
-              maxLength={60}
-              required
-              disabled={busy}
-              placeholder="Como podemos chamar você?"
-            />
-          </label>
-        )}
-        <label>
-          E-mail
-          <input
-            name="email"
-            type="email"
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            maxLength={254}
-            required
-            disabled={busy}
-            autoCapitalize="none"
-            spellCheck={false}
-            placeholder="voce@exemplo.com"
-          />
-        </label>
-        <label htmlFor={id + '-password'}>
-          Senha
-          <span className="account-password">
-            <input
-              id={id + '-password'}
-              name="password"
-              type={showPassword ? 'text' : 'password'}
-              autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              minLength={mode === 'register' ? 8 : 1}
-              maxLength={128}
-              required
-              disabled={busy}
-              placeholder={mode === 'register' ? 'Pelo menos 8 caracteres' : 'Sua senha'}
-            />
-            <button
-              type="button"
-              className="account-password-toggle"
-              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-              aria-pressed={showPassword}
-              onClick={() => setShowPassword(!showPassword)}
-              disabled={busy}
-            >
-              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
-            </button>
-          </span>
-        </label>
-        {confirmation && (
-          <p className="account-confirmation" role="status">
-            Enviamos um link de confirmação para o seu e-mail. Abra o link e depois entre com sua
-            senha.
-          </p>
-        )}
-        {error && (
-          <p className="account-error" role="alert">
-            {error}
-          </p>
-        )}
-        <motion.button
-          className="button primary"
-          disabled={busy}
-          whileTap={reduced ? undefined : { scale: 0.98 }}
+      {expandable && !expanded && (
+        <button
+          className="button primary account-open"
+          type="button"
+          onClick={() => setExpanded(true)}
+          aria-expanded={expanded}
+          aria-controls={id + '-fields'}
         >
-          {busy ? (
-            <LoaderCircle size={18} className="spin" />
-          ) : (
-            <>
-              {mode === 'register' ? 'Criar conta e entrar' : 'Entrar no estúdio'}
-              <ArrowRight size={17} />
-            </>
-          )}
-        </motion.button>
-      </motion.form>
-      <p className="account-local-note">
-        Sua conta é protegida pelo Supabase. Projetos ficam neste dispositivo; a restauração usa uma
-        cópia temporária na nuvem. Sua franquia mensal acompanha sua conta.
-      </p>
-      <Link className="text-link" href="/privacidade">
-        Privacidade e armazenamento
-      </Link>
+          Acessar minha conta <ArrowRight size={17} />
+        </button>
+      )}
+      <div className="account-fields" id={id + '-fields'} inert={!expanded}>
+        <div className="account-fields-inner">
+          <div className="account-mode" role="group" aria-label="Acesso à conta">
+            {(['login', 'register'] as const).map((value) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={mode === value}
+                className={mode === value ? 'active' : ''}
+                disabled={busy}
+                onClick={() => {
+                  setMode(value);
+                  setPassword('');
+                  setShowPassword(false);
+                  setError('');
+                  setConfirmation(false);
+                }}
+              >
+                {mode === value && (
+                  <motion.span
+                    className="account-mode-pill"
+                    layoutId={id + '-tab'}
+                    transition={
+                      reduced ? { duration: 0 } : { type: 'spring', stiffness: 380, damping: 32 }
+                    }
+                  />
+                )}
+                <span className="account-mode-text">
+                  {value === 'login' ? 'Entrar' : 'Criar conta'}
+                </span>
+              </button>
+            ))}
+          </div>
+          <motion.form
+            key={mode}
+            onSubmit={submit}
+            initial={reduced ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.23 }}
+          >
+            {mode === 'register' && (
+              <label>
+                Nome
+                <input
+                  name="name"
+                  autoComplete="nickname"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  minLength={2}
+                  maxLength={60}
+                  required
+                  disabled={busy}
+                  placeholder="Como podemos chamar você?"
+                />
+              </label>
+            )}
+            <label>
+              E-mail
+              <input
+                name="email"
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                maxLength={254}
+                required
+                disabled={busy}
+                autoCapitalize="none"
+                spellCheck={false}
+                placeholder="voce@exemplo.com"
+              />
+            </label>
+            <label htmlFor={id + '-password'}>
+              Senha
+              <span className="account-password">
+                <input
+                  id={id + '-password'}
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={mode === 'register' ? 8 : 1}
+                  maxLength={128}
+                  required
+                  disabled={busy}
+                  placeholder={mode === 'register' ? 'Pelo menos 8 caracteres' : 'Sua senha'}
+                />
+                <button
+                  type="button"
+                  className="account-password-toggle"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  aria-pressed={showPassword}
+                  onClick={() => setShowPassword(!showPassword)}
+                  disabled={busy}
+                >
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                </button>
+              </span>
+            </label>
+            {confirmation && (
+              <p className="account-confirmation" role="status">
+                Enviamos um link de confirmação para o seu e-mail. Abra o link e depois entre com
+                sua senha.
+              </p>
+            )}
+            {error && (
+              <p className="account-error" role="alert">
+                {error}
+              </p>
+            )}
+            <motion.button
+              className="button primary"
+              disabled={busy}
+              whileTap={reduced ? undefined : { scale: 0.98 }}
+            >
+              {busy ? (
+                <LoaderCircle size={18} className="spin" />
+              ) : (
+                <>
+                  {mode === 'register' ? 'Criar conta e entrar' : 'Entrar no estúdio'}
+                  <ArrowRight size={17} />
+                </>
+              )}
+            </motion.button>
+          </motion.form>
+          <p className="account-local-note">
+            Seus projetos ficam neste dispositivo. Sua conta e seus minutos acompanham você.
+          </p>
+          <Link className="text-link" href="/privacidade">
+            Privacidade e armazenamento
+          </Link>
+        </div>
+      </div>
     </motion.div>
   );
 }
@@ -207,14 +244,15 @@ export default function AccountAccess({
 }) {
   return (
     <main className="account-page">
+      <div className="account-wave-background" aria-hidden="true">
+        <AIMotion />
+      </div>
+      <DesktopUpdates floating />
+      <Link className="account-home" href="/" aria-label="NOSSOM página inicial">
+        <Brand />
+      </Link>
       <section className="account-story" aria-label="NOSSOM">
-        <DesktopUpdates floating />
-        <Link href="/" aria-label="NOSSOM página inicial">
-          <Brand />
-        </Link>
-        <SoundRibbon />
         <div>
-          <span className="eyebrow">SEU ESPAÇO PARA CRIAR</span>
           <h2>
             O seu som.
             <br />
@@ -227,7 +265,7 @@ export default function AccountAccess({
         </small>
       </section>
       <section className="account-form-panel">
-        <AccountForm next={next} initialMode={initialMode} />
+        <AccountForm next={next} initialMode={initialMode} expandable />
       </section>
     </main>
   );

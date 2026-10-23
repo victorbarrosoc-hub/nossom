@@ -214,9 +214,6 @@ export default function Landing() {
           </div>
           <div className="ns-wrap home-hero-grid">
             <Reveal className="home-hero-copy">
-              <span className="home-eyebrow">
-                <i /> INTELIGÊNCIA ARTIFICIAL PARA O SEU ÁUDIO
-              </span>
               <h1>
                 Seu som tem
                 <br />
@@ -257,7 +254,6 @@ export default function Landing() {
         <section className="home-listen ns-wrap" id="experimente">
           <Reveal className="home-listen-heading">
             <div>
-              <span className="ns-kicker">MENOS RUÍDO. MAIS PRESENÇA.</span>
               <h2>
                 A diferença
                 <br />
@@ -291,7 +287,6 @@ export default function Landing() {
         </section>
         <section className="home-product ns-wrap" id="produto">
           <Reveal className="home-section-heading">
-            <span className="ns-kicker">INTUIÇÃO PARA COMEÇAR. CONTROLE PARA IR ALÉM.</span>
             <h2>
               Da primeira ideia
               <br />
@@ -398,7 +393,6 @@ export default function Landing() {
         </section>
         <section className="home-workflow ns-wrap" id="como-funciona">
           <Reveal className="home-section-heading">
-            <span className="ns-kicker">DO SEU JEITO, DESDE O COMEÇO</span>
             <h2>
               Você conta a ideia.
               <br />
@@ -446,7 +440,6 @@ export default function Landing() {
         <section className="home-access ns-wrap" id="acesso">
           <Reveal className="home-access-content">
             <div>
-              <span className="ns-kicker">SEU ESPAÇO, ABERTO PARA CRIAR</span>
               <h2>
                 Onde estiver.
                 <br />
@@ -484,7 +477,6 @@ export default function Landing() {
         </section>
         <section className="ns-faq ns-wrap">
           <Reveal>
-            <span className="ns-kicker">ANTES DO PRIMEIRO PLAY</span>
             <h2>
               Algumas respostas.
               <br />
@@ -514,7 +506,6 @@ export default function Landing() {
             <AIMotion state="idle" compact />
           </div>
           <Reveal>
-            <span className="home-eyebrow">TUDO ACONTECE NO SOM.</span>
             <h2>
               Vamos ouvir
               <br />

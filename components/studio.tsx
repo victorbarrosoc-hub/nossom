@@ -335,6 +335,18 @@ export default function Studio({ account }: { account: Account }) {
     return () => window.removeEventListener('focus', focus);
   }, []);
   useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem('nossom-sidebar-collapsed') === 'true');
+    } catch {}
+  }, []);
+  function toggleNavigation() {
+    const next = !collapsed;
+    setCollapsed(next);
+    try {
+      localStorage.setItem('nossom-sidebar-collapsed', String(next));
+    } catch {}
+  }
+  useEffect(() => {
     const query = matchMedia('(max-width: 680px)');
     const update = () => {
       setMobile(query.matches);
@@ -1066,7 +1078,7 @@ export default function Studio({ account }: { account: Account }) {
               aria-label={collapsed ? 'Expandir navegação' : 'Recolher navegação'}
               aria-expanded={!collapsed}
               aria-controls="studio-navigation"
-              onClick={() => setCollapsed(!collapsed)}
+              onClick={toggleNavigation}
             >
               <Menu size={18} />
             </button>

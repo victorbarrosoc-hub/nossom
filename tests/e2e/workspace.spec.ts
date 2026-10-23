@@ -125,6 +125,8 @@ test('readable controls fit mobile and desktop; desktop navigation collapses and
   await page.goto('/studio');
   await page.getByRole('button', { name: 'Recolher navegação', exact: true }).click();
   await expect(page.locator('.studio-shell')).toHaveClass(/nav-collapsed/);
+  await page.reload();
+  await expect(page.locator('.studio-shell')).toHaveClass(/nav-collapsed/);
   await page.getByRole('button', { name: 'Expandir navegação', exact: true }).click();
   await expect(page.locator('.studio-shell')).not.toHaveClass(/nav-collapsed/);
   for (const width of [1440, 1000, 390]) {
