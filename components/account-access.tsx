@@ -1,4 +1,5 @@
 'use client';
+import DesktopUpdates from './desktop-updates';
 import Link from 'next/link';
 import { useId, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
@@ -207,6 +208,7 @@ export default function AccountAccess({
   return (
     <main className="account-page">
       <section className="account-story" aria-label="NOSSOM">
+        <DesktopUpdates floating />
         <Link href="/" aria-label="NOSSOM página inicial">
           <Brand />
         </Link>

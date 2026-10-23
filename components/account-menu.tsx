@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { AccountForm } from './account-access';
 import { useDialog } from '@/lib/use-dialog';
-import type { Account } from '@/lib/accounts';
+import { accountPlan, type Account } from '@/lib/accounts';
 import type { AudioUsage } from '@/lib/usage';
 export default function AccountMenu({
   account: initialAccount,
@@ -183,6 +183,7 @@ export default function AccountMenu({
                         </span>
                         <div>
                           <strong>{account.name}</strong>
+                          <span className="account-plan">{accountPlan(account)}</span>
                           <p>{account.email}</p>
                           <span className="account-profile-badge">
                             <ShieldCheck size={12} />

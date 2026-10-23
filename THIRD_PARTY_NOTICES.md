@@ -9,3 +9,7 @@ O produto utiliza pacotes instalados conforme `package-lock.json`, mantendo as l
 - **ElevenLabs SDK**: consulte a licença do pacote. A utilização do serviço e das vozes segue os termos do provedor e exige configuração autorizada.
 
 A NOSSOM não inclui conteúdo de áudio licenciado de terceiros: a demonstração é um sinal musical sintetizado pelo próprio código. As referências visuais do usuário foram usadas como direção de design.
+
+## Human voice demonstration
+
+`public/demo/voice-original.mp3` and `voice-treated.mp3` contain adapted human recordings from **TTS-Portuguese Corpus**, Edresson Casanova and collaborators, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Source recordings are [`audio/Esperado/10.wav`](https://github.com/Edresson/TTS-Portuguese-Corpus/blob/gh-pages/audio/Esperado/10.wav) and [`8.wav`](https://github.com/Edresson/TTS-Portuguese-Corpus/blob/gh-pages/audio/Esperado/8.wav) on the `gh-pages` branch. These are ground-truth recordings, not synthesized model output. Changes: concatenation, resampling, volume adjustment, added pink noise and NOSSOM neural restoration/mastering for the treated version. Full license is in `public/licenses/tts-portuguese-cc-by-4.0.txt`; source and changes are also disclosed in the player and `public/demo/README.txt`.

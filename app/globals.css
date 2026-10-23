@@ -2,6 +2,7 @@
 @import './styles/studio.css';
 @import './styles/kit.css';
 @import './styles/site.css';
+@import './styles/home.css';
 * {
   box-sizing: border-box;
 }

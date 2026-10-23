@@ -124,7 +124,7 @@ test('automatic treatment applies the selected destination after restoration and
 });
 test('homepage renders without the two removed phrases and decorative arrow', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: /O som em outra escala/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Seu som tem mais a dizer/ })).toBeVisible();
   await expect(
     page.getByText('INTELIGÊNCIA E SENSIBILIDADE. NO MESMO SOM.', { exact: true }),
   ).toHaveCount(0);

@@ -33,7 +33,7 @@ test('landing, responsive navigation, functional demonstration and assistant', a
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'O som em outra escala.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Seu som tem mais a dizer.' })).toBeVisible();
   await page.evaluate(async () => {
     for (let y = 0; y < document.body.scrollHeight; y += 600) {
       window.scrollTo({ top: y, behavior: 'instant' });
@@ -45,7 +45,7 @@ test('landing, responsive navigation, functional demonstration and assistant', a
   await page.screenshot({ path: 'test-results/landing-desktop.png', fullPage: true });
   await page.getByRole('button', { name: 'Ouvir demonstração' }).click();
   await expect(page.getByRole('button', { name: 'Pausar demonstração' })).toBeVisible();
-  await page.getByRole('button', { name: 'Com filtro', exact: true }).click();
+  await page.getByRole('button', { name: 'NOSSOM', exact: true }).click();
   await page.getByRole('button', { name: 'Pausar demonstração' }).click();
   await page.getByRole('button', { name: 'Vamos conversar' }).click();
   await page.getByLabel('Descreva seu objetivo').fill('Reduzir ruído de uma entrevista');

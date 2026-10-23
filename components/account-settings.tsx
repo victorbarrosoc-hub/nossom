@@ -3,7 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'motion/react';
 import { Check, LoaderCircle, LockKeyhole, Mail, UserRound } from 'lucide-react';
-import type { Account } from '@/lib/accounts';
+import { accountPlan, type Account } from '@/lib/accounts';
 import type { AudioUsage } from '@/lib/usage';
 export default function AccountSettings({
   account,
@@ -80,6 +80,7 @@ export default function AccountSettings({
         <span className="account-profile-avatar">{account.name[0].toUpperCase()}</span>
         <div>
           <strong>{account.name}</strong>
+          <span className="account-plan">{accountPlan(account)}</span>
           <p>{account.email}</p>
         </div>
         <span>{account.isAdmin ? 'Administrador' : 'Conta NOSSOM'}</span>

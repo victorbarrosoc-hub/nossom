@@ -25,3 +25,13 @@ O repositório é privado: URLs de artefatos do GitHub não funcionam para usuá
 - `NOSSOM_DOWNLOAD_WINDOWS_URL`: instalador Windows `.exe`.
 
 Depois faça um deploy. Sem uma URL publicada, o cartão informa **Instalador em preparação** e não oferece um link falso. A aplicação web/PWA permanece disponível. O diagnóstico anterior do GitHub Actions informou bloqueio por falha de pagamento/limite de gastos; essa configuração não remove restrições de cobrança da conta.
+
+## Atualizar sem baixar pelo site
+
+O aplicativo inclui `electron-updater`: busca uma versão ao abrir e a cada quatro horas, notifica no sistema e mostra um aviso dentro do estúdio. **Atualizar agora** baixa a atualização verificada. Depois do download, reinicia e instala automaticamente; espera uma gravação ou tratamento em curso terminar. Também é possível buscar novidades pelo sino do aplicativo. A versão web recebe o código publicado ao abrir/recarregar; o navegador não recebe o mecanismo de instalador nativo.
+
+Para gerar distribuições com atualização, configure a variável do repositório `NOSSOM_UPDATE_BASE_URL` com a raiz HTTPS de um armazenamento público dedicado. O build cria um feed independente para `mac-arm64/`, `mac-x64/` e `win-x64/`. Publique em cada diretório todos os artefatos aprovados correspondentes: instalador, ZIP no Mac, blockmaps e `latest-mac.yml`/`latest.yml`. Envie binários primeiro e o manifesto por último. O workflow armazena esses arquivos como artefatos privados; não os publica automaticamente no bucket. Incremente `desktop/package.json` e seu lockfile para cada versão; não substitua uma versão já distribuída.
+
+Atualizações só são habilitadas em builds empacotados com feed. Para esse build, o script exige assinatura: secrets `MAC_CSC_LINK`/`MAC_CSC_KEY_PASSWORD` e `WIN_CSC_LINK`/`WIN_CSC_KEY_PASSWORD`; no Mac, também `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` para notarização. No Windows, a variável `NOSSOM_WINDOWS_PUBLISHER` deve corresponder ao titular do certificado. Não coloque certificados ou senhas no Git. Os builds sem feed continuam gerando instaladores de teste, sem ativar atualizações automáticas.
+
+A verificação de hashes e assinaturas é realizada pelo atualizador nativo; download automático em segundo plano está desativado até o clique do usuário. O preload expõe apenas estado/check/download/install, sem acesso a Node ou URLs arbitrárias; o processo principal valida a origem e o frame remetente do IPC. Não há downgrade ou instalação de prerelease. O fluxo foi testado com doubles do atualizador e bridge de navegador, sem simular uma instalação real em Mac/Windows. Continua pendente a liberação dos runners por cobrança/limite de gastos, certificados e publicação do feed HTTPS.

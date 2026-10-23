@@ -1,13 +1,14 @@
 'use client';
 import Link from 'next/link';
 import AccountMenu from './account-menu';
+import DesktopUpdates from './desktop-updates';
 import AccountSettings from './account-settings';
 import { usePathname, useRouter } from 'next/navigation';
 import { toolPath, routeOperation } from '@/lib/studio-routes';
 import { activateVersion, activeIndex, previousIndex, nextIndex } from '@/lib/history';
 import { EqualizerControls, BroadcastControls } from './preset-controls';
 import AssistantHome from './assistant-home';
-import type { Account } from '@/lib/accounts';
+import { accountPlan, type Account } from '@/lib/accounts';
 import { eqPresets, type EqGains } from '@/lib/equalizer';
 import { freshBroadcast, type BroadcastSettings } from '@/lib/broadcast';
 import PresetLibrary from './preset-library';
@@ -849,6 +850,7 @@ export default function Studio({ account }: { account: Account }) {
           <span className="workspace-avatar">{account.name.slice(0, 1).toUpperCase()}</span>
           <div>
             {account.name}
+            <span className="account-plan">{accountPlan(account)}</span>
             <small>{account.email}</small>
           </div>
           <span className="local-badge">{account.isAdmin ? 'ADM' : 'CONTA'}</span>
@@ -987,6 +989,7 @@ export default function Studio({ account }: { account: Account }) {
             )}
           </div>
           <div className="studio-header-actions">
+            <DesktopUpdates blocked={!!busy || recording} />
             <AccountMenu account={account} usage={usage} disabled={!!busy || recording} />
             <label className="theme-control">
               <span className="sr-only">Tema do estúdio</span>

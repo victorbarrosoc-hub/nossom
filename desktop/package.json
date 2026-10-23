@@ -7,7 +7,7 @@
   "main": "main.cjs",
   "scripts": {
     "start": "electron .",
-    "dist": "electron-builder --publish never"
+    "dist": "node package-app.cjs"
   },
   "devDependencies": {
     "electron": "45.0.0",
@@ -17,12 +17,15 @@
     "appId": "com.nossom.studio",
     "productName": "NOSSOM",
     "files": [
-      "main.cjs"
+      "main.cjs",
+      "preload.cjs",
+      "updates.cjs"
     ],
     "artifactName": "NOSSOM-${version}-${os}-${arch}.${ext}",
     "mac": {
       "target": [
-        "dmg"
+        "dmg",
+        "zip"
       ],
       "category": "public.app-category.music",
       "hardenedRuntime": true,
@@ -45,5 +48,8 @@
     "dmg": {
       "title": "Instalar NOSSOM"
     }
+  },
+  "dependencies": {
+    "electron-updater": "6.8.9"
   }
 }
