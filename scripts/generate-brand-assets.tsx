@@ -2,18 +2,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
 async function main() {
   await mkdir('public/pwa', { recursive: true });
-  const artwork = await sharp('public/brand/silver-wave.png')
-    .resize(1024, 1024)
-    .png({ compressionLevel: 9 })
-    .toBuffer();
-  await writeFile('public/brand/silver-wave.png', artwork);
-  // Extra inset keeps the ribbon inside the safe area of mobile/desktop masks.
-  const icon = await sharp({
-    create: { width: 1024, height: 1024, channels: 4, background: '#040c2b' },
-  })
-    .composite([{ input: await sharp(artwork).resize(820, 820).toBuffer(), gravity: 'centre' }])
-    .png()
-    .toBuffer();
+  // The exact original NOSSOM mark, with generous safe area for app masks.
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs><radialGradient id="bg" cx="65%" cy="22%" r="90%"><stop stop-color="#3c607c"/><stop offset=".55" stop-color="#15283c"/><stop offset="1" stop-color="#080f1b"/></radialGradient><linearGradient id="chrome" x1="0" y1="0" x2=".8" y2="1"><stop stop-color="#eef7ff"/><stop offset=".27" stop-color="#8aa3bb"/><stop offset=".48" stop-color="#fff"/><stop offset=".7" stop-color="#8194ab"/><stop offset="1" stop-color="#e5f3ff"/></linearGradient></defs><rect width="1024" height="1024" fill="url(#bg)"/><svg x="145" y="326" width="734" height="374" viewBox="0 0 110 56"><path d="M3 42C28 14 35 0 55 18S82 43 107 8C78 48 72 53 50 36S25 24 3 42Z" fill="url(#chrome)"/></svg></svg>`;
+  const icon = await sharp(Buffer.from(svg)).png().toBuffer();
   for (const size of [64, 180, 192, 512, 1024]) {
     await writeFile(
       `public/pwa/icon-${size}.png`,
@@ -21,6 +12,7 @@ async function main() {
     );
     console.log(`Generated NOSSOM icon ${size}×${size}`);
   }
+  await writeFile('public/icon.svg', svg);
 }
 main().catch((error) => {
   console.error(error);

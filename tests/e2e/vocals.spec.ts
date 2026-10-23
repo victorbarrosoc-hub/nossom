@@ -1,5 +1,6 @@
 import { test, expect } from './fixtures';
 import AxeBuilder from '@axe-core/playwright';
+import { readFile } from 'node:fs/promises';
 function stereoWav(seconds: number) {
   const rate = 44100,
     frames = Math.round(rate * seconds),
@@ -99,6 +100,13 @@ test('vocals uses the music model, saves a stereo version, and never runs speech
   expect(submits).toBe(1);
   await expect.poll(() => cleaned).toBe(true);
   await expect(page.locator('.editor-heading')).toContainText('Estéreo');
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Baixar WAV', exact: true }).click();
+  const saved = await downloaded;
+  const wav = await readFile((await saved.path())!);
+  expect(wav.readUInt16LE(20)).toBe(3);
+  expect(wav.readUInt16LE(22)).toBe(2);
+  expect(wav.equals(output)).toBe(true);
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Isolar voz da música', level: 1, exact: true }),

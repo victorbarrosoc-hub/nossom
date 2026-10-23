@@ -58,12 +58,7 @@ test('human voice demo plays real files, preserves time on A/B, seeks and contro
   ).toBeCloseTo(4.25, 1);
   await page.getByText('Sobre esta demonstração', { exact: true }).click();
   await expect(page.getByText(/Gravação real em português/)).toBeVisible();
-  await page.getByRole('button', { name: 'Preparar pro YouTube', exact: true }).click();
-  await expect(
-    page.getByText('Vamos tratar a fala e finalizar com o perfil de entrega YouTube.', {
-      exact: true,
-    }),
-  ).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Isolar cantor', exact: true })).toHaveAttribute('href','/studio/isolar-voz');
   await page.getByRole('button', { name: 'Ouvir demonstração', exact: true }).click();
   await page
     .locator('audio')
@@ -104,14 +99,14 @@ test('immersive homepage fits desktop and mobile, respects reduced motion and re
   }
   expect(
     await page
-      .locator('.home-hero-atmosphere .ribbon-flow')
+      .locator('.chrome-hero-art .ribbon-sculpture')
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe('none');
   await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
   await expect(
     page
       .getByRole('navigation', { name: 'Navegação principal' })
-      .getByRole('link', { name: 'Produto', exact: true }),
+      .getByRole('link', { name: 'Planos', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Fechar menu', exact: true }).click();
 });

@@ -4,6 +4,7 @@
 @import './styles/site.css';
 @import './styles/home.css';
 @import './styles/refinement.css';
+@import './styles/cinematic.css';
 * {
   box-sizing: border-box;
 }

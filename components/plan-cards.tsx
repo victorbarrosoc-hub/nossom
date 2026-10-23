@@ -20,8 +20,8 @@ export default function PlanCards({ current }: { current?: string }) {
       <div className="plans-intro">
         <h2>Um plano para o seu ritmo.</h2>
         <p>
-          A franquia é para restauração com IA. Equalização, efeitos e masterização local não
-          descontam minutos.
+          Use seus minutos para limpar fala ou isolar vocais. Equalização, efeitos e finalização
+          local não descontam minutos.
         </p>
       </div>
       <div className="plans-grid">
@@ -43,7 +43,7 @@ export default function PlanCards({ current }: { current?: string }) {
             </p>
             <ul>
               {[
-                'Restauração NOSSOM Restore D',
+                'Limpeza de fala e separação de vocais',
                 'Assistente da plataforma incluído',
                 'EQ, multibanda e efeitos locais',
                 'Histórico, comparação e exportação',

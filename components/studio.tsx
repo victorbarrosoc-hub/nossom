@@ -445,6 +445,9 @@ export default function Studio({ account }: { account: Account }) {
     };
   }, [sidebar]);
   const version = project?.versions[versionIndex];
+  const cloudOutput = !!(
+    version?.processing?.cloudRestoration || version?.processing?.vocalSeparation
+  );
   const selectedTool = operations.find((o) => o.id === operation)!;
   useEffect(() => {
     let current = true;
@@ -872,7 +875,7 @@ export default function Studio({ account }: { account: Account }) {
       processingPreset: version.preset ?? null,
       processingSettings: version.processing ?? null,
       output: {
-        format: 'WAV PCM 16-bit',
+        format: cloudOutput ? 'WAV float32' : 'WAV PCM 16-bit',
         sampleRate: version.info.sampleRate,
         channels: version.info.channels,
         duration: version.info.duration,
@@ -1608,7 +1611,8 @@ export default function Studio({ account }: { account: Account }) {
                     <strong>{project.name}</strong> <span>·</span>
                     {formatTime(version.info.duration)} <span>·</span>{' '}
                     {version.info.channels === 1 ? 'Mono' : 'Estéreo'} <span>·</span>{' '}
-                    {version.info.sampleRate / 1000} kHz <span>·</span> WAV 16-bit{' '}
+                    {version.info.sampleRate / 1000} kHz <span>·</span>{' '}
+                    {cloudOutput ? 'WAV float32' : 'WAV 16-bit'}{' '}
                     <span className="saved">
                       <Check size={12} /> Salvo neste navegador
                     </span>
@@ -1874,7 +1878,7 @@ export default function Studio({ account }: { account: Account }) {
                     <div>
                       <strong>Pronto para seguir com seu som?</strong>
                       <span>
-                        {version.processing?.cloudRestoration
+                        {cloudOutput
                           ? 'WAV 32-bit float · 44,1 kHz · MP3 disponível'
                           : 'WAV 16-bit ou MP3 320 kbps · 48 kHz'}
                       </span>

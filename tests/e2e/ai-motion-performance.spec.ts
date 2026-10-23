@@ -3,13 +3,13 @@ test('wave moves without DOM path morphing, pauses offscreen and respects reduce
   page,
 }) => {
   await page.goto('/');
-  const wave = page.locator('.home-ai-presence .ai-motion');
+  const wave = page.locator('.chrome-hero-art .cinematic-ribbon');
   await wave.scrollIntoViewIfNeeded();
   await expect(wave).toHaveClass(/is-running/);
-  const canvas = wave.locator('canvas');
-  const first = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+  const canvas = wave.locator('img');
+  const first = await canvas.evaluate((el) => getComputedStyle(el).transform);
   await page.waitForTimeout(250);
-  expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(first);
+  expect(await canvas.evaluate((el) => getComputedStyle(el).transform)).not.toBe(first);
   const mutations = await wave.evaluate(async (el) => {
     let changes = 0;
     const o = new MutationObserver((records) => {
@@ -23,9 +23,9 @@ test('wave moves without DOM path morphing, pauses offscreen and respects reduce
   expect(mutations).toBe(0);
   await page.evaluate(() => scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }));
   await expect(wave).not.toHaveClass(/is-running/);
-  const paused = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+  const paused = await canvas.evaluate((el) => getComputedStyle(el).transform);
   await page.waitForTimeout(300);
-  expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(paused);
+  expect(await canvas.evaluate((el) => getComputedStyle(el).transform)).toBe(paused);
   await wave.scrollIntoViewIfNeeded();
   await expect(wave).toHaveClass(/is-running/);
   await page.evaluate(() => {
@@ -34,9 +34,9 @@ test('wave moves without DOM path morphing, pauses offscreen and respects reduce
   });
   await expect(wave).not.toHaveClass(/is-running/);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(wave.locator('svg')).toHaveCSS('animation-name', 'none');
+  await expect(wave.locator('img')).toHaveCSS('animation-name', 'none');
   await page.waitForTimeout(100);
-  const reduced = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+  const reduced = await canvas.evaluate((el) => getComputedStyle(el).transform);
   await page.waitForTimeout(300);
-  expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(reduced);
+  expect(await canvas.evaluate((el) => getComputedStyle(el).transform)).toBe(reduced);
 });

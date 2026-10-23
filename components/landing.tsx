@@ -1,28 +1,24 @@
 'use client';
 import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
-import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import {
   AudioLines,
   Layers,
   ArrowRight,
   ArrowUpRight,
-  ArrowDown,
   Play,
   Sparkles,
   ShieldCheck,
   Download,
-  Check,
   Menu,
   X,
   Plus,
   Minus,
-  FileAudio,
-  Send,
   Paperclip,
 } from 'lucide-react';
-import { Brand, SoundRibbon } from './brand';
-import AIMotion from './ai-motion';
+import CinematicRibbon from './cinematic-ribbon';
+import { Brand } from './brand';
 import DemoPlayer from './demo-player';
 import PlanCards from './plan-cards';
 import InstallApp from './install-app';
@@ -41,98 +37,13 @@ function Reveal({
   return (
     <motion.div
       className={`ns-reveal ${className}`}
-      initial={reduced ? false : { opacity: 0, y: 24 }}
+      initial={false}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, amount: 0.12 }}
-      transition={{ duration: reduced ? 0 : 0.75, delay, ease: [0.2, 0.8, 0.2, 1] }}
+      transition={{ duration: reduced ? 0 : 0.45, delay, ease: [0.2, 0.8, 0.2, 1] }}
     >
       {children}
     </motion.div>
-  );
-}
-const examples = [
-  {
-    label: 'Limpar minha voz',
-    request: 'Quero tirar o ruído sem perder minha voz.',
-    reply: 'Vamos restaurar a fala. Depois você escolhe o corpo e o acabamento.',
-    tags: ['NOSSOM Restore D', 'EQ depois da IA'],
-  },
-  {
-    label: 'Isolar cantor',
-    request: 'Quero só a voz do cantor, sem os instrumentos.',
-    reply:
-      'Escolha Isolar voz da música para separar os vocais e comparar com a gravação original.',
-    tags: ['Separação musical', 'Vocais estéreo'],
-  },
-  {
-    label: 'Som de rádio',
-    request: 'Quero dar um som de rádio à minha voz.',
-    reply: 'Podemos aplicar a textura de rádio. Você controla a intensidade.',
-    tags: ['Efeito Rádio', 'Intensidade ajustável'],
-  },
-];
-function AIPreview() {
-  const [selected, setSelected] = useState(0),
-    reduced = useReducedMotion();
-  return (
-    <div className="home-ai-preview">
-      <div className="home-ai-preview-top">
-        <span>
-          <i /> ASSISTENTE NOSSOM
-        </span>
-        <span>Prévia interativa</span>
-      </div>
-      <div className="home-ai-presence">
-        <AIMotion state="thinking" compact />
-        <span>O próximo passo começa com uma conversa.</span>
-      </div>
-      <div className="home-ai-example" aria-live="polite">
-        <AnimatePresence mode="wait" initial={false}>
-          <motion.div
-            key={selected}
-            initial={reduced ? false : { opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -5 }}
-            transition={{ duration: reduced ? 0 : 0.2 }}
-          >
-            <div className="home-ai-user">
-              <span>
-                <FileAudio size={15} /> minha_gravacao.wav
-              </span>
-              <p>{examples[selected].request}</p>
-            </div>
-            <div className="home-ai-answer">
-              <Sparkles size={19} />
-              <div>
-                <p>{examples[selected].reply}</p>
-                <div>
-                  {examples[selected].tags.map((tag) => (
-                    <span key={tag}>
-                      <Check size={12} />
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-      <div className="home-ai-prompts" role="group" aria-label="Explorar sugestões da IA">
-        {examples.map((example, i) => (
-          <button key={example.label} aria-pressed={selected === i} onClick={() => setSelected(i)}>
-            {example.label}
-          </button>
-        ))}
-      </div>
-      <Link href={selected === 1 ? '/studio/isolar-voz' : '/studio'} className="home-ai-compose">
-        <Paperclip size={18} />
-        <span>Envie seu áudio. Conte sua ideia.</span>
-        <span className="home-ai-send">
-          <Send size={15} />
-        </span>
-      </Link>
-    </div>
   );
 }
 const faqs = [
@@ -150,7 +61,7 @@ const faqs = [
   ],
   [
     'Quais arquivos posso usar?',
-    'WAV, MP3, M4A, FLAC, OGG e áudio de MP4 ou MOV, conforme o codec. Até 100 MB e 10 minutos. A restauração de fala gera mono em WAV float32 a 44,1 kHz. A finalização local permite WAV ou MP3 a 48 kHz.',
+    'WAV, MP3, M4A, FLAC, OGG e áudio de MP4 ou MOV. Até 100 MB e 10 minutos. Limpeza de fala em mono e separação musical em estéreo. Exporte o resultado em WAV ou MP3.',
   ],
   [
     'Posso desfazer um tratamento?',
@@ -161,7 +72,7 @@ export default function Landing() {
   const [menu, setMenu] = useState(false),
     [faq, setFaq] = useState<number | null>(null);
   return (
-    <div className="ns-site home-v2">
+    <div className="ns-site home-v2 chrome-site">
       <a className="skip-link" href="#conteudo">
         Pular para o conteúdo
       </a>
@@ -172,9 +83,7 @@ export default function Landing() {
           </Link>
           <nav className={menu ? 'open' : ''} aria-label="Navegação principal">
             {[
-              ['Produto', 'produto'],
               ['Ouça a diferença', 'experimente'],
-              ['Como funciona', 'como-funciona'],
               ['Planos', 'planos'],
             ].map(([label, id]) => (
               <a key={id} href={`#${id}`} onClick={() => setMenu(false)}>
@@ -201,23 +110,17 @@ export default function Landing() {
       </header>
       <main id="conteudo">
         <section className="home-hero">
-          <div className="home-hero-atmosphere" aria-hidden="true">
-            <SoundRibbon />
-          </div>
+          <div className="home-hero-atmosphere" aria-hidden="true" />
           <div className="ns-wrap home-hero-grid">
             <Reveal className="home-hero-copy">
               <h1>
-                Seu som tem
-                <br />
-                <span>mais a dizer.</span>
+                Seu som,
+                <span>em outra escala.</span>
               </h1>
-              <p>
-                Uma IA para entender o que você quer ouvir.
-                <br className="home-desktop-break" /> Um estúdio para fazer acontecer.
-              </p>
+              <p>Limpe sua voz. Isole vocais. Crie do seu jeito.</p>
               <div className="ns-actions">
                 <Link href="/studio" className="button primary">
-                  Criar com a NOSSOM <ArrowUpRight size={17} />
+                  Começar grátis <ArrowUpRight size={17} />
                 </Link>
                 <a href="#experimente" className="home-listen-link">
                   <span>
@@ -226,52 +129,38 @@ export default function Landing() {
                   Ouça a diferença
                 </a>
               </div>
-              <nav className="home-intents" aria-label="Escolha o que fazer com seu áudio">
-                <Link href="/studio/automatico" data-intent="auto">
-                  <Sparkles size={18} />
-                  Limpar fala
-                </Link>
-                <Link href="/studio/isolar-voz" data-intent="vocals">
-                  <AudioLines size={18} />
-                  Isolar cantor
-                </Link>
-                <Link href="/studio/efeitos" data-intent="effects">
-                  <Layers size={18} />
-                  Criar efeitos
-                </Link>
-                <Link href="/studio/masterizacao" data-intent="master">
-                  <Download size={18} />
-                  Finalizar áudio
-                </Link>
-              </nav>
               <div className="home-hero-proof">
                 <ShieldCheck size={15} />
-                <span>5 minutos grátis de restauração por mês. Seu original preservado.</span>
+                <span>5 minutos grátis de IA por mês. Seu original preservado.</span>
               </div>
             </Reveal>
-            <Reveal className="home-hero-interface" delay={0.12}>
-              <AIPreview />
-            </Reveal>
+            <div className="home-hero-interface chrome-hero-art">
+              <CinematicRibbon priority />
+            </div>
           </div>
-          <div className="ns-wrap home-hero-bottom">
-            <span>DA SUA IDEIA AO PRÓXIMO PLAY</span>
-            <a href="#experimente" aria-label="Explorar a demonstração de voz">
-              <ArrowDown size={18} />
-            </a>
-            <span>GRAVE · TRATE · FINALIZE</span>
-          </div>
+          <nav
+            className="home-intents chrome-intents ns-wrap"
+            aria-label="Escolha o que fazer com seu áudio"
+          >
+            <Link href="/studio/automatico" data-intent="auto">
+              <Sparkles size={18} />
+              Limpar fala
+            </Link>
+            <Link href="/studio/isolar-voz" data-intent="vocals">
+              <AudioLines size={18} />
+              Isolar cantor
+            </Link>
+            <Link href="/studio/efeitos" data-intent="effects">
+              <Layers size={18} />
+              Criar efeitos
+            </Link>
+          </nav>
         </section>
         <section className="home-listen ns-wrap" id="experimente">
-          <Reveal className="home-listen-heading">
-            <div>
-              <h2>
-                A diferença
-                <br />
-                <span>se ouve.</span>
-              </h2>
-            </div>
-            <p>Dê play e compare o antes e depois.</p>
-          </Reveal>
+          <div className="chrome-listen-heading">
+            <h2>Ouça a diferença.</h2>
+            <p>Uma gravação real, antes e depois.</p>
+          </div>
           <Reveal>
             <DemoPlayer />
           </Reveal>
