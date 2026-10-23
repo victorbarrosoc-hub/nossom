@@ -155,9 +155,13 @@ test('readable controls fit mobile and desktop; desktop navigation collapses and
     page.getByRole('heading', { name: 'Mac · Apple Silicon', exact: true }),
   ).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Windows', exact: true })).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Instalador em preparação', exact: true }),
-  ).toHaveCount(3);
+  const downloads = page.locator('.apps-grid a.button.primary');
+  const pending = page.getByRole('button', { name: 'Instalador em preparação', exact: true });
+  expect((await downloads.count()) + (await pending.count())).toBe(3);
+  await expect(page.getByRole('link', { name: 'Baixar para Windows', exact: true })).toBeVisible();
+  for (const link of await downloads.all()) {
+    expect(await link.getAttribute('href')).toMatch(/^https:\/\//);
+  }
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.goto('/');
   for (const width of [1440, 1000, 390]) {

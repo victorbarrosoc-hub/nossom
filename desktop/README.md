@@ -14,17 +14,17 @@ npm run dist -- --mac --arm64
 # Ou --mac --x64, no Mac; --win --x64 no Windows.
 ```
 
-Os arquivos aparecem em `desktop/dist/` e nos artefatos privados do workflow. Esta configuração não contém certificados de assinatura ou notarização. Não equivale a distribuição assinada pela Apple/Microsoft. Antes de liberar downloads públicos, valide os binários em cada sistema, configure certificados do distribuidor e faça a assinatura/notarização. A janela limita navegação interna ao domínio da NOSSOM, abre HTTPS externo no navegador e só permite solicitações de microfone da origem autorizada. A permissão do sistema operacional continua necessária.
+Os arquivos aparecem em `desktop/dist/` e nos artefatos privados do workflow. Esta configuração não contém certificados de assinatura ou notarização. Não equivale a distribuição assinada pela Apple/Microsoft. Para uma distribuição final assinada, valide os binários em cada sistema, configure certificados do distribuidor e faça a assinatura/notarização. A prévia pública é identificada como versão de teste. A janela limita navegação interna ao domínio da NOSSOM, abre HTTPS externo no navegador e só permite solicitações de microfone da origem autorizada. A permissão do sistema operacional continua necessária.
 
 ## Distribuir
 
-O repositório é privado: URLs de artefatos do GitHub não funcionam para usuários anônimos. Publique os instaladores aprovados em um armazenamento HTTPS público, como um bucket público dedicado no Supabase Storage, sem incluir credenciais. A página `/apps` lê estas variáveis da Vercel no build:
+O repositório está público. Artefatos de Actions ainda podem exigir login, por isso os instaladores de teste são publicados como assets da release pública `desktop-v0.1.0`. Publique os instaladores aprovados em um armazenamento HTTPS público, como um bucket público dedicado no Supabase Storage, sem incluir credenciais. A página `/apps` lê estas variáveis da Vercel no build:
 
 - `NOSSOM_DOWNLOAD_MAC_ARM64_URL`: arquivo DMG Apple Silicon.
 - `NOSSOM_DOWNLOAD_MAC_X64_URL`: arquivo DMG Intel.
 - `NOSSOM_DOWNLOAD_WINDOWS_URL`: instalador Windows `.exe`.
 
-Depois faça um deploy. Sem uma URL publicada, o cartão informa **Instalador em preparação** e não oferece um link falso. A aplicação web/PWA permanece disponível. O diagnóstico anterior do GitHub Actions informou bloqueio por falha de pagamento/limite de gastos; essa configuração não remove restrições de cobrança da conta.
+As URLs acima substituem os downloads de teste. Os links da prévia 0.1.0 foram habilitados somente após a publicação e verificação HTTP anônima dos três instaladores. A prévia não possui assinatura/notarização nem atualização automática habilitada. Depois de alterar variáveis, faça um deploy. Sem um arquivo publicado, o cartão informa **Instalador em preparação** e não oferece um link falso. A aplicação web/PWA permanece disponível. O bloqueio anterior de minutos privados foi contornado com o repositório público. Windows e as duas arquiteturas Mac foram compilados com sucesso em runners padrão e publicados em Releases.
 
 ## Atualizar sem baixar pelo site
 
@@ -34,4 +34,6 @@ Para gerar distribuições com atualização, configure a variável do repositó
 
 Atualizações só são habilitadas em builds empacotados com feed. Para esse build, o script exige assinatura: secrets `MAC_CSC_LINK`/`MAC_CSC_KEY_PASSWORD` e `WIN_CSC_LINK`/`WIN_CSC_KEY_PASSWORD`; no Mac, também `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID` para notarização. No Windows, a variável `NOSSOM_WINDOWS_PUBLISHER` deve corresponder ao titular do certificado. Não coloque certificados ou senhas no Git. Os builds sem feed continuam gerando instaladores de teste, sem ativar atualizações automáticas.
 
-A verificação de hashes e assinaturas é realizada pelo atualizador nativo; download automático em segundo plano está desativado até o clique do usuário. O preload expõe apenas estado/check/download/install, sem acesso a Node ou URLs arbitrárias; o processo principal valida a origem e o frame remetente do IPC. Não há downgrade ou instalação de prerelease. O fluxo foi testado com doubles do atualizador e bridge de navegador, sem simular uma instalação real em Mac/Windows. Continua pendente a liberação dos runners por cobrança/limite de gastos, certificados e publicação do feed HTTPS.
+A verificação de hashes e assinaturas é realizada pelo atualizador nativo; download automático em segundo plano está desativado até o clique do usuário. O preload expõe apenas estado/check/download/install, sem acesso a Node ou URLs arbitrárias; o processo principal valida a origem e o frame remetente do IPC. Não há downgrade ou instalação de prerelease. O fluxo foi testado com doubles do atualizador e bridge de navegador, sem simular uma instalação real em Mac/Windows. Os runners estão executando e as prévias foram publicadas; continuam pendentes certificados e publicação do feed HTTPS.
+
+Para gerar só Mac ou Windows, escolha `platform` no workflow. Marque `publish_preview` para publicar os instaladores disponíveis na release de teste. Arquivos já distribuídos não são sobrescritos; incremente a versão para atualizar binários existentes. Builds Mac usam macOS 15; campos vazios de certificados são removidos para evitar interpretar o diretório como certificado.

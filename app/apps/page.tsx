@@ -15,27 +15,42 @@ function download(value: string | undefined) {
     return null;
   }
 }
+const releaseTag = 'desktop-v0.1.0';
+const releaseBase = `https://github.com/victorbarrosoc-hub/nossom/releases/download/${releaseTag}/`;
+const installerNames = {
+  macArm64: 'NOSSOM-0.1.0-mac-arm64.dmg',
+  macX64: 'NOSSOM-0.1.0-mac-x64.dmg',
+  windows: 'NOSSOM-0.1.0-win-x64.exe',
+};
+// These versioned installer assets were built by Actions and anonymously
+// verified before enabling the links. Environment URLs override the previews.
 export default function Apps() {
+  const previews = Object.fromEntries(
+    Object.entries(installerNames).map(([key, name]) => [key, releaseBase + name]),
+  );
   const builds = [
     {
       title: 'Mac · Apple Silicon',
       detail: 'Para Macs com chips M1, M2, M3, M4 ou mais recentes.',
       file: '.dmg',
-      url: download(process.env.NOSSOM_DOWNLOAD_MAC_ARM64_URL),
+      url: download(process.env.NOSSOM_DOWNLOAD_MAC_ARM64_URL) || previews.macArm64,
+      preview: !download(process.env.NOSSOM_DOWNLOAD_MAC_ARM64_URL),
       icon: Apple,
     },
     {
       title: 'Mac · Intel',
       detail: 'Para Macs com processador Intel.',
       file: '.dmg',
-      url: download(process.env.NOSSOM_DOWNLOAD_MAC_X64_URL),
+      url: download(process.env.NOSSOM_DOWNLOAD_MAC_X64_URL) || previews.macX64,
+      preview: !download(process.env.NOSSOM_DOWNLOAD_MAC_X64_URL),
       icon: Apple,
     },
     {
       title: 'Windows',
       detail: 'Para Windows 10 e 11, em computadores de 64 bits.',
       file: '.exe',
-      url: download(process.env.NOSSOM_DOWNLOAD_WINDOWS_URL),
+      url: download(process.env.NOSSOM_DOWNLOAD_WINDOWS_URL) || previews.windows,
+      preview: !download(process.env.NOSSOM_DOWNLOAD_WINDOWS_URL),
       icon: Monitor,
     },
   ];
@@ -59,10 +74,13 @@ export default function Apps() {
             <p>{build.detail}</p>
             <span className="apps-format">Instalador {build.file}</span>
             {build.url ? (
-              <a className="button primary" href={build.url}>
-                <Download size={17} />
-                Baixar para {build.title}
-              </a>
+              <>
+                <a className="button primary" href={build.url}>
+                  <Download size={17} />
+                  Baixar para {build.title}
+                </a>
+                {build.preview && <small>Versão de teste · 0.1.0</small>}
+              </>
             ) : (
               <>
                 <button className="button secondary" disabled>
@@ -74,6 +92,12 @@ export default function Apps() {
           </section>
         ))}
       </div>
+      {builds.some((build) => build.url && build.preview) && (
+        <p className="apps-note">
+          Os instaladores de teste ainda não têm assinatura digital; seu sistema pode pedir
+          confirmação para abrir. Atualizações automáticas não estão disponíveis nesta prévia.
+        </p>
+      )}
       <section className="apps-browser">
         <Smartphone size={30} />
         <div>

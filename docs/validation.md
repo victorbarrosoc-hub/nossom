@@ -1,5 +1,11 @@
 # Validação — contas, IA e motor NOSSOM
 
+## Downloads e conexão GPU — revisão de 23/10/2026
+
+O repositório já estava público quando consultado. Windows x64 compilou com sucesso e foi publicado na release `desktop-v0.1.0`. Os builds Mac falhavam porque segredos vazios eram interpretados como um caminho de certificado; o empacotador agora remove variáveis vazias e preserva a exigência de assinatura quando um feed é configurado. O workflow 39996550320 passou para Mac arm64 e x64 em macOS 15 e publicou os DMGs. Os três instaladores responderam HTTP 200 sem autenticação: Windows 112552224 bytes, Mac arm64 120235713 bytes, Mac x64 124487677 bytes. São prévias sem assinatura/notarização e sem atualização automática; não se declara homologação em máquinas físicas. A página de downloads passa a usar URLs públicas verificadas com prioridade para overrides na Vercel.
+
+O fluxo de restauração foi simplificado: subtítulo curto, estado do pedido e próximo passo. Detalhes de GPU/motor saíram do fluxo principal. Diagnóstico só para ADM em `/api/audio/jobs?diagnostic=1`, sem chaves, URLs assinadas nem mensagens brutas do provedor. Respostas explícitas 4xx (exceto timeout 408) liberam a reserva; falhas ambíguas de rede/5xx continuam protegidas contra repetição automática. 38 testes Node e dois E2E de restauração passaram. O diagnóstico real apresentado pelo titular retornou 404 do provedor; a correção do Endpoint ID na Vercel e um teste GPU real continuam pendentes.
+
 ## Restauração D, planos e ADM — 23/10/2026
 
 Esta atualização substitui as descrições históricas abaixo de cota semanal, demo sintética e ondas estáticas. Planos mensais: Grátis 5 min, Essencial 2 h/R$ 39 e Studio 6 h/R$ 99, ativação manual. O preset D torna-se o padrão automático remoto, com acabamento local opcional e original float32 preservado. A demo pública usa somente o trecho autorizado de 35 s, original versus D, com volume igualado por ganho estático; não é resultado Adobe nem promessa de equivalência.

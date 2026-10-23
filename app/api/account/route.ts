@@ -14,6 +14,7 @@ import {
 } from '@/lib/server/account';
 import { allowRequest, privateHeaders, sameOrigin, requestOrigin } from '@/lib/server/ai-access';
 import { supabase, SupabaseError } from '@/lib/server/supabase';
+import { restorationAvailable } from '@/lib/server/restoration';
 export const runtime = 'nodejs';
 export async function GET(request: Request) {
   if (new URL(request.url).searchParams.get('verify') === '1') {
@@ -40,7 +41,12 @@ export async function GET(request: Request) {
         quotaReady = error instanceof SupabaseError && ['42501', '28000'].includes(error.code);
       }
       return Response.json(
-        { configured: true, reachable: true, quotaReady },
+        {
+          configured: true,
+          reachable: true,
+          quotaReady,
+          restorationReady: await restorationAvailable(),
+        },
         { headers: privateHeaders },
       );
     } catch {

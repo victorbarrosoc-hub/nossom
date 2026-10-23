@@ -25,12 +25,14 @@ test('anonymous activation health checks Supabase and migration without credenti
       configured: true,
       reachable: true,
       quotaReady: false,
+      restorationReady: false,
     });
     migrated = true;
     assert.deepEqual(await (await health()).json(), {
       configured: true,
       reachable: true,
       quotaReady: true,
+      restorationReady: false,
     });
     assert.equal(calls.length, 4);
     assert.ok(calls.every((c) => c.includes('supabase.example.test')));

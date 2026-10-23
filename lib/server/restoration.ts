@@ -101,13 +101,13 @@ async function readURL(job: RestorationJob, kind: 'source' | 'output', part: num
     data.signedURL.startsWith('/storage/v1/') ? data.signedURL : '/storage/v1' + data.signedURL,
   );
 }
-async function runpod(path: string, method = 'GET', body?: unknown) {
+async function runpod(path: string, method = 'GET', body?: unknown, timeout = 25000) {
   const c = config();
   if (!c) throw new RestorationError('O motor de restauração ainda não está conectado.');
   const response = await fetch(`https://api.runpod.ai/v2/${c.endpoint}/${path}`, {
     method,
     cache: 'no-store',
-    signal: AbortSignal.timeout(25000),
+    signal: AbortSignal.timeout(timeout),
     headers: { Authorization: `Bearer ${c.runpodKey}`, 'Content-Type': 'application/json' },
     ...(body === undefined ? {} : { body: JSON.stringify(body) }),
   });
@@ -295,7 +295,7 @@ export async function restorationHealth() {
       error: 'Há uma variável de restauração ausente ou inválida na Vercel.',
     };
   try {
-    const result = await runpod('health');
+    const result = await runpod('health', 'GET', undefined, 5000);
     const workers: Record<string, number> = {};
     for (const key of ['idle', 'initializing', 'ready', 'running', 'throttled', 'unhealthy'])
       if (Number.isFinite(result.workers?.[key])) workers[key] = result.workers[key];
@@ -323,4 +323,19 @@ export async function restorationHealth() {
           : 'A RunPod não respondeu ao diagnóstico. Tente novamente em instantes.',
     };
   }
+}
+
+let readiness: { expires: number; result: Promise<boolean> } | undefined;
+/** Public uptime indicator only; never returns keys, identifiers, counts or provider messages. */
+export function restorationAvailable(): Promise<boolean> {
+  if (!config()) return Promise.resolve(false);
+  if (!readiness || Date.now() >= readiness.expires) {
+    readiness = {
+      expires: Date.now() + 60000,
+      result: runpod('health', 'GET', undefined, 5000)
+        .then(() => true)
+        .catch(() => false),
+    };
+  }
+  return readiness.result;
 }
