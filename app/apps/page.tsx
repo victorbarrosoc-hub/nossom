@@ -15,12 +15,12 @@ function download(value: string | undefined) {
     return null;
   }
 }
-const releaseTag = 'desktop-v0.1.1';
+const releaseTag = 'desktop-v0.2.0';
 const releaseBase = `https://github.com/victorbarrosoc-hub/nossom/releases/download/${releaseTag}/`;
 const installerNames = {
-  macArm64: 'NOSSOM-0.1.1-mac-arm64.dmg',
-  macX64: 'NOSSOM-0.1.1-mac-x64.dmg',
-  windows: 'NOSSOM-0.1.1-win-x64.exe',
+  macArm64: 'NOSSOM-0.2.0-mac-arm64.dmg',
+  macX64: 'NOSSOM-0.2.0-mac-x64.dmg',
+  windows: 'NOSSOM-0.2.0-win-x64.exe',
 };
 // These versioned installer assets were built by Actions and anonymously
 // verified before enabling the links. Environment URLs override the previews.

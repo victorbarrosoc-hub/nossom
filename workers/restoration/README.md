@@ -20,3 +20,11 @@ Após download e gravação local, o navegador pede a exclusão dos objetos temp
 Até 100 MiB/10 minutos na entrada. Saída WAV float32 mono a 44,1 kHz, com duração verificada e margem de pico amostral de pelo menos 3 dB. Cada objeto é <=20 MiB. O preset D não aplica masterização, EQ, correção de texto, TTS ou normalização posterior. A finalização é opcional no navegador. A segmentação do modelo em arquivos completos pode produzir diferenças em relação ao trecho de teste com contexto 20–75 s.
 
 O build e o serviço GPU precisam de homologação real. Testes locais de contrato e mocks não comprovam cold start, desligamento nem qualidade perceptual na RunPod. Código upstream: https://github.com/resemble-ai/resemble-enhance (MIT); conserve as licenças dos componentes e dos pesos nas distribuições.
+
+## Isolar voz da música
+
+O preset `htdemucs-vocals-v1` usa HTDemucs 4.0.1 e retorna apenas o stem `vocals` em estéreo WAV float32 a 44,1 kHz. Não aplica Resemble Enhance aos vocais nem promete remover backing vocals ou todos os instrumentos. Usa a mesma fila, autorização e franquia da restauração; o mínimo é um minuto por trabalho. A entrada original continua salva.
+
+O checkpoint oficial fixo `955717e8-8726e21a.th` é baixado e tem seu hash verificado no build, sem nomes/URLs de modelos vindos do navegador. O build carrega os pesos e roda uma inferência sintética em CPU para verificar compatibilidade com PyTorch. Isso não substitui ouvir uma música real na GPU. O worker antigo aceita somente fala: para ativar a separação, o endpoint precisa concluir a construção e usar esta nova imagem. Nenhuma nova migração SQL é necessária: o tipo confirmado do pedido é guardado no `report` já existente.
+
+Para estéreo, são assinadas até 11 partes de saída (até 20 MiB cada), sem ampliar os limites de entrada de 100 MiB e 10 minutos. A restauração D continua mono e usa até seis partes, preservando o contrato do worker anterior. Cancelamento, reserva/devolução de minutos e exclusão privada seguem o mesmo fluxo. Confira a licença MIT incluída do Demucs e a licença do checkpoint upstream.

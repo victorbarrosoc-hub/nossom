@@ -3,6 +3,8 @@ import Link from 'next/link';
 import { useState, type ReactNode } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import {
+  AudioLines,
+  Layers,
   ArrowRight,
   ArrowUpRight,
   ArrowDown,
@@ -56,10 +58,11 @@ const examples = [
     tags: ['NOSSOM Restore D', 'EQ depois da IA'],
   },
   {
-    label: 'Preparar pro YouTube',
-    request: 'Deixa este áudio pronto para meu vídeo.',
-    reply: 'Vamos tratar a fala e finalizar com o perfil de entrega YouTube.',
-    tags: ['Tratamento completo', 'YouTube'],
+    label: 'Isolar cantor',
+    request: 'Quero só a voz do cantor, sem os instrumentos.',
+    reply:
+      'Escolha Isolar voz da música para separar os vocais e comparar com a gravação original.',
+    tags: ['Separação musical', 'Vocais estéreo'],
   },
   {
     label: 'Som de rádio',
@@ -122,7 +125,7 @@ function AIPreview() {
           </button>
         ))}
       </div>
-      <Link href="/studio" className="home-ai-compose">
+      <Link href={selected === 1 ? '/studio/isolar-voz' : '/studio'} className="home-ai-compose">
         <Paperclip size={18} />
         <span>Envie seu áudio. Conte sua ideia.</span>
         <span className="home-ai-send">
@@ -223,6 +226,24 @@ export default function Landing() {
                   Ouça a diferença
                 </a>
               </div>
+              <nav className="home-intents" aria-label="Escolha o que fazer com seu áudio">
+                <Link href="/studio/automatico" data-intent="auto">
+                  <Sparkles size={18} />
+                  Limpar fala
+                </Link>
+                <Link href="/studio/isolar-voz" data-intent="vocals">
+                  <AudioLines size={18} />
+                  Isolar cantor
+                </Link>
+                <Link href="/studio/efeitos" data-intent="effects">
+                  <Layers size={18} />
+                  Criar efeitos
+                </Link>
+                <Link href="/studio/masterizacao" data-intent="master">
+                  <Download size={18} />
+                  Finalizar áudio
+                </Link>
+              </nav>
               <div className="home-hero-proof">
                 <ShieldCheck size={15} />
                 <span>5 minutos grátis de restauração por mês. Seu original preservado.</span>

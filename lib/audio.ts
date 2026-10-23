@@ -391,6 +391,8 @@ export type ProcessOptions = {
   onProgress?: (n: number) => void;
 };
 export async function processAudio(blob: Blob, options: ProcessOptions) {
+  if (options.operation === 'vocals')
+    throw new Error('A separação musical usa o serviço de IA. Ela não é uma limpeza local.');
   const epoch = cancellationEpoch;
   return exclusive(async () => {
     const ff = await getEngine(options.onStatus);

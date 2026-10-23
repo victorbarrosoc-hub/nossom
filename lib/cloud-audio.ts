@@ -1,5 +1,5 @@
 import { inspect, decode, measure } from './audio';
-import { restorationD, validCloudReport } from './restoration';
+import { restorationD, vocalSeparation, type CloudPreset, validCloudReport } from './restoration';
 import type { AudioUsage } from './usage';
 
 export class CloudCancelled extends Error {
@@ -23,6 +23,7 @@ export async function restoreCloud(
   duration: number,
   options: {
     resumeId?: string;
+    preset?: CloudPreset;
     signal: AbortSignal;
     onStatus: (message: string) => void;
     onProgress: (value: number) => void;
@@ -31,6 +32,7 @@ export async function restoreCloud(
   },
 ) {
   let id: string | undefined;
+  let preset = options.preset ?? restorationD.id;
   try {
     let prepared;
     if (options.resumeId) {
@@ -42,6 +44,8 @@ export async function restoreCloud(
       });
       const existing = await response.json();
       if (!response.ok) throw new Error(existing.error || 'Não foi possível retomar o tratamento.');
+      if (existing.preset === vocalSeparation.id || existing.preset === restorationD.id)
+        preset = existing.preset;
       if (existing.status === 'uploading')
         prepared = await api({ action: 'resume-upload', id }, options.signal);
     } else {
@@ -65,7 +69,7 @@ export async function restoreCloud(
       }
       options.onStatus('Confirmando o envio do áudio…');
       options.onProgress(-1);
-      const submitted = await api({ action: 'submit', id }, options.signal);
+      const submitted = await api({ action: 'submit', id, preset }, options.signal);
       if (submitted.usage) options.onUsage(submitted.usage);
     }
     let status: Record<string, unknown> | undefined;
@@ -89,7 +93,9 @@ export async function restoreCloud(
       const waiting = seconds >= 60 ? ` há ${Math.floor(seconds / 60)}min ${seconds % 60}s` : '';
       options.onStatus(
         status?.status === 'running'
-          ? 'Melhorando sua voz…'
+          ? preset === vocalSeparation.id
+            ? 'Separando a voz dos instrumentos…'
+            : 'Melhorando sua voz…'
           : status?.status === 'submitting'
             ? 'Aguardando confirmação do pedido. O processamento ainda não foi confirmado.'
             : `Seu áudio está na fila${waiting}. O tratamento ainda não começou.`,
@@ -112,6 +118,7 @@ export async function restoreCloud(
       !status ||
       status.status !== 'completed' ||
       !validCloudReport(status.report) ||
+      status.report.preset !== preset ||
       !Array.isArray(status.downloadUrls)
     )
       throw new Error(
@@ -134,7 +141,10 @@ export async function restoreCloud(
     options.onStatus('Verificando o resultado e preparando seus ajustes…');
     options.onProgress(-1);
     const buffer = await decode(blob);
-    if (Math.abs(buffer.duration - duration) > 0.1 || buffer.numberOfChannels !== 1)
+    if (
+      Math.abs(buffer.duration - duration) > 0.1 ||
+      buffer.numberOfChannels !== status.report.channels
+    )
       throw new Error('A duração do resultado não corresponde ao original.');
     const info = inspect(buffer),
       metrics = await measure(blob, options.onStatus);
@@ -146,12 +156,17 @@ export async function restoreCloud(
       info,
       metrics,
       processing: {
-        engine: 'Resemble Enhance · NOSSOM Restore D',
+        engine:
+          status.report.preset === vocalSeparation.id
+            ? 'Demucs · HTDemucs vocals'
+            : 'Resemble Enhance · NOSSOM Restore D',
         strength: 100,
         noiseFloor: info.noiseFloor ?? -60,
         mode: 'cloud',
-        automatic: true,
-        cloudRestoration: { ...restorationD, ...status.report },
+        automatic: status.report.preset === restorationD.id,
+        ...(status.report.preset === vocalSeparation.id
+          ? { vocalSeparation: status.report }
+          : { cloudRestoration: { ...restorationD, ...status.report } }),
       },
     };
   } catch (error) {

@@ -11,7 +11,7 @@ test('mobile shortcuts open real tools even while AI is unavailable', async ({ p
     return r.fulfill({ status: 503 });
   });
   for (const [label, path] of [
-    ['Melhorar minha voz', 'automatico'],
+    ['Limpar minha fala', 'automatico'],
     ['Nivelar volumes', 'nivelamento'],
     ['Preparar para publicar', 'masterizacao'],
   ]) {
@@ -47,7 +47,7 @@ test('a slow conversation can be cancelled and shortcuts remain available', asyn
   await expect(page.getByText('Resposta antiga')).toBeHidden();
   await page.screenshot({ path: 'artifacts/assistant-compact-mobile.png', fullPage: true });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page.getByRole('button', { name: 'Melhorar minha voz', exact: true }).click();
+  await page.getByRole('button', { name: 'Limpar minha fala', exact: true }).click();
   await expect(page).toHaveURL(/\/studio\/automatico$/);
 });
 

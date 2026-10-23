@@ -24,6 +24,7 @@ PART_BYTES = 20 * 1024 * 1024
 MAX_BYTES = 100 * 1024 * 1024
 MAX_SECONDS = 600
 PRESET = 'resemble-d-v1'
+VOCALS_PRESET = 'htdemucs-vocals-v1'
 
 
 def allowed_url(url, kind):
@@ -34,7 +35,7 @@ def allowed_url(url, kind):
             or target.netloc != base.netloc or target.username or target.password
             or target.fragment or not target.path.startswith(expected)
             or not re.fullmatch(r'[0-9a-f-]{36}/[0-9a-f-]{36}/' +
-                                ('source-[0-4]' if kind == 'read' else 'output-[0-5]') + r'\.bin',
+                                ('source-[0-4]' if kind == 'read' else 'output-(?:[0-9]|10)') + r'\.bin',
                                 target.path[len(expected):])
             or not target.query):
         raise ValueError('Invalid private storage address')
@@ -62,17 +63,20 @@ def download_parts(urls, path, expected):
         raise ValueError('Source size does not match request')
 
 
-def float_wav(samples, rate=44100):
+def float_wav(samples, rate=44100, channels=1):
     data = np.asarray(samples, dtype='<f4').tobytes()
     return struct.pack('<4sI4s4sIHHIIHH4sI', b'RIFF', 36 + len(data), b'WAVE',
-                       b'fmt ', 16, 3, 1, rate, rate * 4, 4, 32, b'data', len(data)) + data
+                       b'fmt ', 16, 3, channels, rate, rate * channels * 4, channels * 4, 32, b'data', len(data)) + data
 
 
 def handler(job):
     """One inference at a time per worker; the queue owns GPU lifecycle."""
     try:
         payload = job.get('input', {})
-        if payload.get('preset') != PRESET:
+        preset = payload.get('preset')
+        channels = 2 if preset == VOCALS_PRESET else 1
+        output_count = 11 if preset == VOCALS_PRESET else 6
+        if preset not in (PRESET, VOCALS_PRESET):
             raise ValueError('Unknown preset')
         urls, outputs = payload.get('input_urls'), payload.get('output_urls')
         size = payload.get('input_bytes')
@@ -81,7 +85,7 @@ def handler(job):
                 or not isinstance(duration, (int, float)) or not math.isfinite(duration)
                 or not 0.1 <= duration <= MAX_SECONDS
                 or not isinstance(urls, list) or len(urls) != math.ceil(size / PART_BYTES)
-                or not isinstance(outputs, list) or len(outputs) != 6):
+                or not isinstance(outputs, list) or len(outputs) != output_count):
             raise ValueError('Invalid audio request')
         for url in urls:
             allowed_url(url, 'read')
@@ -95,11 +99,13 @@ def handler(job):
             # Decode in float, reserving over-zero headroom of float recordings.
             process = subprocess.run([
                 'ffmpeg', '-nostdin', '-v', 'error', '-i', str(source), '-vn',
-                '-t', '601', '-ac', '1', '-ar', '44100', '-f', 'f32le', 'pipe:1',
+                '-t', '601', '-ac', str(channels), '-ar', '44100', '-f', 'f32le', 'pipe:1',
             ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=90, check=False)
             if process.returncode:
                 raise ValueError('Audio decoding failed')
             audio = np.frombuffer(process.stdout, dtype='<f4').copy()
+            if channels == 2:
+                audio = audio.reshape(-1, channels)
             if not 4410 <= len(audio) <= 44100 * MAX_SECONDS or not np.isfinite(audio).all():
                 raise ValueError('Invalid audio duration or samples')
             if abs(len(audio) / 44100 - duration) > 1:
@@ -108,15 +114,21 @@ def handler(job):
             np.random.seed(2026)
             torch.manual_seed(2026)
             torch.cuda.manual_seed_all(2026)
-            with torch.inference_mode():
-                restored, rate = enhance(torch.from_numpy(audio), 44100, 'cuda',
-                                          nfe=64, solver='midpoint', lambd=0.5, tau=0.1)
-            samples = restored.detach().cpu().numpy().reshape(-1).astype(np.float32)
-            if rate != 44100 or len(samples) != len(audio) or not np.isfinite(samples).all():
-                raise ValueError('Restoration output invalid')
+            if preset == VOCALS_PRESET:
+                print('NOSSOM: separating music vocals', flush=True)
+                from vocals import separate_vocals
+                samples = separate_vocals(audio)
+                rate = 44100
+            else:
+                with torch.inference_mode():
+                    restored, rate = enhance(torch.from_numpy(audio), 44100, 'cuda',
+                                              nfe=64, solver='midpoint', lambd=0.5, tau=0.1)
+                samples = restored.detach().cpu().numpy().reshape(-1).astype(np.float32)
+            if rate != 44100 or samples.shape != audio.shape or not np.isfinite(samples).all():
+                raise ValueError('Audio output invalid')
             maximum = float(np.max(np.abs(samples)))
             gain = min(1.0, 10 ** (-3 / 20) / max(maximum, 1e-12))
-            wav = float_wav(samples * gain, rate)
+            wav = float_wav(samples * gain, rate, channels)
             parts = []
             for index, start in enumerate(range(0, len(wav), PART_BYTES)):
                 block = wav[start:start + PART_BYTES]
@@ -126,8 +138,8 @@ def handler(job):
                 if response.status_code not in (200, 201):
                     raise ValueError('Result upload failed')
                 parts.append({'index': index, 'bytes': len(block)})
-            return {'preset': PRESET, 'chunks': parts, 'totalBytes': len(wav),
-                    'frames': len(samples), 'sampleRate': rate, 'channels': 1,
+            return {'preset': preset, 'chunks': parts, 'totalBytes': len(wav),
+                    'frames': len(samples), 'sampleRate': rate, 'channels': channels,
                     'gainDb': 20 * math.log10(gain)}
     except Exception:
         # Never return tracebacks containing signed source URLs to the provider.
@@ -140,4 +152,5 @@ if __name__ == '__main__':
     if not torch.cuda.is_available():
         raise SystemExit('GPU CUDA is required')
     load_enhancer(None, 'cuda')
+    print('NOSSOM worker ready: resemble-d-v1 + htdemucs-vocals-v1', flush=True)
     runpod.serverless.start({'handler': handler})

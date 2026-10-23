@@ -361,3 +361,140 @@
     line-height: 1.6;
   }
 }
+/* Color identifies an intention; the text always names the action too. */
+[data-intent='auto'] {
+  --intent: #8bbdff;
+}
+[data-intent='vocals'] {
+  --intent: #c4a0ff;
+}
+[data-intent='level'],
+[data-intent='master'] {
+  --intent: #79d5bd;
+}
+[data-intent='effects'] {
+  --intent: #ffac94;
+}
+.assistant-panel .suggestion-chips {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.assistant-panel .suggestion-chips button {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
+  min-height: 82px;
+  padding: 16px 18px;
+  text-align: left;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--intent) 32%, var(--hairline));
+  border-left: 3px solid var(--intent);
+  background: color-mix(in srgb, var(--intent) 7%, var(--surface));
+}
+.suggestion-chips button strong {
+  font-size: 14px;
+  color: var(--text);
+}
+.suggestion-chips button span {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-2);
+}
+.assistant-panel .suggestion-chips button:hover {
+  background: color-mix(in srgb, var(--intent) 16%, var(--surface));
+  transform: translateY(-2px);
+}
+.home-intents {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 480px;
+  margin-top: 24px;
+}
+.home-intents a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 14px;
+  border: 1px solid color-mix(in srgb, var(--intent) 30%, transparent);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--intent) 8%, #0b1423);
+  color: #edf3fc;
+  font-size: 14px;
+}
+.home-intents a svg {
+  color: var(--intent);
+  flex-shrink: 0;
+}
+.home-intents a:hover {
+  background: color-mix(in srgb, var(--intent) 18%, #0b1423);
+  border-color: var(--intent);
+}
+.home-v2 .home-hero {
+  background-image:
+    radial-gradient(ellipse at 90% 10%, #8065d41a, transparent 55%),
+    radial-gradient(ellipse at 15% 60%, #3d88b51c, transparent 50%);
+}
+.home-v2 .home-hero-copy h1 span {
+  background-image: linear-gradient(110deg, #c0dcff, #bfadf5 70%, #f3c1b5);
+}
+.home-ai-prompts button:nth-child(2)[aria-pressed='true'] {
+  border-color: #bc9aee88;
+  background: #a67be522;
+  color: #dcc3ff;
+}
+.home-ai-prompts button:nth-child(3)[aria-pressed='true'] {
+  border-color: #f4ab9588;
+  background: #f4ab9518;
+  color: #ffc9b9;
+}
+.home-quick-steps p:nth-child(1) svg {
+  color: #a4cfff;
+}
+.home-quick-steps p:nth-child(2) svg {
+  color: #cfb1ff;
+}
+.home-quick-steps p:nth-child(3) svg {
+  color: #8bdcc5;
+}
+.home-v2 .plan-choice.featured {
+  border-color: #d6a28a66;
+  background-image: radial-gradient(ellipse at 100% 0%, #ee997b12, transparent 70%);
+}
+.home-v2 .plan-choice.featured h3 {
+  color: #f2c3ad;
+}
+.studio-shell.tool-vocals .process-button {
+  box-shadow: 0 6px 26px #ae86f32b;
+}
+.studio-shell.tool-vocals .cloud-restoration-note {
+  border-color: #b494df60;
+  background: color-mix(in srgb, #b494df 8%, var(--surface));
+}
+@media (max-width: 680px) {
+  .assistant-panel .suggestion-chips {
+    grid-template-columns: 1fr;
+    gap: 9px;
+  }
+  .assistant-panel .suggestion-chips button {
+    min-height: 66px;
+    padding: 12px 15px;
+    gap: 3px;
+  }
+  .home-intents {
+    gap: 8px;
+    margin-top: 20px;
+  }
+  .home-intents a {
+    padding: 12px 10px;
+    font-size: 13px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .assistant-panel .suggestion-chips button:hover {
+    transform: none;
+  }
+}

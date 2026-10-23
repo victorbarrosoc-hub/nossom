@@ -15,7 +15,7 @@ import {
   submitJob,
   uploadPlan,
 } from '@/lib/server/restoration';
-import { CLOUD_MAX_BYTES, CLOUD_MAX_SECONDS, restorationD } from '@/lib/restoration';
+import { CLOUD_MAX_BYTES, CLOUD_MAX_SECONDS, restorationD, isCloudPreset } from '@/lib/restoration';
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -93,6 +93,7 @@ export async function GET(request: Request) {
       duration: number;
       bytes: number;
       createdAt: string;
+      preset?: string;
     } | null = null;
     if (configured) {
       try {
@@ -113,6 +114,7 @@ export async function GET(request: Request) {
               duration: result.job.duration,
               bytes: result.job.input_bytes,
               createdAt: result.job.created_at,
+              preset: result.job.report?.preset,
             };
         }
       } catch {
@@ -184,10 +186,15 @@ export async function POST(request: Request) {
       return Response.json(await uploadPlan(await ownedJob(account.id, body.id)), {
         headers: privateHeaders,
       });
+    if (body.action === 'submit' && body.preset !== undefined && !isCloudPreset(body.preset))
+      throw new RestorationError('Escolha um tratamento válido.', 400);
     if (body.action === 'submit')
-      return Response.json(await submitJob(request, account.id, body.id), {
-        headers: privateHeaders,
-      });
+      return Response.json(
+        await submitJob(request, account.id, body.id, body.preset ?? restorationD.id),
+        {
+          headers: privateHeaders,
+        },
+      );
     if (body.action === 'cancel')
       return Response.json(await cancelJob(account.id, body.id), { headers: privateHeaders });
     if (body.action === 'release') {

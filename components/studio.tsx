@@ -6,6 +6,7 @@ import AccountSettings from './account-settings';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { visitStudio } from '@/lib/studio-navigation';
 import StudioLink from './studio-link';
+import { vocalSeparation, restorationD, type CloudPreset } from '@/lib/restoration';
 import { toolPath, routeOperation } from '@/lib/studio-routes';
 import { activateVersion, activeIndex, previousIndex, nextIndex } from '@/lib/history';
 import { EqualizerControls, BroadcastControls } from './preset-controls';
@@ -261,6 +262,7 @@ export default function Studio({ account }: { account: Account }) {
     [advanced, setAdvanced] = useState(false),
     [search, setSearch] = useState('');
   const speechTool = operation === 'auto' || operation === 'denoise' || operation === 'clarity';
+  const cloudOperation = operation === 'auto' || operation === 'vocals';
   const autoEnabled = operation === 'auto' || (speechTool && automatic);
   const [busy, setBusy] = useState(''),
     [progress, setProgress] = useState(0),
@@ -296,6 +298,7 @@ export default function Studio({ account }: { account: Account }) {
     duration?: number;
     bytes?: number;
     createdAt?: string;
+    preset?: CloudPreset;
   } | null>(null);
   const cloudAbort = useRef<AbortController | null>(null);
   async function refreshCloud() {
@@ -319,6 +322,8 @@ export default function Studio({ account }: { account: Account }) {
         data.pending && !(saved?.id === data.pending.id && saved.saved)
           ? {
               ...data.pending,
+              preset:
+                data.pending.preset ?? (saved?.id === data.pending.id ? saved.preset : undefined),
               projectId: mappedId,
             }
           : null,
@@ -377,9 +382,10 @@ export default function Studio({ account }: { account: Account }) {
       setVersionIndex(0);
       setRegion(null);
       setMusic(null);
-      setOperation('auto');
+      const recoveredOperation = pendingJob.preset === vocalSeparation.id ? 'vocals' : 'auto';
+      setOperation(recoveredOperation);
       setView('editor');
-      visitStudio(toolPath('auto', recovered.id));
+      visitStudio(toolPath(recoveredOperation, recovered.id));
       await refresh();
       notify(
         'Original recuperado. Clique em Retomar restauração para acompanhar e salvar o resultado.',
@@ -695,10 +701,10 @@ export default function Studio({ account }: { account: Account }) {
         operation === 'effects' && version.operation === 'effects'
           ? (project.versions.find((v) => v.id === version.parentId) ?? version)
           : version;
-      const inputVersion = autoEnabled ? project.versions[0] : effectBase;
+      const inputVersion = cloudOperation || autoEnabled ? project.versions[0] : effectBase;
       let cloudId: string | undefined;
       let result: Pick<Version, 'blob' | 'info' | 'metrics' | 'processing'>;
-      if (operation === 'auto') {
+      if (cloudOperation) {
         if (!cloudReady)
           throw new Error(
             'A restauração avançada está sendo conectada. Você pode usar as ferramentas de limpeza local e acabamento.',
@@ -710,6 +716,7 @@ export default function Studio({ account }: { account: Account }) {
         const controller = new AbortController();
         cloudAbort.current = controller;
         const cloud = await restoreCloud(project.originalFile, project.versions[0].info.duration, {
+          preset: operation === 'vocals' ? vocalSeparation.id : restorationD.id,
           resumeId: pendingJob?.id,
           signal: controller.signal,
           onStatus: setBusy,
@@ -719,9 +726,18 @@ export default function Studio({ account }: { account: Account }) {
             if (id) {
               localStorage.setItem(
                 'nossom-cloud:' + account.id,
-                JSON.stringify({ id, projectId: project.id }),
+                JSON.stringify({
+                  id,
+                  projectId: project.id,
+                  preset: operation === 'vocals' ? vocalSeparation.id : restorationD.id,
+                }),
               );
-              setPendingJob({ id, projectId: project.id, status: 'queued' });
+              setPendingJob({
+                id,
+                projectId: project.id,
+                status: 'queued',
+                preset: operation === 'vocals' ? vocalSeparation.id : restorationD.id,
+              });
             }
           },
         });
@@ -781,19 +797,21 @@ export default function Studio({ account }: { account: Account }) {
         createdAt: Date.now(),
         operation,
         preset:
-          operation === 'auto'
-            ? 'Voz restaurada com IA'
-            : operation === 'master'
-              ? masterRecipe === 'broadcast'
-                ? 'Transmissão + Limite −3 dB'
-                : `${preset} / alvo ${target} LUFS / pico ${peak} dBTP / v2`
-              : operation === 'effects'
-                ? `${effectPresets.find((p) => p.id === effect)?.label} · ${effectMix}%`
-                : operation === 'eq'
-                  ? `EQ: ${eqPresets.find((p) => p.id === eqPreset)?.label ?? 'Personalizado'}`
-                  : operation === 'clarity'
-                    ? `Voz: ${voicePresets.find((p) => p.id === voicePreset)?.label ?? 'Personalizado'}`
-                    : undefined,
+          operation === 'vocals'
+            ? 'Vocais separados da música'
+            : operation === 'auto'
+              ? 'Voz restaurada com IA'
+              : operation === 'master'
+                ? masterRecipe === 'broadcast'
+                  ? 'Transmissão + Limite −3 dB'
+                  : `${preset} / alvo ${target} LUFS / pico ${peak} dBTP / v2`
+                : operation === 'effects'
+                  ? `${effectPresets.find((p) => p.id === effect)?.label} · ${effectMix}%`
+                  : operation === 'eq'
+                    ? `EQ: ${eqPresets.find((p) => p.id === eqPreset)?.label ?? 'Personalizado'}`
+                    : operation === 'clarity'
+                      ? `Voz: ${voicePresets.find((p) => p.id === voicePreset)?.label ?? 'Personalizado'}`
+                      : undefined,
         ...result,
       };
       const updated = {
@@ -816,7 +834,11 @@ export default function Studio({ account }: { account: Account }) {
           .then(() => localStorage.removeItem('nossom-cloud:' + account.id))
           .catch(() => {});
         setPendingJob(null);
-        notify('Voz restaurada. Ouça e escolha o acabamento abaixo.');
+        notify(
+          operation === 'vocals'
+            ? 'Voz isolada. Compare com a música original e baixe o resultado.'
+            : 'Voz restaurada. Ouça e escolha o acabamento abaixo.',
+        );
       } else notify('Nova versão salva. Compare com o original.');
     });
   }
@@ -1242,7 +1264,10 @@ export default function Studio({ account }: { account: Account }) {
               {pendingJob.projectId ? (
                 <StudioLink
                   className="button secondary"
-                  href={toolPath('auto', pendingJob.projectId)}
+                  href={toolPath(
+                    pendingJob.preset === vocalSeparation.id ? 'vocals' : 'auto',
+                    pendingJob.projectId,
+                  )}
                 >
                   Abrir áudio do pedido <ArrowRight size={15} />
                 </StudioLink>
@@ -1629,7 +1654,7 @@ export default function Studio({ account }: { account: Account }) {
                     version={version}
                     region={region}
                     onRegion={setRegion}
-                    previewOnly={operation === 'auto'}
+                    previewOnly={cloudOperation}
                   />
                   {versionIndex > 0 &&
                     project.versions.some((v) => v.processing?.cloudRestoration) && (
@@ -1890,7 +1915,7 @@ export default function Studio({ account }: { account: Account }) {
                         <h3>{autoEnabled ? 'A IA cuida dos ajustes.' : 'Ajustes manuais'}</h3>
                       </div>
                       <p>
-                        {autoEnabled
+                        {cloudOperation || autoEnabled
                           ? 'Analisamos a gravação original e adaptamos a limpeza à sua voz, preservando o timbre e o estéreo. O volume e os picos são verificados no resultado.'
                           : 'Personalize o tratamento ou volte à análise automática.'}
                       </p>
@@ -1903,22 +1928,25 @@ export default function Studio({ account }: { account: Account }) {
                       </button>
                     </div>
                   )}
-                  {operation === 'auto' && (
+                  {cloudOperation && (
                     <div className="cloud-restoration-note">
                       <strong>
                         {pendingJob
-                          ? 'Seu pedido de restauração'
+                          ? 'Seu pedido em andamento'
                           : cloudReady === null
                             ? 'Preparando…'
                             : cloudReady
-                              ? 'Pronto para melhorar sua voz'
+                              ? operation === 'vocals'
+                                ? 'Pronto para separar o cantor'
+                                : 'Pronto para melhorar sua voz'
                               : 'A melhoria com IA está temporariamente indisponível'}
                       </strong>
                       <p>
-                        Seu áudio é enviado com segurança para o tratamento. O original fica
-                        guardado para você comparar o resultado.
+                        {operation === 'vocals'
+                          ? 'Enviamos a música para separar os vocais. O original continua salvo para comparação. A separação pode deixar vestígios dos instrumentos.'
+                          : 'Seu áudio é enviado com segurança para o tratamento. O original fica guardado para você comparar o resultado.'}
                       </p>
-                      {!cloudReady && (
+                      {!cloudReady && operation !== 'vocals' && (
                         <button
                           className="text-link"
                           disabled={!!busy}
@@ -1972,7 +2000,10 @@ export default function Studio({ account }: { account: Account }) {
                           {pendingJob.projectId && pendingJob.projectId !== project.id && (
                             <StudioLink
                               className="text-link"
-                              href={toolPath('auto', pendingJob.projectId)}
+                              href={toolPath(
+                                pendingJob.preset === vocalSeparation.id ? 'vocals' : 'auto',
+                                pendingJob.projectId,
+                              )}
                             >
                               Abrir áudio em andamento
                             </StudioLink>
@@ -2485,7 +2516,7 @@ export default function Studio({ account }: { account: Account }) {
                       </p>
                     </>
                   )}
-                  {!autoEnabled && (
+                  {!autoEnabled && !cloudOperation && (
                     <>
                       <PresetLibrary
                         operation={operation}
@@ -2610,8 +2641,8 @@ export default function Studio({ account }: { account: Account }) {
                     onClick={applyTreatment}
                     disabled={
                       !!busy ||
-                      (operation === 'auto' && !cloudReady) ||
-                      (operation === 'auto' &&
+                      (cloudOperation && !cloudReady) ||
+                      (cloudOperation &&
                         usage !== null &&
                         !usage.unlimited &&
                         usage.remaining === 0 &&
@@ -2621,12 +2652,16 @@ export default function Studio({ account }: { account: Account }) {
                     {busy ? <LoaderCircle size={17} className="spin" /> : <Sparkles size={17} />}{' '}
                     {busy
                       ? 'Processando…'
-                      : operation === 'auto' && usage && !usage.unlimited && usage.remaining === 0
+                      : cloudOperation && usage && !usage.unlimited && usage.remaining === 0
                         ? 'Franquia mensal utilizada'
-                        : operation === 'auto'
+                        : cloudOperation
                           ? pendingJob?.projectId === project.id
-                            ? 'Retomar restauração'
-                            : 'Restaurar com IA'
+                            ? operation === 'vocals'
+                              ? 'Retomar separação'
+                              : 'Retomar restauração'
+                            : operation === 'vocals'
+                              ? 'Isolar voz da música'
+                              : 'Restaurar com IA'
                           : autoEnabled
                             ? 'Analisar e tratar'
                             : 'Aplicar tratamento'}{' '}
@@ -2634,13 +2669,13 @@ export default function Studio({ account }: { account: Account }) {
                   </button>
                   {!usage?.unlimited && (
                     <p className="usage-apply-hint">
-                      A restauração usa seus minutos de IA (mínimo de 1 minuto). Outros ajustes e
+                      Este tratamento usa seus minutos de IA (mínimo de 1 minuto). Outros ajustes e
                       downloads não descontam minutos.
                     </p>
                   )}
                   <span className="treatment-footnote">
                     <ShieldCheck size={12} />{' '}
-                    {autoEnabled
+                    {cloudOperation || autoEnabled
                       ? 'Sempre a partir do original. Suas versões continuam salvas.'
                       : 'Uma nova versão. Seu original intacto.'}
                   </span>

@@ -3,7 +3,16 @@ import { equalizerFilter, type EqGains } from './equalizer';
 import type { RestorationAnalysis } from './neural';
 import type { EffectId } from './effects';
 export type Operation =
-  'auto' | 'denoise' | 'clarity' | 'eq' | 'wind' | 'level' | 'master' | 'effects' | 'mix';
+  | 'vocals'
+  | 'auto'
+  | 'denoise'
+  | 'clarity'
+  | 'eq'
+  | 'wind'
+  | 'level'
+  | 'master'
+  | 'effects'
+  | 'mix';
 export type Intensity = number | 'light' | 'balanced' | 'strong';
 export type DenoiseMode = 'studio' | 'voice' | 'general';
 export function strengthValue(value: Intensity): number {
@@ -11,6 +20,7 @@ export function strengthValue(value: Intensity): number {
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 65;
 }
 export type FilterSettings = {
+  vocalSeparation?: import('./restoration').CloudReport;
   cloudRestoration?: import('./restoration').CloudReport &
     Pick<
       typeof import('./restoration').restorationD,
@@ -43,6 +53,11 @@ export type FilterSettings = {
   };
 };
 export const operations: { id: Operation; label: string; description: string }[] = [
+  {
+    id: 'vocals',
+    label: 'Isolar voz da música',
+    description: 'Separe o cantor dos instrumentos. Ouça e baixe só os vocais.',
+  },
   {
     id: 'auto',
     label: 'Restaurar com IA',
@@ -147,6 +162,7 @@ export function treatmentFilter(
   peak = -1,
   settings: FilterSettings = {},
 ): string {
+  if (operation === 'vocals') throw new Error('Separar vocais requer o modelo musical na GPU.');
   if (operation === 'mix') throw new Error('Mixagem requer duas faixas.');
   const strength = strengthValue(intensity) / 100;
   if (operation === 'master' && settings.masterPreset === 'broadcast')
@@ -182,6 +198,11 @@ export function treatmentFilter(
   }
 }
 export function inferPlan(text: string): Operation | null {
+  if (
+    /(isolar|separar|extrair|s[oó] a voz|acapella|a capella|voca[li])/i.test(text) &&
+    /(m[uú]sica|cantor|canto|voca[li]|instrument|acapella|a capella)/i.test(text)
+  )
+    return 'vocals';
   const normalized = text
     .toLowerCase()
     .normalize('NFD')

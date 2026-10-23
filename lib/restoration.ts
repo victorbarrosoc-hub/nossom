@@ -8,6 +8,19 @@ export const restorationD = {
   nfe: 64,
   sampleRate: 44100,
 } as const;
+export const vocalSeparation = {
+  id: 'htdemucs-vocals-v1',
+  label: 'Voz isolada da música',
+  model: 'htdemucs',
+  sampleRate: 44100,
+} as const;
+export type CloudPreset = typeof restorationD.id | typeof vocalSeparation.id;
+export function isCloudPreset(value: unknown): value is CloudPreset {
+  return value === restorationD.id || value === vocalSeparation.id;
+}
+export function outputParts(preset: CloudPreset) {
+  return preset === vocalSeparation.id ? 11 : 6;
+}
 export const CLOUD_PART_BYTES = 20 * 1024 * 1024;
 export const CLOUD_MAX_BYTES = 100 * 1024 * 1024;
 export const CLOUD_MAX_SECONDS = 600;
@@ -22,7 +35,7 @@ export type CloudState =
   | 'cancelled'
   | 'released';
 export type CloudReport = {
-  preset: typeof restorationD.id;
+  preset: CloudPreset;
   chunks: { index: number; bytes: number }[];
   totalBytes: number;
   frames: number;
@@ -34,9 +47,9 @@ export function validCloudReport(value: unknown): value is CloudReport {
   if (!value || typeof value !== 'object') return false;
   const r = value as CloudReport;
   return (
-    r.preset === restorationD.id &&
+    isCloudPreset(r.preset) &&
     r.sampleRate === 44100 &&
-    r.channels === 1 &&
+    r.channels === (r.preset === vocalSeparation.id ? 2 : 1) &&
     Number.isInteger(r.frames) &&
     r.frames >= 4410 &&
     r.frames <= 44100 * CLOUD_MAX_SECONDS &&
@@ -44,10 +57,10 @@ export function validCloudReport(value: unknown): value is CloudReport {
     r.gainDb <= 0 &&
     r.gainDb >= -100 &&
     Number.isInteger(r.totalBytes) &&
-    r.totalBytes === r.frames * 4 + 44 &&
+    r.totalBytes === r.frames * r.channels * 4 + 44 &&
     Array.isArray(r.chunks) &&
     r.chunks.length >= 1 &&
-    r.chunks.length <= CLOUD_OUTPUT_PARTS &&
+    r.chunks.length <= outputParts(r.preset) &&
     r.chunks.every(
       (c, i) =>
         c.index === i &&

@@ -3,10 +3,11 @@ import { supabaseConfig } from './supabase';
 import { audioUsage } from './usage';
 import {
   CLOUD_PART_BYTES,
-  CLOUD_OUTPUT_PARTS,
   type CloudReport,
   type CloudState,
   restorationD,
+  type CloudPreset,
+  outputParts,
   validCloudReport,
 } from '../restoration';
 
@@ -19,7 +20,7 @@ export type RestorationJob = {
   input_bytes: number;
   duration: number;
   provider_id: string | null;
-  report: CloudReport | null;
+  report: CloudReport | { preset: CloudPreset } | null;
   created_at: string;
 };
 export class RestorationError extends Error {
@@ -158,7 +159,12 @@ export async function ownedJob(user: string, id: string) {
   if (!job) throw new RestorationError('Tratamento não encontrado para esta conta.', 404);
   return job;
 }
-export async function submitJob(request: Request, user: string, id: string) {
+export async function submitJob(
+  request: Request,
+  user: string,
+  id: string,
+  preset: CloudPreset = restorationD.id,
+) {
   const { job, claimed } = await jobAction('claim', user, id);
   if (!job) throw new RestorationError('Tratamento não encontrado.', 404);
   if (!claimed) return { id, status: job.status };
@@ -173,7 +179,7 @@ export async function submitJob(request: Request, user: string, id: string) {
     const [inputUrls, outputUrls] = await Promise.all([
       Promise.all(Array.from({ length: job.input_parts }, (_, i) => readURL(job, 'source', i))),
       Promise.all(
-        Array.from({ length: CLOUD_OUTPUT_PARTS }, (_, i) => uploadURL(job, 'output', i)),
+        Array.from({ length: outputParts(preset) }, (_, i) => uploadURL(job, 'output', i)),
       ),
     ]);
     // Once dispatch begins its outcome can be ambiguous on a network failure.
@@ -181,7 +187,7 @@ export async function submitJob(request: Request, user: string, id: string) {
     dispatched = true;
     const result = await runpod('run', 'POST', {
       input: {
-        preset: restorationD.id,
+        preset,
         input_urls: inputUrls,
         output_urls: outputUrls,
         input_bytes: job.input_bytes,
@@ -192,7 +198,11 @@ export async function submitJob(request: Request, user: string, id: string) {
     });
     if (typeof result.id !== 'string' || !/^[a-zA-Z0-9_-]{1,150}$/.test(result.id))
       throw new RestorationError('O servidor não confirmou o tratamento.');
-    await jobAction('update', user, id, { status: 'queued', provider_id: result.id });
+    await jobAction('update', user, id, {
+      status: 'queued',
+      provider_id: result.id,
+      report: { preset },
+    });
     return { id, status: 'queued', usage };
   } catch (error) {
     const rejected =
@@ -224,7 +234,10 @@ export async function jobStatus(user: string, id: string) {
       });
     }
     if (result.status === 'COMPLETED') {
-      if (!validCloudReport(result.output)) {
+      if (
+        !validCloudReport(result.output) ||
+        (job.report?.preset && result.output.preset !== job.report.preset)
+      ) {
         await jobAction('fail', user, id);
         throw new RestorationError(
           'O motor não gerou um áudio válido. Seu tratamento foi devolvido.',
@@ -245,6 +258,7 @@ export async function jobStatus(user: string, id: string) {
   return {
     id,
     status: job.status,
+    preset: job.report?.preset ?? restorationD.id,
     ...(job.status === 'completed' && validCloudReport(job.report)
       ? {
           report: job.report,
@@ -275,7 +289,9 @@ export async function jobSource(user: string, id: string) {
 export async function clearJob(job: RestorationJob) {
   const prefixes = [
     ...Array.from({ length: job.input_parts }, (_, i) => objectPath(job, 'source', i)),
-    ...Array.from({ length: CLOUD_OUTPUT_PARTS }, (_, i) => objectPath(job, 'output', i)),
+    ...Array.from({ length: job.report?.preset ? outputParts(job.report.preset) : 11 }, (_, i) =>
+      objectPath(job, 'output', i),
+    ),
   ];
   await service(`/storage/v1/object/${bucket}`, 'DELETE', { prefixes });
   await jobAction('release', job.user_id, job.id);

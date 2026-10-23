@@ -201,7 +201,7 @@ export default function Assistant({
         </Title>
         <p>
           {embedded ? (
-            'Anexe um áudio. Escolha o que quer fazer.'
+            'O que você quer fazer com seu áudio?'
           ) : (
             <>
               Descreva o que quer melhorar.
@@ -274,13 +274,33 @@ export default function Assistant({
         <div className="suggestion-chips">
           {(
             [
-              { label: 'Melhorar minha voz', operation: 'auto' },
-              { label: 'Nivelar volumes', operation: 'level' },
-              { label: 'Preparar para publicar', operation: 'master' },
+              {
+                label: 'Limpar minha fala',
+                operation: 'auto',
+                description: 'Reduzir ruído da gravação',
+              },
+              {
+                label: 'Isolar voz da música',
+                operation: 'vocals',
+                description: 'Separar o cantor dos instrumentos',
+              },
+              {
+                label: 'Nivelar volumes',
+                operation: 'level',
+                description: 'Equilibrar trechos baixos e altos',
+              },
+              {
+                label: 'Preparar para publicar',
+                operation: 'master',
+                description: 'Finalizar o volume para entrega',
+              },
             ] as const
           ).map((shortcut) => (
             <button
               key={shortcut.operation}
+              data-intent={shortcut.operation}
+              aria-label={shortcut.label}
+              aria-describedby={id + shortcut.operation}
               disabled={disabled}
               onClick={() => {
                 pending.current?.abort();
@@ -292,7 +312,8 @@ export default function Assistant({
                 } else location.href = toolPath(shortcut.operation);
               }}
             >
-              {shortcut.label}
+              <strong>{shortcut.label}</strong>
+              <span id={id + shortcut.operation}>{shortcut.description}</span>
             </button>
           ))}
         </div>
