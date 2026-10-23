@@ -2,7 +2,16 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'motion/react';
-import { Check, LoaderCircle, LockKeyhole, Mail, UserRound } from 'lucide-react';
+import {
+  ArrowUpRight,
+  Check,
+  LoaderCircle,
+  LockKeyhole,
+  Mail,
+  ShieldCheck,
+  SlidersHorizontal,
+  UserRound,
+} from 'lucide-react';
 import { accountPlan, type Account } from '@/lib/accounts';
 import PlanCards from './plan-cards';
 import Link from 'next/link';
@@ -75,7 +84,6 @@ export default function AccountSettings({
       initial={reduced ? false : { opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <span className="eyebrow">DO SEU JEITO</span>
       <h1>Minha conta.</h1>
       <p>Seu perfil, sua segurança e suas preferências.</p>
       <div className="account-settings-summary">
@@ -85,7 +93,17 @@ export default function AccountSettings({
           <span className="account-plan">{accountPlan(account, usage)}</span>
           <p>{account.email}</p>
         </div>
-        <span>{account.isAdmin ? 'Administrador' : 'Conta NOSSOM'}</span>
+        <div className="account-summary-actions">
+          <span>
+            <ShieldCheck size={16} />
+            {account.isAdmin ? 'Administrador' : 'Conta NOSSOM'}
+          </span>
+          {account.isAdmin && (
+            <Link className="button secondary" href="/studio/admin">
+              Painel de administração <ArrowUpRight size={16} />
+            </Link>
+          )}
+        </div>
       </div>
       {error && (
         <p className="alert error" role="alert">
@@ -97,11 +115,6 @@ export default function AccountSettings({
           {success}
         </p>
       )}
-      {account.isAdmin && (
-        <Link className="button secondary" href="/studio/admin">
-          Abrir painel de administração
-        </Link>
-      )}
       <div className="account-settings-grid">
         <form
           onSubmit={(e) => {
@@ -109,8 +122,10 @@ export default function AccountSettings({
             void update('profile');
           }}
         >
-          <UserRound size={23} />
-          <h2>Perfil</h2>
+          <header className="settings-card-heading">
+            <UserRound size={21} />
+            <h2>Perfil</h2>
+          </header>
           <label>
             Nome de exibição
             <input
@@ -126,7 +141,10 @@ export default function AccountSettings({
           {button('profile', 'Salvar perfil')}
         </form>
         <section>
-          <h2>Aparência e uso</h2>
+          <header className="settings-card-heading">
+            <SlidersHorizontal size={21} />
+            <h2>Aparência e uso</h2>
+          </header>
           <label>
             Tema da plataforma
             <select
@@ -146,7 +164,6 @@ export default function AccountSettings({
                 ? usageLabel(usage)
                 : 'Consulte seu saldo na navegação.'}
           </p>
-          <p>A IA já está incluída na sua conta.</p>
         </section>
         <form
           onSubmit={(e) => {
@@ -154,8 +171,10 @@ export default function AccountSettings({
             void update('email');
           }}
         >
-          <Mail size={23} />
-          <h2>E-mail</h2>
+          <header className="settings-card-heading">
+            <Mail size={21} />
+            <h2>E-mail</h2>
+          </header>
           <label>
             Novo e-mail
             <input
@@ -190,8 +209,10 @@ export default function AccountSettings({
             void update('password');
           }}
         >
-          <LockKeyhole size={23} />
-          <h2>Senha</h2>
+          <header className="settings-card-heading">
+            <LockKeyhole size={21} />
+            <h2>Senha</h2>
+          </header>
           <label>
             Senha atual
             <input

@@ -3,6 +3,7 @@
 @import './styles/kit.css';
 @import './styles/site.css';
 @import './styles/home.css';
+@import './styles/refinement.css';
 * {
   box-sizing: border-box;
 }
