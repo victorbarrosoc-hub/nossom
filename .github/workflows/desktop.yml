@@ -1,6 +1,11 @@
 name: Build NOSSOM installers
 on:
   workflow_dispatch:
+    inputs:
+      publish_preview:
+        description: Publish available installers as a public test release
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -29,7 +34,11 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
         working-directory: desktop
-      - run: npm run dist -- --${{ matrix.platform }} --${{ matrix.arch }}
+      - name: Package installer
+        shell: bash
+        run: |
+          set -o pipefail
+          npm run dist -- --${{ matrix.platform }} --${{ matrix.arch }} 2>&1 | tee "$RUNNER_TEMP/nossom-build.log"
         working-directory: desktop
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
@@ -40,6 +49,19 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Report packaging error
+        if: failure()
+        shell: bash
+        run: |
+          node - <<'JS'
+          const fs = require('fs');
+          const filename = process.env.RUNNER_TEMP + '/nossom-build.log';
+          if (fs.existsSync(filename)) {
+            const message = fs.readFileSync(filename, 'utf8').slice(-10000)
+              .replace(/%/g, '%25').replace(/\r/g, '%0D').replace(/\n/g, '%0A');
+            process.stdout.write('::error title=Packaging log::' + message + '\n');
+          }
+          JS
       - uses: actions/upload-artifact@v4
         with:
           name: NOSSOM-${{ matrix.platform }}-${{ matrix.arch }}
@@ -51,3 +73,44 @@ jobs:
             desktop/dist/*.yml
           if-no-files-found: error
           retention-days: 14
+
+  publish-preview:
+    needs: package
+    if: always() && inputs.publish_preview
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: NOSSOM-*
+          merge-multiple: true
+          path: installers
+      - name: Publish test installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(node -p "require('./desktop/package.json').version")
+          tag="desktop-v${version}"
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          Instaladores NOSSOM para teste. Sem assinatura digital/notarização nesta prévia.
+          Não foram homologados em computadores físicos Mac/Windows.
+          Atualizações automáticas do instalador ainda não estão habilitadas nesta distribuição.
+          O aplicativo acessa a NOSSOM online; os projetos ficam no perfil local do aplicativo.
+          Baixe apenas o arquivo correspondente ao seu sistema e arquitetura.
+          EOF
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --target "$GITHUB_SHA" --prerelease --title "NOSSOM Desktop ${version} · Prévia" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi
+          shopt -s nullglob
+          files=(installers/*.dmg installers/*.exe installers/*.zip installers/*.blockmap)
+          if [ ${#files[@]} -eq 0 ]; then exit 1; fi
+          for file in "${files[@]}"; do
+            name=$(basename "$file")
+            if ! gh release view "$tag" --json assets --jq '.assets[].name' | rg -Fqx -- "$name"; then
+              gh release upload "$tag" "$file"
+            fi
+          done
