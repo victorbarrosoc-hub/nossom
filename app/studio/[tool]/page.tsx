@@ -6,6 +6,7 @@ const titles: Record<string, string> = {
   projetos: 'Meus projetos',
   ia: 'Inteligência NOSSOM',
   conta: 'Minha conta',
+  admin: 'Administração',
 };
 export function generateStaticParams() {
   return Object.keys(titles).map((tool) => ({ tool }));

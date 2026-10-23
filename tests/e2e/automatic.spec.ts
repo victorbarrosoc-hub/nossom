@@ -6,16 +6,27 @@ import { clippingRepairFilter } from '../../lib/declip';
 
 function pcm(wav: Buffer) {
   let at = 12,
-    channels = 1;
+    channels = 1,
+    width = 2,
+    floating = false;
   while (at + 8 < wav.length) {
     const size = wav.readUInt32LE(at + 4),
       name = wav.toString('ascii', at, at + 4);
-    if (name === 'fmt ') channels = wav.readUInt16LE(at + 10);
+    if (name === 'fmt ') {
+      channels = wav.readUInt16LE(at + 10);
+      width = wav.readUInt16LE(at + 22) / 8;
+      floating = wav.readUInt16LE(at + 8) === 3;
+    }
     if (name === 'data') {
-      const result = Array.from({ length: channels }, () => new Float32Array(size / 2 / channels));
+      const result = Array.from(
+        { length: channels },
+        () => new Float32Array(size / width / channels),
+      );
       for (let i = 0; i < result[0].length; i++)
         for (let c = 0; c < channels; c++)
-          result[c][i] = wav.readInt16LE(at + 8 + (i * channels + c) * 2) / 32768;
+          result[c][i] = floating
+            ? wav.readFloatLE(at + 8 + (i * channels + c) * width)
+            : wav.readInt16LE(at + 8 + (i * channels + c) * width) / 32768;
       return result;
     }
     at += 8 + size + (size % 2);
@@ -181,21 +192,21 @@ test('default speech treatment needs no settings, improves the known noisy refer
   ).toEqual([]);
 });
 
-test('real recording regression: the untouched default preserves timbre, stereo and level, and reprocessing starts from the original', async ({
+test('real recording regression: local cleanup preserves stereo/level, starts from original, and supports broadcast finishing', async ({
   page,
 }, testInfo) => {
   test.skip(
     !process.env.NOSSOM_REGRESSION_MP3,
     'Requires the private recording supplied for this regression; it is never committed.',
   );
-  await page.goto('/studio/automatico');
+  await page.goto('/studio/limpeza');
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles(process.env.NOSSOM_REGRESSION_MP3!);
   await expect(page.getByRole('button', { name: 'Analisar e tratar', exact: true })).toBeVisible({
     timeout: 90000,
   });
-  await expect(page).toHaveURL(/\/studio\/automatico\?project=/);
+  await expect(page).toHaveURL(/\/studio\/limpeza\?project=/);
   await page
     .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
     .selectOption('denoise');
@@ -246,11 +257,15 @@ test('real recording regression: the untouched default preserves timbre, stereo 
   });
   await page
     .getByRole('combobox', { name: 'Ferramenta do estúdio', exact: true })
-    .selectOption('auto');
-  await expect(page).toHaveURL(/\/studio\/automatico\?project=/);
-  await page.getByRole('button', { name: 'Analisar e tratar', exact: true }).click();
+    .selectOption('master');
+  await expect(page).toHaveURL(/\/studio\/masterizacao\?project=/);
+  await page
+    .getByRole('button', { name: /Transmissão \+ Limite −3 dB/ })
+    .first()
+    .click();
+  await page.getByRole('button', { name: 'Aplicar tratamento', exact: true }).click();
   await expect(
-    page.getByRole('heading', { name: 'Tratamento completo · V3', exact: true }),
+    page.getByRole('heading', { name: 'Preparar entrega · V3', exact: true }),
   ).toBeVisible({ timeout: 90000 });
   const finalDownload = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Baixar WAV', exact: true }).click();
@@ -268,7 +283,6 @@ test('real recording regression: the untouched default preserves timbre, stereo 
     await readFile((await (await finalReportDownload).path())!, 'utf8'),
   );
   expect(finalReport.processingSettings.masterPreset).toBe('broadcast');
-  expect(finalReport.processingSettings.clippingRepair.method).toBe('autoregressive');
   expect(finalReport.samplePeakDbfs).toBeLessThanOrEqual(-2.97);
   expect(finalReport.after.truePeak).toBeLessThanOrEqual(-1);
   let referenceLufs: number | undefined;

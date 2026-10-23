@@ -8,6 +8,7 @@ import { toolPath, routeOperation } from '@/lib/studio-routes';
 import { activateVersion, activeIndex, previousIndex, nextIndex } from '@/lib/history';
 import { EqualizerControls, BroadcastControls } from './preset-controls';
 import AssistantHome from './assistant-home';
+import AdminDashboard from './admin-dashboard';
 import { accountPlan, type Account } from '@/lib/accounts';
 import { eqPresets, type EqGains } from '@/lib/equalizer';
 import { freshBroadcast, type BroadcastSettings } from '@/lib/broadcast';
@@ -56,6 +57,7 @@ import { Brand } from './brand';
 import { useDialog } from '@/lib/use-dialog';
 import Assistant from './assistant';
 import { WavePlayer } from './wave-player';
+import { restoreCloud, releaseCloudJob, cancelCloudJob } from '@/lib/cloud-audio';
 import { usageLabel, type AudioUsage } from '@/lib/usage';
 import { operations, deliveryPresets, type Operation, type DenoiseMode } from '@/lib/presets';
 import { estimateNoiseFloor } from '@/lib/noise-profile';
@@ -157,7 +159,6 @@ export default function Studio({ account }: { account: Account }) {
     [eqHighpass, setEqHighpass] = useState(30);
   const [masterRecipe, setMasterRecipe] = useState('podcast');
   const [automatic, setAutomatic] = useState(true);
-  const [autoDestination, setAutoDestination] = useState('reference');
   const [effect, setEffect] = useState<EffectId>('none'),
     [effectMix, setEffectMix] = useState(0);
   function selectEffect(id: EffectId) {
@@ -230,16 +231,20 @@ export default function Studio({ account }: { account: Account }) {
       /* Optional preference. */
     }
   }
-  const [view, setView] = useState<'home' | 'projects' | 'editor' | 'tool' | 'ai' | 'account'>(
-      pathname === '/studio/conta'
-        ? 'account'
-        : pathname === '/studio/ia'
-          ? 'ai'
-          : pathname === '/studio/projetos'
-            ? 'projects'
-            : routeTool
-              ? 'tool'
-              : 'home',
+  const [view, setView] = useState<
+      'home' | 'projects' | 'editor' | 'tool' | 'ai' | 'account' | 'admin'
+    >(
+      pathname === '/studio/admin'
+        ? 'admin'
+        : pathname === '/studio/conta'
+          ? 'account'
+          : pathname === '/studio/ia'
+            ? 'ai'
+            : pathname === '/studio/projetos'
+              ? 'projects'
+              : routeTool
+                ? 'tool'
+                : 'home',
     ),
     [projects, setProjects] = useState<ProjectSummary[]>([]),
     [project, setProject] = useState<Project | null>(null),
@@ -279,6 +284,36 @@ export default function Studio({ account }: { account: Account }) {
   useDialog(!!deleteId || renaming);
   const [usage, setUsage] = useState<AudioUsage | null>(null);
   const [usageError, setUsageError] = useState('');
+  const [cloudReady, setCloudReady] = useState<boolean | null>(null);
+  const [pendingJob, setPendingJob] = useState<{
+    id: string;
+    status: string;
+    projectId?: string;
+  } | null>(null);
+  const cloudAbort = useRef<AbortController | null>(null);
+  async function refreshCloud() {
+    try {
+      const response = await fetch('/api/audio/jobs', { cache: 'no-store' });
+      const data = await response.json();
+      setCloudReady(response.ok && data.configured === true);
+      let saved;
+      try {
+        saved = JSON.parse(localStorage.getItem('nossom-cloud:' + account.id) || 'null');
+      } catch {
+        /* No recoverable local mapping. */
+      }
+      setPendingJob(
+        data.pending && !(saved?.id === data.pending.id && saved.saved)
+          ? {
+              ...data.pending,
+              projectId: saved?.id === data.pending.id ? saved.projectId : undefined,
+            }
+          : null,
+      );
+    } catch {
+      setCloudReady(false);
+    }
+  }
   async function refreshUsage() {
     try {
       const response = await fetch('/api/usage', { cache: 'no-store' });
@@ -292,6 +327,7 @@ export default function Studio({ account }: { account: Account }) {
   }
   useEffect(() => {
     void refreshUsage();
+    void refreshCloud();
     const focus = () => {
       void refreshUsage();
     };
@@ -322,6 +358,10 @@ export default function Studio({ account }: { account: Account }) {
   const selectedTool = operations.find((o) => o.id === operation)!;
   useEffect(() => {
     setSidebar(false);
+    if (pathname === '/studio/admin') {
+      setView('admin');
+      return;
+    }
     if (pathname === '/studio/conta') {
       setView('account');
       return;
@@ -416,6 +456,9 @@ export default function Studio({ account }: { account: Account }) {
       setBusy('');
       setProgress(0);
       operationLock.current = false;
+      cloudAbort.current = null;
+      void refreshCloud();
+      void refreshUsage();
     }
   }
   async function upload(file: File, requestedOperation?: Operation, inAssistant = false) {
@@ -555,46 +598,88 @@ export default function Studio({ account }: { account: Account }) {
           ? (project.versions.find((v) => v.id === version.parentId) ?? version)
           : version;
       const inputVersion = autoEnabled ? project.versions[0] : effectBase;
-      setBusy('Autorizando seu tratamento…');
-      const authorization = await fetch('/api/usage', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ operation }),
-      });
-      const nextUsage = await authorization.json();
-      if (typeof nextUsage.used === 'number') setUsage(nextUsage);
-      if (!authorization.ok)
-        throw new Error(nextUsage.error || 'Não foi possível autorizar o tratamento.');
-      const result = await processAudio(inputVersion.blob, {
-        operation,
-        intensity,
-        mode: denoiseMode,
-        settings: {
-          automatic: autoEnabled,
-          noiseFloor: noiseFloor ?? version.info.noiseFloor,
-          noiseReduction,
-          neuralAttenuation,
-          presence,
-          compression,
-          highpass: operation === 'eq' ? eqHighpass : highpass,
-          eq: operation === 'eq' ? eqGains : undefined,
-          masterPreset: operation === 'master' ? masterRecipe : undefined,
-          broadcast: operation === 'master' && masterRecipe === 'broadcast' ? broadcast : undefined,
-          deess: operation === 'clarity' ? deess : undefined,
-          hum: operation === 'clarity' ? hum : undefined,
-          deliveryPreset:
-            operation === 'auto' && autoDestination !== 'reference' ? autoDestination : undefined,
-          effect: operation === 'effects' ? effect : undefined,
-          effectMix: operation === 'effects' ? effectMix : undefined,
-        },
-        target,
-        peak,
-        music: music?.blob,
-        musicGain,
-        region: region ?? undefined,
-        onStatus: setBusy,
-        onProgress: setProgress,
-      });
+      let cloudId: string | undefined;
+      let result: Pick<Version, 'blob' | 'info' | 'metrics' | 'processing'>;
+      if (operation === 'auto') {
+        if (!cloudReady)
+          throw new Error(
+            'A restauração avançada está sendo conectada. Você pode usar as ferramentas de limpeza local e acabamento.',
+          );
+        if (region)
+          throw new Error(
+            'Desative a seleção de trecho. A restauração com IA usa a gravação inteira e gera voz em mono.',
+          );
+        if (pendingJob && pendingJob.projectId !== project.id)
+          throw new Error(
+            'Há outro áudio em processamento. Retome ou cancele o pedido anterior antes de continuar.',
+          );
+        const controller = new AbortController();
+        cloudAbort.current = controller;
+        const cloud = await restoreCloud(project.originalFile, project.versions[0].info.duration, {
+          resumeId: pendingJob?.id,
+          signal: controller.signal,
+          onStatus: setBusy,
+          onProgress: setProgress,
+          onUsage: setUsage,
+          onJob: (id) => {
+            if (id) {
+              localStorage.setItem(
+                'nossom-cloud:' + account.id,
+                JSON.stringify({ id, projectId: project.id }),
+              );
+              setPendingJob({ id, projectId: project.id, status: 'queued' });
+            }
+          },
+        });
+        cloudId = cloud.id;
+        result = {
+          blob: cloud.blob,
+          info: cloud.info,
+          metrics: cloud.metrics,
+          processing: cloud.processing,
+        };
+        cloudAbort.current = null;
+      } else {
+        setBusy('Autorizando seu tratamento…');
+        const authorization = await fetch('/api/usage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ operation }),
+        });
+        const nextUsage = await authorization.json();
+        if (typeof nextUsage.used === 'number') setUsage(nextUsage);
+        if (!authorization.ok)
+          throw new Error(nextUsage.error || 'Não foi possível autorizar o tratamento.');
+        result = await processAudio(inputVersion.blob, {
+          operation,
+          intensity,
+          mode: denoiseMode,
+          settings: {
+            automatic: autoEnabled,
+            noiseFloor: noiseFloor ?? version.info.noiseFloor,
+            noiseReduction,
+            neuralAttenuation,
+            presence,
+            compression,
+            highpass: operation === 'eq' ? eqHighpass : highpass,
+            eq: operation === 'eq' ? eqGains : undefined,
+            masterPreset: operation === 'master' ? masterRecipe : undefined,
+            broadcast:
+              operation === 'master' && masterRecipe === 'broadcast' ? broadcast : undefined,
+            deess: operation === 'clarity' ? deess : undefined,
+            hum: operation === 'clarity' ? hum : undefined,
+            effect: operation === 'effects' ? effect : undefined,
+            effectMix: operation === 'effects' ? effectMix : undefined,
+          },
+          target,
+          peak,
+          music: music?.blob,
+          musicGain,
+          region: region ?? undefined,
+          onStatus: setBusy,
+          onProgress: setProgress,
+        });
+      }
       const newVersion: Version = {
         id: crypto.randomUUID(),
         parentId: inputVersion.id,
@@ -603,7 +688,7 @@ export default function Studio({ account }: { account: Account }) {
         operation,
         preset:
           operation === 'auto'
-            ? `Automático · restauração + ${deliveryPresets.find((p) => p.id === autoDestination)?.label ?? 'Transmissão + Limite −3 dB'}`
+            ? 'NOSSOM Restore D · restauração de fala · sem masterização adicional'
             : operation === 'master'
               ? masterRecipe === 'broadcast'
                 ? 'Transmissão + Limite −3 dB'
@@ -628,7 +713,17 @@ export default function Studio({ account }: { account: Account }) {
       setProject(updated);
       setVersionIndex(updated.versions.length - 1);
       await refresh();
-      notify('Nova versão salva. Compare com o original.');
+      if (cloudId) {
+        localStorage.setItem(
+          'nossom-cloud:' + account.id,
+          JSON.stringify({ id: cloudId, projectId: project.id, saved: true }),
+        );
+        await releaseCloudJob(cloudId)
+          .then(() => localStorage.removeItem('nossom-cloud:' + account.id))
+          .catch(() => {});
+        setPendingJob(null);
+        notify('Voz restaurada. Ouça e escolha o acabamento abaixo.');
+      } else notify('Nova versão salva. Compare com o original.');
     });
   }
   async function addMusic(file: File) {
@@ -850,7 +945,7 @@ export default function Studio({ account }: { account: Account }) {
           <span className="workspace-avatar">{account.name.slice(0, 1).toUpperCase()}</span>
           <div>
             {account.name}
-            <span className="account-plan">{accountPlan(account)}</span>
+            <span className="account-plan">{accountPlan(account, usage)}</span>
             <small>{account.email}</small>
           </div>
           <span className="local-badge">{account.isAdmin ? 'ADM' : 'CONTA'}</span>
@@ -859,14 +954,20 @@ export default function Studio({ account }: { account: Account }) {
           <span>{usage ? usageLabel(usage) : usageError || 'Consultando tratamentos…'}</span>
           {usage && !usage.unlimited && (
             <>
-              <progress max={10} value={usage.used} aria-label="Tratamentos usados nesta semana" />
+              <progress
+                max={Math.max(1, usage.limit ?? 300)}
+                value={usage.used}
+                aria-label="Minutos da franquia usados ou reservados neste mês"
+              />
               <small>
-                Renova segunda,{' '}
-                {new Intl.DateTimeFormat('pt-BR', {
-                  day: '2-digit',
-                  month: '2-digit',
-                  timeZone: 'America/Fortaleza',
-                }).format(new Date(usage.resetAt))}
+                Renova dia{' '}
+                {Number.isFinite(Date.parse(usage.resetAt))
+                  ? new Intl.DateTimeFormat('pt-BR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      timeZone: 'America/Fortaleza',
+                    }).format(new Date(usage.resetAt))
+                  : '1 do próximo mês'}
                 , à 0h · Brasília
               </small>
             </>
@@ -913,6 +1014,19 @@ export default function Studio({ account }: { account: Account }) {
           >
             <UserRound size={18} /> Minha conta
           </button>
+          {account.isAdmin && (
+            <button
+              className={view === 'admin' ? 'active' : ''}
+              disabled={!!busy || recording}
+              onClick={() => {
+                setSidebar(false);
+                router.push('/studio/admin');
+              }}
+            >
+              <Activity size={18} />
+              Administração
+            </button>
+          )}
         </nav>
         <div className="sidebar-bottom">
           <InstallApp onOpen={() => setSidebar(false)} />
@@ -924,9 +1038,9 @@ export default function Studio({ account }: { account: Account }) {
             <div>
               Seu áudio fica com você.
               <p>
-                Processamento e projetos
+                Projetos neste navegador.
                 <br />
-                neste navegador.
+                Restauração com IA na nuvem.
               </p>
             </div>
           </div>
@@ -982,9 +1096,11 @@ export default function Studio({ account }: { account: Account }) {
                   ? 'Assistente'
                   : view === 'projects'
                     ? 'Meus projetos'
-                    : view === 'account'
-                      ? 'Minha conta'
-                      : 'Assistente'}
+                    : view === 'admin'
+                      ? 'Administração'
+                      : view === 'account'
+                        ? 'Minha conta'
+                        : 'Assistente'}
               </strong>
             )}
           </div>
@@ -1047,8 +1163,8 @@ export default function Studio({ account }: { account: Account }) {
           <div className="mobile-usage" role="status">
             {usage
               ? usage.unlimited
-                ? 'ADM · sem limite semanal de tratamentos'
-                : `Seu saldo: ${usage.remaining} tratamentos nesta semana`
+                ? 'ADM · restaurações ilimitadas'
+                : usageLabel(usage)
               : usageError || 'Consultando seu saldo…'}
           </div>
           {error && (
@@ -1078,6 +1194,7 @@ export default function Studio({ account }: { account: Account }) {
               <button
                 className="text-link"
                 onClick={() => {
+                  cloudAbort.current?.abort();
                   cancelProcessing();
                   setError(
                     'Processamento cancelado. O original e as versões salvas foram preservados.',
@@ -1088,6 +1205,8 @@ export default function Studio({ account }: { account: Account }) {
               </button>
             </div>
           )}
+          {view === 'admin' &&
+            (account.isAdmin ? <AdminDashboard /> : <p>Acesso restrito ao administrador.</p>)}
           {view === 'tool' && (
             <>
               <div className="studio-welcome">
@@ -1368,6 +1487,116 @@ export default function Studio({ account }: { account: Account }) {
                     region={region}
                     onRegion={setRegion}
                   />
+                  {versionIndex > 0 &&
+                    project.versions.some((v) => v.processing?.cloudRestoration) && (
+                      <section
+                        className="finish-panel"
+                        aria-label="Acabamento depois da restauração"
+                      >
+                        <span className="eyebrow">A VOZ RESTAURADA É SEU PONTO DE PARTIDA</span>
+                        <h2>Agora, deixe do seu jeito.</h2>
+                        <p>
+                          Escolha um acabamento para a versão que está ouvindo. Os controles abrem
+                          ao lado; no celular, logo abaixo. Cada aplicação cria uma versão que você
+                          pode desfazer.
+                        </p>
+                        <div className="finish-options">
+                          <button
+                            disabled={!!busy}
+                            onClick={() => {
+                              selectMaster('broadcast');
+                              chooseTool('master');
+                              setTimeout(
+                                () =>
+                                  document
+                                    .querySelector('.treatment-panel')
+                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                                120,
+                              );
+                            }}
+                          >
+                            <Activity size={22} />
+                            <strong>Encorpar · Premiere</strong>
+                            <span>Seu multibanda + limite −3 dB. Ajuste cada banda.</span>
+                          </button>
+                          <button
+                            disabled={!!busy}
+                            onClick={() => {
+                              selectEq('warm');
+                              chooseTool('eq');
+                              setTimeout(
+                                () =>
+                                  document
+                                    .querySelector('.treatment-panel')
+                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                                120,
+                              );
+                            }}
+                          >
+                            <SlidersHorizontal size={22} />
+                            <strong>Corpo e calor</strong>
+                            <span>Um ponto de partida editável para uma voz mais encorpada.</span>
+                          </button>
+                          <button
+                            disabled={!!busy}
+                            onClick={() => {
+                              selectEq('neutral');
+                              chooseTool('eq');
+                              setTimeout(
+                                () =>
+                                  document
+                                    .querySelector('.treatment-panel')
+                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                                120,
+                              );
+                            }}
+                          >
+                            <AudioLines size={22} />
+                            <strong>Equalizar do meu jeito</strong>
+                            <span>Graves, médios, presença e brilho em cinco bandas.</span>
+                          </button>
+                          <button
+                            disabled={!!busy}
+                            onClick={() => {
+                              selectMaster('youtube');
+                              chooseTool('master');
+                              setTimeout(
+                                () =>
+                                  document
+                                    .querySelector('.treatment-panel')
+                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                                120,
+                              );
+                            }}
+                          >
+                            <ArrowUpRight size={22} />
+                            <strong>Preparar para publicar</strong>
+                            <span>YouTube, redes sociais, podcast e referências para TV.</span>
+                          </button>
+                          <button
+                            disabled={!!busy}
+                            onClick={() => {
+                              chooseTool('effects');
+                              setTimeout(
+                                () =>
+                                  document
+                                    .querySelector('.treatment-panel')
+                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                                120,
+                              );
+                            }}
+                          >
+                            <Layers size={22} />
+                            <strong>Explorar efeitos</strong>
+                            <span>Capela, igreja, rádio, telefone e intensidade ajustável.</span>
+                          </button>
+                        </div>
+                        <small>
+                          Gostou da restauração como está? Você já pode exportar, sem aplicar outro
+                          efeito.
+                        </small>
+                      </section>
+                    )}
                   <section className="analysis-panel">
                     <div className="subheading">
                       <h2>Seu som, em detalhes.</h2>
@@ -1475,7 +1704,11 @@ export default function Studio({ account }: { account: Account }) {
                     <FileAudio size={19} />
                     <div>
                       <strong>Pronto para seguir com seu som?</strong>
-                      <span>WAV 16-bit ou MP3 320 kbps · 48 kHz</span>
+                      <span>
+                        {version.processing?.cloudRestoration
+                          ? 'WAV 32-bit float · 44,1 kHz · MP3 disponível'
+                          : 'WAV 16-bit ou MP3 320 kbps · 48 kHz'}
+                      </span>
                     </div>
                     <button
                       className="button secondary small"
@@ -1515,7 +1748,7 @@ export default function Studio({ account }: { account: Account }) {
                       <p>
                         {autoEnabled
                           ? operation === 'auto'
-                            ? 'Analisamos o original, reconstruímos picos saturados identificáveis e adaptamos a limpeza e o timbre. Finalizamos com Transmissão + Limite −3 dB ou com o destino que você escolher.'
+                            ? 'Restauramos a fala com NOSSOM Restore D. Depois você escolhe se quer encorpar, equalizar ou preparar para publicar. Sem masterização adicional nesta etapa.'
                             : 'Analisamos a gravação original e adaptamos a limpeza à sua voz, preservando o timbre e o estéreo. O volume e os picos são verificados no resultado.'
                           : 'Personalize o tratamento ou volte à análise automática.'}
                       </p>
@@ -1527,6 +1760,82 @@ export default function Studio({ account }: { account: Account }) {
                         >
                           {autoEnabled ? 'Ajustar manualmente' : 'Usar análise automática'}
                         </button>
+                      )}
+                    </div>
+                  )}
+                  {operation === 'auto' && (
+                    <div className="cloud-restoration-note">
+                      <strong>
+                        {cloudReady === null
+                          ? 'Verificando o motor…'
+                          : cloudReady
+                            ? 'NOSSOM Restore D · pronto para restaurar'
+                            : 'NOSSOM Restore D · conexão em preparação'}
+                      </strong>
+                      <p>
+                        Uma cópia temporária do arquivo é enviada para restauração. A GPU inicia sob
+                        demanda. A saída é voz em mono; o original fica preservado. Ouça e revise a
+                        fala antes de publicar.
+                      </p>
+                      {!cloudReady && (
+                        <button
+                          className="text-link"
+                          disabled={!!busy}
+                          onClick={() => chooseTool('denoise')}
+                        >
+                          Usar limpeza local enquanto isso <ArrowRight size={15} />
+                        </button>
+                      )}
+                      {pendingJob && (
+                        <div className="cloud-pending">
+                          <p>
+                            Há uma restauração pendente nesta conta.{' '}
+                            {pendingJob.projectId === project.id
+                              ? 'Clique em Retomar para acompanhar e salvar o resultado.'
+                              : 'Retome o projeto ou cancele o pedido anterior.'}
+                          </p>
+                          {pendingJob.projectId && pendingJob.projectId !== project.id && (
+                            <Link
+                              className="text-link"
+                              href={toolPath('auto', pendingJob.projectId)}
+                            >
+                              Abrir projeto pendente
+                            </Link>
+                          )}
+                          <button
+                            className="text-link"
+                            disabled={!!busy}
+                            onClick={async () => {
+                              try {
+                                await cancelCloudJob(pendingJob.id);
+                                const r = await fetch(`/api/audio/jobs?id=${pendingJob.id}`, {
+                                  cache: 'no-store',
+                                });
+                                const data = await r.json();
+                                if (['failed', 'cancelled', 'completed'].includes(data.status))
+                                  await releaseCloudJob(pendingJob.id);
+                                await refreshCloud();
+                                await refreshUsage();
+                                notify(
+                                  'Pedido de cancelamento enviado. A fila libera a GPU automaticamente.',
+                                );
+                              } catch {
+                                setError(
+                                  'Não foi possível confirmar o cancelamento. Tente novamente.',
+                                );
+                              }
+                            }}
+                          >
+                            Cancelar pedido anterior
+                          </button>
+                          <button
+                            className="text-link"
+                            disabled={!!busy}
+                            onClick={() => void refreshCloud()}
+                          >
+                            Atualizar estado
+                          </button>
+                        </div>
                       )}
                     </div>
                   )}
@@ -1888,28 +2197,10 @@ export default function Studio({ account }: { account: Account }) {
                     )}
                   </div>
                   {operation === 'auto' && (
-                    <div className="destination-controls">
-                      <label className="field-label" htmlFor="auto-destination">
-                        ONDE ESSE SOM VAI CHEGAR?
-                      </label>
-                      <select
-                        id="auto-destination"
-                        disabled={!!busy}
-                        value={autoDestination}
-                        onChange={(e) => setAutoDestination(e.target.value)}
-                      >
-                        <option value="reference">NOSSOM · Transmissão + Limite −3 dB</option>
-                        {deliveryPresets.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.label}
-                          </option>
-                        ))}
-                      </select>
-                      <p className="field-hint">
-                        {deliveryPresets.find((p) => p.id === autoDestination)?.note ??
-                          'Mantém a finalização da referência enviada, sem normalização extra de volume.'}
-                      </p>
-                    </div>
+                    <p className="field-hint">
+                      Depois de restaurar, abra os botões de acabamento para escolher seu EQ, o
+                      preset do Premiere, efeitos e destino de entrega.
+                    </p>
                   )}
                   {operation === 'master' && masterRecipe !== 'broadcast' && (
                     <>
@@ -2100,49 +2391,61 @@ export default function Studio({ account }: { account: Account }) {
                       )}
                     </>
                   )}
-                  {autoEnabled && version.processing?.restoration?.automatic && (
-                    <div className="automatic-result" role="status">
-                      <Check size={17} />{' '}
-                      <span>
-                        Análise concluída · limpeza adaptada, estéreo preservado e picos
-                        verificados.
-                        <small>
-                          Supressão escolhida: {version.processing.restoration.attenuationDb} dB. Os
-                          ajustes usados estão no relatório.
-                        </small>
-                        {version.processing.clippingRepair && (
+                  {operation !== 'auto' &&
+                    autoEnabled &&
+                    version.processing?.restoration?.automatic && (
+                      <div className="automatic-result" role="status">
+                        <Check size={17} />{' '}
+                        <span>
+                          Análise concluída · limpeza adaptada, estéreo preservado e picos
+                          verificados.
                           <small>
-                            {version.processing.clippingRepair.status === 'reconstructed'
-                              ? 'Picos saturados identificados e reconstruídos. Compare os trechos distorcidos com o original.'
-                              : version.processing.clippingRepair.status === 'limited'
-                                ? 'Saturação extensa: a restauração local não reconstrói esta gravação com segurança. A distorção pode permanecer.'
-                                : 'Sem teto de saturação identificável. Distorção de captação ou de compressão ainda pode estar presente.'}
+                            Supressão escolhida: {version.processing.restoration.attenuationDb} dB.
+                            Os ajustes usados estão no relatório.
                           </small>
-                        )}
-                      </span>
-                    </div>
-                  )}
+                          {version.processing.clippingRepair && (
+                            <small>
+                              {version.processing.clippingRepair.status === 'reconstructed'
+                                ? 'Picos saturados identificados e reconstruídos. Compare os trechos distorcidos com o original.'
+                                : version.processing.clippingRepair.status === 'limited'
+                                  ? 'Saturação extensa: a restauração local não reconstrói esta gravação com segurança. A distorção pode permanecer.'
+                                  : 'Sem teto de saturação identificável. Distorção de captação ou de compressão ainda pode estar presente.'}
+                            </small>
+                          )}
+                        </span>
+                      </div>
+                    )}
                   <button
                     className="button primary process-button"
                     onClick={applyTreatment}
                     disabled={
-                      !!busy || (usage !== null && !usage.unlimited && usage.remaining === 0)
+                      !!busy ||
+                      (operation === 'auto' && !cloudReady) ||
+                      (operation === 'auto' &&
+                        usage !== null &&
+                        !usage.unlimited &&
+                        usage.remaining === 0 &&
+                        !pendingJob)
                     }
                   >
                     {busy ? <LoaderCircle size={17} className="spin" /> : <Sparkles size={17} />}{' '}
                     {busy
                       ? 'Processando…'
-                      : usage && !usage.unlimited && usage.remaining === 0
-                        ? 'Limite semanal atingido'
-                        : autoEnabled
-                          ? 'Analisar e tratar'
-                          : 'Aplicar tratamento'}{' '}
+                      : operation === 'auto' && usage && !usage.unlimited && usage.remaining === 0
+                        ? 'Franquia mensal utilizada'
+                        : operation === 'auto'
+                          ? pendingJob?.projectId === project.id
+                            ? 'Retomar restauração'
+                            : 'Restaurar com IA'
+                          : autoEnabled
+                            ? 'Analisar e tratar'
+                            : 'Aplicar tratamento'}{' '}
                     {!busy && <ArrowRight size={15} />}
                   </button>
                   {!usage?.unlimited && (
                     <p className="usage-apply-hint">
-                      Cada aplicação iniciada usa 1 tratamento. Desfazer, reproduzir e baixar não
-                      gastam saldo.
+                      Só a restauração com IA usa a franquia mensal, com mínimo de 1 minuto por
+                      pedido. EQ, efeitos, masterização local e downloads não descontam minutos.
                     </p>
                   )}
                   <span className="treatment-footnote">
@@ -2169,7 +2472,7 @@ export default function Studio({ account }: { account: Account }) {
             NOSSOM <span>·</span> Tudo acontece no som.
           </span>
           <span>
-            <ShieldCheck size={12} /> Processado no seu dispositivo
+            <ShieldCheck size={12} /> IA na nuvem · acabamento no dispositivo
           </span>
         </footer>
       </div>

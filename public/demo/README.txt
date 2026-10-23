@@ -1,14 +1,5 @@
-NOSSOM voice demonstration — Brazilian Portuguese, human recording.
-Source: TTS-Portuguese Corpus by Edresson Casanova and collaborators.
-https://github.com/Edresson/TTS-Portuguese-Corpus
-Ground truth recordings (not synthesized output):
-https://github.com/Edresson/TTS-Portuguese-Corpus/blob/gh-pages/audio/Esperado/10.wav
-https://github.com/Edresson/TTS-Portuguese-Corpus/blob/gh-pages/audio/Esperado/8.wav
-Source transcript: “Sua sensibilidade mostrará o caminho. É bom te ver colhendo flores menino.”
-License: Creative Commons Attribution 4.0 International.
-https://creativecommons.org/licenses/by/4.0/
-Full license: /licenses/tts-portuguese-cc-by-4.0.txt
+NOSSOM - demonstracao real autorizada
 
-Changes: concatenated, resampled to mono 48 kHz, volume adjusted, deterministic pink noise added for a controlled comparison. The treated version was rendered by NOSSOM's Reduzir ruído, automatic mode (Natural 3 / DeepFilterNet3 and linked spectral restoration). Both versions were then loudness-matched to -19 LUFS for comparison; no multiband mastering or +6 dB boost in this demo. Both exported as MP3 192 kb/s. Duration 7.13 seconds; waveform peaks measured from decoded MP3s. No private customer recordings are included.
+Trecho 30-65 segundos de uma gravacao fornecida pelo titular do projeto. Publicacao deste trecho bruto e restaurado autorizada expressamente na conversa em 23/10/2026, incluindo uso da voz para demonstracao na homepage. Nao se concede licenca aberta de redistribuicao do corpus.
 
-This is a demonstration on one recording, not a general guarantee of perceptual quality.
+Tratado: Resemble Enhance, candidato D escolhido pelo titular: lambd 0.5, tau 0.1, Midpoint, NFE64, seed2026. Inferencia no RunPod A40 com contexto20-75s e recorte30-65s. Sem EQ ou masterizacao adicional; WAVfloat intermediario. Os MP3s receberam somente ganho para igualar o loudness, codificacao192kb/s e waveform calculada dos arquivos finais. O resultado pode alterar fonemas e precisa de revisao. Nao e uma demonstracao de equivalencia ao Adobe Podcast.

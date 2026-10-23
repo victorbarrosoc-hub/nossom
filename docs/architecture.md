@@ -1,12 +1,14 @@
 # Arquitetura e escopo da primeira entrega
 
-## Contas, IA e uso semanal (atualização)
+## Contas, restauração e planos mensais
 
-Supabase Auth autentica contas por e-mail/senha. O servidor consulta a identidade, criptografa os tokens no cookie HttpOnly e renova a sessão pelo proxy. Os arquivos continuam locais, em IndexedDB por usuário. O workspace anterior é preservado para a primeira conta no navegador. Não há sincronização de áudio nesta etapa.
+Supabase Auth autentica a conta; cookies HttpOnly criptografados guardam a sessão. IndexedDB separa projetos e versões por usuário. Restauração automática D envia uma cópia temporária ao bucket privado e à RunPod Serverless, preservando o original float32. EQ, limpeza local, efeitos e masterização continuam no navegador.
 
-O PostgreSQL mantém autorizações de tratamento por semana com RLS e uma função atômica de quota: 10 por usuário, sem limite para o e-mail ADM confirmado. O motor local exige essa autorização antes de iniciar um tratamento. A contabilização de renderização inviolável exigiria processamento em jobs remotos; modelos WASM locais podem ser executados fora da interface.
+O servidor reserva um job por conta, assina partes de até 20 MiB, cobra minutos mensais atomicamente no PostgreSQL e despacha uma única vez. Não repete automaticamente um despacho de resultado ambíguo. O worker recebe URLs limitadas, verifica duração e gera WAV float32 mono 44,1 kHz; não recebe chaves administrativas. O resultado é salvo no dispositivo antes da limpeza temporária. Cron diário tenta remover objetos abandonados. Falhas confirmadas devolvem minutos.
 
-Todas as contas usam o Managed Agent e a chave Anthropic do servidor. Conversas são isoladas por usuário/login. Motion anima ondas conforme o estado real da interface. A migração e ativação estão em `docs/supabase-setup.md`; configuração do agente em `docs/claude-setup.md`. A descrição abaixo registra a arquitetura inicial do motor, anterior à autenticação.
+Grátis 5 min/mês; Essencial 2 h por R$ 39; Studio 6 h por R$ 99, mínimo de um minuto por restauração e renovação mensal. Ativação manual pelo painel ADM, sem cobrança automática. Somente o e-mail ADM confirmado pode gerenciar contas e planos, tanto na API quanto no SQL. Estimativas de GPU usam tempo de execução informado e taxa editável, excluindo inicialização/ociosidade/armazenamento/tráfego.
+
+Ativação do banco e do endpoint: `workers/restoration/README.md`. A descrição abaixo registra decisões históricas do motor inicial, anteriores à integração na nuvem.
 
 ## Decisões
 

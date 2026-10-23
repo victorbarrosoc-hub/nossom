@@ -1,11 +1,15 @@
 import { test, expect } from './fixtures';
-test('wave uses fixed geometry, pauses outside the viewport and stops in a hidden tab', async ({
+test('wave moves without DOM path morphing, pauses offscreen and respects reduced motion', async ({
   page,
 }) => {
   await page.goto('/');
   const wave = page.locator('.home-ai-presence .ai-motion');
   await wave.scrollIntoViewIfNeeded();
   await expect(wave).toHaveClass(/is-running/);
+  const canvas = wave.locator('canvas');
+  const first = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+  await page.waitForTimeout(250);
+  expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(first);
   const mutations = await wave.evaluate(async (el) => {
     let changes = 0;
     const o = new MutationObserver((records) => {
@@ -19,7 +23,9 @@ test('wave uses fixed geometry, pauses outside the viewport and stops in a hidde
   expect(mutations).toBe(0);
   await page.evaluate(() => scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }));
   await expect(wave).not.toHaveClass(/is-running/);
-  await expect(wave.locator('svg')).toHaveCSS('animation-play-state', 'paused');
+  const paused = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+  await page.waitForTimeout(300);
+  expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(paused);
   await wave.scrollIntoViewIfNeeded();
   await expect(wave).toHaveClass(/is-running/);
   await page.evaluate(() => {
@@ -29,4 +35,8 @@ test('wave uses fixed geometry, pauses outside the viewport and stops in a hidde
   await expect(wave).not.toHaveClass(/is-running/);
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await expect(wave.locator('svg')).toHaveCSS('animation-name', 'none');
+  await page.waitForTimeout(100);
+  const reduced = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
+  await page.waitForTimeout(300);
+  expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(reduced);
 });

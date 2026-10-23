@@ -11,6 +11,11 @@ export function strengthValue(value: Intensity): number {
   return Number.isFinite(n) ? Math.min(100, Math.max(0, n)) : 65;
 }
 export type FilterSettings = {
+  cloudRestoration?: import('./restoration').CloudReport &
+    Pick<
+      typeof import('./restoration').restorationD,
+      'id' | 'label' | 'lambd' | 'tau' | 'solver' | 'nfe'
+    >;
   automatic?: boolean;
   restoration?: RestorationAnalysis;
   mudCut?: number;
@@ -40,9 +45,9 @@ export type FilterSettings = {
 export const operations: { id: Operation; label: string; description: string }[] = [
   {
     id: 'auto',
-    label: 'Tratamento completo',
+    label: 'Restaurar com IA',
     description:
-      'A IA analisa a gravação, restaura a voz e finaliza com compressão multibanda e limitação. Um único tratamento, sem escolher parâmetros.',
+      'Restaure a fala com NOSSOM Restore D. Depois escolha EQ, corpo, efeitos e o acabamento do seu áudio.',
   },
   {
     id: 'denoise',

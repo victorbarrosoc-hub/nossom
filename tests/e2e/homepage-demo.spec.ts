@@ -32,7 +32,7 @@ test('human voice demo plays real files, preserves time on A/B, seeks and contro
   expect(result[0].paused).toBe(true);
   expect(result[1].src).toContain('/demo/voice-treated.mp3');
   expect(result[1].time).toBeGreaterThanOrEqual(before - 0.1);
-  expect(result[1].duration).toBeCloseTo(7.13, 1);
+  expect(result[1].duration).toBeCloseTo(35, 1);
   await page.getByRole('button', { name: 'Pausar demonstração', exact: true }).click();
   const seek = page.getByLabel('Posição da demonstração', { exact: true });
   await seek.fill('4.25');
@@ -57,7 +57,7 @@ test('human voice demo plays real files, preserves time on A/B, seeks and contro
       .evaluate((el: HTMLAudioElement) => el.currentTime),
   ).toBeCloseTo(4.25, 1);
   await page.getByText('Sobre esta demonstração', { exact: true }).click();
-  await expect(page.getByText(/Gravação humana em português/)).toBeVisible();
+  await expect(page.getByText(/Gravação real em português/)).toBeVisible();
   await page.getByRole('button', { name: 'Preparar pro YouTube', exact: true }).click();
   await expect(
     page.getByText('Vamos tratar a fala e finalizar com o perfil de entrega YouTube.', {
@@ -150,7 +150,7 @@ test('current plan is highlighted under the name and desktop update completes wi
   });
   await page.context().grantPermissions(['microphone']);
   await page.goto('/studio/automatico');
-  await expect(page.locator('.workspace-label .account-plan')).toHaveText('Plano Gratuito');
+  await expect(page.locator('.workspace-label .account-plan')).toHaveText('Plano Grátis');
   await expect(
     page.getByRole('heading', { name: 'Uma nova NOSSOM chegou.', exact: true }),
   ).toBeVisible();
@@ -173,5 +173,5 @@ test('current plan is highlighted under the name and desktop update completes wi
   ]);
   await page.getByRole('button', { name: 'Fechar aviso de atualização', exact: true }).click();
   await page.getByRole('button', { name: 'Abrir menu da conta', exact: true }).click();
-  await expect(page.locator('.account-profile .account-plan')).toHaveText('Plano Gratuito');
+  await expect(page.locator('.account-profile .account-plan')).toHaveText('Plano Grátis');
 });

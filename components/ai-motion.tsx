@@ -17,6 +17,7 @@ export default function AIMotion({
 }) {
   const id = useId().replace(/:/g, ''),
     ref = useRef<HTMLDivElement>(null),
+    surface = useRef<HTMLCanvasElement>(null),
     [visible, setVisible] = useState(false),
     [foreground, setForeground] = useState(true);
   useEffect(() => {
@@ -35,6 +36,82 @@ export default function AIMotion({
     };
   }, []);
   const active = ['thinking', 'speaking', 'listening'].includes(state);
+  useEffect(() => {
+    const canvas = surface.current;
+    const svg = ref.current?.querySelector('svg');
+    if (!canvas || !svg) return;
+    const context = canvas.getContext('2d');
+    if (!context) return;
+    const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+    let frame = 0,
+      last = 0,
+      width = 720,
+      height = 220;
+    const render = (time: number) => {
+      const phase = time * (active ? 0.0008 : 0.0004);
+      context.clearRect(0, 0, width, height);
+      const color = context.createLinearGradient(0, 0, width, 0);
+      color.addColorStop(0, '#b7d8ff00');
+      color.addColorStop(0.12, '#b7d8ff');
+      color.addColorStop(0.48, '#9cbcff');
+      color.addColorStop(0.8, '#b4a2f0');
+      color.addColorStop(1, '#c4d9ff00');
+      context.strokeStyle = color;
+      for (let line = 0; line < 11; line++) {
+        const spread = (line - 5) / 5;
+        context.beginPath();
+        for (let step = 0; step <= 80; step++) {
+          const t = step / 80;
+          const envelope = Math.sin(Math.PI * t) ** 0.8;
+          const movement = Math.sin(t * Math.PI * 2.3 - phase + spread * 0.36);
+          const y =
+            height * 0.5 +
+            envelope *
+              height *
+              (movement * (active ? 0.22 : 0.16) + spread * (0.13 + 0.035 * Math.cos(phase)));
+          if (step === 0) context.moveTo(0, y);
+          else context.lineTo(t * width, y);
+        }
+        context.globalAlpha = line === 5 ? 0.95 : 0.25 + 0.38 * (1 - Math.abs(spread));
+        context.lineWidth = line === 5 ? 1.7 : 0.8;
+        context.stroke();
+      }
+      context.globalAlpha = 1;
+    };
+    const resize = () => {
+      const box = svg.getBoundingClientRect();
+      width = Math.max(1, box.width);
+      height = Math.max(1, box.height);
+      const scale = Math.min(devicePixelRatio || 1, 1.5);
+      canvas.width = Math.round(width * scale);
+      canvas.height = Math.round(height * scale);
+      canvas.style.height = `${height}px`;
+      context.setTransform(scale, 0, 0, scale, 0, 0);
+      render(0);
+    };
+    const tick = (time: number) => {
+      if (time - last >= 1000 / 30) {
+        render(time);
+        last = time;
+      }
+      frame = requestAnimationFrame(tick);
+    };
+    const start = () => {
+      cancelAnimationFrame(frame);
+      if (visible && foreground && !reduced.matches) frame = requestAnimationFrame(tick);
+      else render(0);
+    };
+    const observer = new ResizeObserver(resize);
+    observer.observe(svg);
+    resize();
+    start();
+    reduced.addEventListener('change', start);
+    return () => {
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      reduced.removeEventListener('change', start);
+    };
+  }, [active, visible, foreground]);
   return (
     <div
       ref={ref}
@@ -86,6 +163,7 @@ export default function AIMotion({
           })}
         </g>
       </svg>
+      <canvas ref={surface} className="ai-motion-canvas" aria-hidden="true" />
       {!compact && (
         <span className="ai-motion-label" role="status">
           {labels[state]}

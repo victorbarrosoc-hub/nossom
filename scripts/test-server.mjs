@@ -71,6 +71,25 @@ const server = createServer(async (req, res) => {
     if (user) for (const [t, u] of refreshTokens) if (u.id === user.id) refreshTokens.delete(t);
     return send({});
   }
+  if (url.pathname === '/rest/v1/rpc/nossom_plan_usage') {
+    if (!user) return send({ code: '28000' }, 401);
+    const used = uses.get(user.id) || 0;
+    const unlimited = user.email === 'victorbarrosoc@gmail.com' && !!user.email_confirmed_at;
+    return send({
+      allowed: unlimited || used < 300,
+      used,
+      remaining: unlimited ? null : Math.max(0, 300 - used),
+      limit: unlimited ? null : 300,
+      unlimited,
+      resetAt: '2026-11-01T03:00:00Z',
+      unit: 'seconds',
+      planId: 'free',
+      planName: 'Grátis',
+      usedSeconds: used,
+      limitSeconds: unlimited ? null : 300,
+      remainingSeconds: unlimited ? null : Math.max(0, 300 - used),
+    });
+  }
   if (url.pathname === '/rest/v1/rpc/nossom_audio_usage') {
     if (!user) return send({ code: '28000' }, 401);
     const used = uses.get(user.id) || 0,

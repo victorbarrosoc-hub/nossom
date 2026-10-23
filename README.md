@@ -113,15 +113,15 @@ O guia SOBEDESCE orienta a hierarquia de telas, peças reutilizáveis, navegaç�
 
 DeepFilterNet3 via `@lofcz/deepfilternet-web@0.1.0` (MIT/Apache-2.0), com licença servida em `/audio/DEEPFILTER-LICENSE.txt`; detalhes em [docs/audio-engine.md](docs/audio-engine.md). RNNoise via `@shiguredo/rnnoise-wasm@2025.1.5` (Apache-2.0); núcleo RNNoise (BSD, em `public/licenses/rnnoise.txt`). A licença do wrapper é servida em `/audio/RNNOISE-WASM-LICENSE.txt`. Processamento local, sem nova chave nem cobrança por API. O fixture de regressão usa voz sintética Flite, não gravação de uma pessoa; detalhes em `tests/fixtures/README.md`.
 
-## Contas, IA compartilhada e tratamentos semanais
+## Contas, IA compartilhada e minutos mensais
 
-Login/cadastro por e-mail e senha no Supabase; contas existentes no projeto entram normalmente. Toda conta usa a chave Anthropic e o Managed Agent do administrador, configurados apenas no servidor. A IA tem ondas interativas em Motion e conversas individuais, sem formulário de credenciais do provedor. Voz é opcional, com um agente ElevenLabs único configurado pela plataforma.
+Login/cadastro por e-mail e senha no Supabase. A conversa usa o Managed Agent Anthropic do servidor, recebendo texto e medições. A restauração automática usa Resemble Enhance, candidato D escolhido pelo titular: lambda 0,5, tau 0,1, Midpoint/NFE 64. Pode alterar fonemas; não equivale ao Adobe. A versão original permanece no dispositivo e a finalização com EQ, Premiere e efeitos é opcional, local e não gasta GPU.
 
-Cada usuário tem 10 autorizações de tratamento por semana, renovadas segunda-feira à 0h (Brasília). O PostgreSQL impõe a cota de forma atômica entre abas, dispositivos e deploys. `victorbarrosoc@gmail.com`, com e-mail confirmado no Supabase, tem tratamentos ilimitados. Importar, reproduzir, baixar e usar o histórico não consomem cota. A interface continua permitindo acesso aos projetos após atingir o limite.
+Planos iniciais aprovados: Grátis 5 minutos/mês; Essencial 2 horas/mês por R$ 39; Studio 6 horas/mês por R$ 99. Ativação manual pelo ADM, sem cobrança automática. Cada restauração reserva a duração inteira do arquivo com mínimo de 1 minuto; falha/cancelamento confirmado devolve os minutos. A franquia renova no dia 1 à 0h de Brasília. ADM confirmado permanece ilimitado. O painel `/studio/admin` permite alterar planos, franquias e acessos e consultar usuários, uso e estimativas de custo. A proteção também é aplicada no banco.
 
-Configuração e migração: [docs/supabase-setup.md](docs/supabase-setup.md). Integração do agente: [docs/claude-setup.md](docs/claude-setup.md). Nenhum segredo fica no cliente. Claude orienta o tratamento por texto/medições; o motor de áudio continua local. A cota não impede executar os modelos públicos fora do produto.
+Ativação: [workers/restoration/README.md](workers/restoration/README.md) e [docs/supabase-setup.md](docs/supabase-setup.md). Execute as duas novas migrações por `public/setup/cloud-restoration.sql`. A RunPod precisa de endpoint Serverless Queue com workers Flex mínimo zero; o Pod manual não é desligado pelo endpoint. A imagem e o ciclo real GPU ainda precisam ser homologados no serviço. Credenciais administrativas ficam no servidor; somente URLs temporárias limitadas chegam ao navegador/worker.
 
-Testes de banco real isolado: `npm run test:quota` (Docker/PostgreSQL 17). Os E2E iniciam automaticamente um Supabase simulado e o build de produção, sem cadastrar usuários no banco real nem gerar custos de IA. Migração local validada não equivale a migração aplicada em produção.
+Testes reais de banco isolado: `npm run test:quota` (Docker/PostgreSQL 17). E2E usam Supabase/RunPod simulados sem usuários nem gastos reais. Testar localmente não aplica migração em produção nem prova o desligamento da GPU.
 
 ## Conta, leitura e aplicativos
 

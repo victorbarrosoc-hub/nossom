@@ -1,7 +1,6 @@
 import { privateHeaders, sameOrigin, allowRequest } from '@/lib/server/ai-access';
 import { currentAccount } from '@/lib/server/account';
 import { audioUsage } from '@/lib/server/usage';
-import { randomUUID } from 'node:crypto';
 import { operations } from '@/lib/presets';
 export const runtime = 'nodejs';
 export async function GET(request: Request) {
@@ -51,17 +50,20 @@ export async function POST(request: Request) {
   if (!body || typeof body !== 'object' || !operations.some((o) => o.id === body.operation))
     return Response.json({ error: 'Pedido inválido.' }, { status: 400, headers: privateHeaders });
   try {
-    const usage = await audioUsage(request, randomUUID(), body.operation);
-    return Response.json(
-      usage.allowed
-        ? usage
-        : {
-            ...usage,
-            error:
-              'Você usou os 10 tratamentos desta semana. Seus projetos, reprodução, histórico e downloads continuam disponíveis.',
-          },
-      { status: usage.allowed ? 200 : 429, headers: privateHeaders },
-    );
+    // GPU authorization belongs to /api/audio/jobs, never this browser endpoint.
+    if (body.operation === 'auto')
+      return Response.json(
+        { error: 'Inicie a restauração pela fila de processamento.' },
+        { status: 400, headers: privateHeaders },
+      );
+    try {
+      const usage = await audioUsage(request);
+      return Response.json({ ...usage, allowed: true }, { headers: privateHeaders });
+    } catch {
+      // Finishing is local and free of GPU cost; an unavailable balance must not
+      // disable the user's saved projects or local processing.
+      return Response.json({ allowed: true, usageUnavailable: true }, { headers: privateHeaders });
+    }
   } catch {
     return Response.json(
       { error: 'Não foi possível autorizar o tratamento. Tente novamente em instantes.' },

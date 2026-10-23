@@ -14,8 +14,8 @@ export default function Privacy() {
       </h1>
       <p>
         A NOSSOM exige uma conta Supabase para entrar no estúdio. Contas e cotas ficam na nuvem;
-        seus arquivos de áudio continuam neste dispositivo e não são enviados para um servidor de
-        processamento.
+        seus projetos e originais ficam neste dispositivo. A restauração avançada com IA envia uma
+        cópia temporária do arquivo para processamento na nuvem.
       </p>
       <h2>Arquivos e projetos</h2>
       <p>
@@ -36,6 +36,22 @@ export default function Privacy() {
         tratamentos usam memória e processamento locais. Esta versão aceita arquivos mono ou
         estéreo, de até 100 MB e 10 minutos.
       </p>
+      <h2>Restauração com IA na nuvem</h2>
+      <p>
+        Ao escolher Restaurar com IA, uma cópia do arquivo é enviada a um bucket privado do Supabase
+        e processada por uma GPU da RunPod com Resemble Enhance, no preset D escolhido para a
+        plataforma. Os links são temporários e restritos aos objetos desse trabalho. Não enviamos
+        sua chave de conta ou a chave administrativa ao worker. A voz restaurada é mono, em WAV
+        float32 a 44,1 kHz. Revise a fala e a pronúncia antes de publicar.
+      </p>
+      <p>
+        Depois de baixar e salvar a versão local, solicitamos a remoção dos objetos temporários. Um
+        processo diário, quando configurado na hospedagem, remove objetos abandonados com mais de 24
+        horas. Falhas de conexão ou configuração podem atrasar essa remoção. Registramos o
+        identificador do trabalho, conta, horários, duração, tamanho, estado e parâmetros técnicos
+        para acompanhar o processamento. Os provedores podem manter logs técnicos segundo suas
+        próprias políticas. Não usamos seus áudios para treinar um modelo.
+      </p>
       <h2>Microfone e assistente</h2>
       <p>
         A gravação só acessa o microfone após sua permissão e salva o resultado localmente. A IA da
@@ -50,7 +66,7 @@ export default function Privacy() {
         permissão de microfone. Nessa conversa, o áudio do microfone vai ao ElevenLabs conforme as
         políticas do provedor. Sem voz habilitada, o assistente funciona por texto.
       </p>
-      <h2>Conta e limite semanal</h2>
+      <h2>Conta, planos e franquia mensal</h2>
       <p>
         Supabase Auth guarda seu e-mail, nome de exibição e os dados de autenticação. A aplicação
         não salva sua senha no navegador. Tokens de acesso e renovação ficam criptografados em
@@ -61,10 +77,16 @@ export default function Privacy() {
       </p>
       <p>
         Registramos no banco seu ID de usuário, operação, identificador e horário de cada
-        autorização de tratamento para aplicar 10 usos semanais, renovados na segunda-feira à 0h de
-        Brasília. A conta administrativa com e-mail confirmado é isenta dessa cota. Aplicações
-        iniciadas consomem uso; cancelamentos e falhas após a autorização não devolvem
-        automaticamente a cota. Importação, reprodução, exportação e histórico não consomem usos.
+        autorização de restauração para aplicar a franquia mensal do plano. O Grátis inclui 5
+        minutos; Essencial, 2 horas; Studio, 6 horas. O administrador pode atribuir planos, validade
+        e limites personalizados. A franquia renova no dia 1 à 0h de Brasília, sem acumular saldo;
+        cada pedido usa no mínimo 1 minuto. A conta ADM confirmada é ilimitada. Tempo é reservado
+        antes do despacho; falhas e cancelamentos confirmados devolvem essa reserva. EQ, efeitos,
+        masterização local, reprodução e downloads não gastam minutos. Um despacho com resultado de
+        rede incerto não é repetido automaticamente. A ativação dos planos pagos é manual, sem
+        processamento de cartão nesta etapa. Alterações de plano são registradas para auditoria; o
+        painel do administrador mostra conta, plano, uso, volumes enviados e estados dos trabalhos,
+        sem expor os arquivos locais dos usuários.
       </p>
       <p>
         Projetos e presets são separados por conta no navegador. A primeira conta que entrar mantém

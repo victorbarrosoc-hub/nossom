@@ -121,8 +121,8 @@ export default function DemoPlayer() {
             <Headphones size={21} />
           </span>
           <div>
-            <strong>Uma voz. Duas versões.</strong>
-            <small>Voz real · Português brasileiro</small>
+            <strong>Uma gravação real. Ouça a mudança.</strong>
+            <small>Teste real autorizado · NOSSOM Restore D</small>
           </div>
         </div>
         <div className="voice-player-switch" role="group" aria-label="Comparar versões da voz">
@@ -186,8 +186,8 @@ export default function DemoPlayer() {
       </div>
       <div className="voice-player-timeline" aria-hidden="true">
         <span>{time(position)}</span>
-        <span>00:02</span>
-        <span>00:04</span>
+        <span>{time(duration / 3)}</span>
+        <span>{time((duration * 2) / 3)}</span>
         <span>{time(duration)}</span>
       </div>
       <div className="voice-player-controls">
@@ -212,8 +212,8 @@ export default function DemoPlayer() {
             <strong>{version === 'original' ? 'Antes do tratamento' : 'Tratamento NOSSOM'}</strong>
             <span>
               {version === 'original'
-                ? 'Voz com ruído adicionado'
-                : 'Limpeza neural · volumes igualados'}
+                ? 'Gravação original · volumes igualados'
+                : 'Restauração D · sem EQ ou masterização'}
             </span>
           </div>
         </div>
@@ -247,18 +247,11 @@ export default function DemoPlayer() {
       <details className="voice-player-credit">
         <summary>Sobre esta demonstração</summary>
         <p>
-          Gravação humana em português, do TTS-Portuguese Corpus, de Edresson Casanova e
-          colaboradores (
-          <a
-            href="https://github.com/Edresson/TTS-Portuguese-Corpus"
-            target="_blank"
-            rel="noreferrer"
-          >
-            fonte · CC BY 4.0
-          </a>
-          ). Trechos unidos, com ruído adicionado para comparar; a versão NOSSOM foi renderizada
-          pela limpeza automática da plataforma. Os volumes foram igualados para comparar a limpeza.
-          O resultado varia conforme a gravação.
+          Gravação real em português, publicada com autorização de uso da voz. São os segundos 30–65
+          de um teste com Resemble Enhance no preset D: redução prévia 0,5, temperatura 0,1,
+          Midpoint e NFE 64. Os volumes foram igualados, sem ruído adicionado e sem EQ ou
+          masterização depois da restauração. O resultado varia; ouça e revise a pronúncia antes de
+          publicar.
         </p>
       </details>
     </div>

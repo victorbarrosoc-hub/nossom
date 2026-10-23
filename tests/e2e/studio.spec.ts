@@ -301,10 +301,10 @@ test('studio themes persist, responsive layouts fit and reduced motion pauses de
   await expect(page.getByRole('heading', { name: 'Meus projetos.' })).toBeVisible();
   await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
   await page.goto('/');
-  await expect(page.locator('.ns-hero-stage')).toBeVisible();
+  await expect(page.locator('.home-ai-presence')).toBeVisible();
   expect(
     await page
-      .locator('.ns-hero-ribbon .ribbon-flow')
+      .locator('.home-ai-presence .ai-motion-signal')
       .first()
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe('none');

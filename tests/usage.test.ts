@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GET, POST } from '../app/api/usage/route';
 import { testCookie, testUser, authEnvironment } from './helpers/auth';
-test('usage API requires verified identity, same origin and allowed operations; only server generates authorization IDs', async () => {
+test('local finishing requires verified identity but never spends GPU minutes or grants cloud authorization', async () => {
   const restore = authEnvironment(),
     old = globalThis.fetch;
   const ids: string[] = [];
   let exhausted = false;
   globalThis.fetch = async (input, init) => {
     if (String(input).endsWith('/auth/v1/user')) return Response.json(testUser);
-    assert.match(String(input), /\/rest\/v1\/rpc\/nossom_audio_usage$/);
+    assert.match(String(input), /\/rest\/v1\/rpc\/nossom_plan_usage$/);
     assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer test-access-placeholder');
     const body = JSON.parse(String(init?.body));
     if (body.p_request_id) ids.push(body.p_request_id);
@@ -47,7 +47,7 @@ test('usage API requires verified identity, same origin and allowed operations; 
         (
           await POST(
             request({
-              operation: 'auto',
+              operation: 'eq',
               requestId: 'attacker-reused-id',
               userId: 'other',
               isAdmin: true,
@@ -56,11 +56,11 @@ test('usage API requires verified identity, same origin and allowed operations; 
         ).status,
         200,
       );
-    assert.equal(ids.length, 2);
-    assert.notEqual(ids[0], ids[1]);
+    assert.equal(ids.length, 0);
     assert.ok(ids.every((id) => id !== 'attacker-reused-id'));
     exhausted = true;
-    assert.equal((await POST(request({ operation: 'auto' }))).status, 429);
+    assert.equal((await POST(request({ operation: 'auto' }))).status, 400);
+    assert.equal((await POST(request({ operation: 'eq' }))).status, 200);
     globalThis.fetch = async () =>
       Response.json({ error_code: 'session_revoked' }, { status: 401 });
     assert.equal((await POST(request({ operation: 'auto' }))).status, 401);

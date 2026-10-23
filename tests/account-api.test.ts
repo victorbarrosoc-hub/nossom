@@ -12,8 +12,8 @@ test('anonymous activation health checks Supabase and migration without credenti
     calls.push(url);
     assert.equal(new Headers(init?.headers).get('authorization'), null);
     if (url.endsWith('/auth/v1/settings')) return Response.json({ external: { email: true } });
-    assert.match(url, /\/rpc\/nossom_audio_usage$/);
-    assert.deepEqual(JSON.parse(String(init?.body)), { p_request_id: null, p_operation: null });
+    assert.match(url, /\/rpc\/nossom_plan_usage$/);
+    assert.deepEqual(JSON.parse(String(init?.body)), { p_request_id: null });
     return Response.json(
       { code: migrated ? '42501' : 'PGRST202' },
       { status: migrated ? 401 : 404 },

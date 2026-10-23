@@ -60,7 +60,7 @@ export function AccountForm({
       <h1>{mode === 'register' ? 'Crie sua conta.' : 'Que bom ter você aqui.'}</h1>
       <p>
         {mode === 'register'
-          ? 'Seu assistente já vem conectado. Comece com 10 tratamentos de áudio por semana.'
+          ? 'Seu assistente já vem conectado. Comece com 5 minutos de restauração por mês.'
           : 'Entre para continuar seus projetos e conversar com a IA da NOSSOM.'}
       </p>
       <div className="account-mode" role="group" aria-label="Acesso à conta">
@@ -188,8 +188,8 @@ export function AccountForm({
         </motion.button>
       </motion.form>
       <p className="account-local-note">
-        Sua conta é protegida pelo Supabase. Os arquivos de áudio ficam neste dispositivo; o limite
-        semanal acompanha sua conta.
+        Sua conta é protegida pelo Supabase. Projetos ficam neste dispositivo; a restauração usa uma
+        cópia temporária na nuvem. Sua franquia mensal acompanha sua conta.
       </p>
       <Link className="text-link" href="/privacidade">
         Privacidade e armazenamento

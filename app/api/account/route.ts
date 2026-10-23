@@ -32,9 +32,9 @@ export async function GET(request: Request) {
       await supabase('/auth/v1/settings');
       let quotaReady = false;
       try {
-        await supabase('/rest/v1/rpc/nossom_audio_usage', {
+        await supabase('/rest/v1/rpc/nossom_plan_usage', {
           method: 'POST',
-          body: { p_request_id: null, p_operation: null },
+          body: { p_request_id: null },
         });
       } catch (error) {
         quotaReady = error instanceof SupabaseError && ['42501', '28000'].includes(error.code);

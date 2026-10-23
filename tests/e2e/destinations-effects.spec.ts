@@ -96,10 +96,10 @@ test('effects retain their tails, replace rather than stack, save settings and c
       .violations,
   ).toEqual([]);
 });
-test('automatic treatment applies the selected destination after restoration and preserves the source', async ({
+test('delivery remains an explicit finishing choice and preserves the selected source', async ({
   page,
 }) => {
-  await page.goto('/studio/automatico');
+  await page.goto('/studio/masterizacao');
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles('tests/fixtures/synthetic-speech.wav');
@@ -107,15 +107,15 @@ test('automatic treatment applies the selected destination after restoration and
   await expect(destination).toBeVisible({ timeout: 90000 });
   const original = await report(page);
   for (const [i, id] of ['youtube', 'netflix-dialogue'].entries()) {
+    if (i) await page.getByRole('button', { name: 'Restaurar original', exact: true }).click();
     const preset = deliveryPresets.find((p) => p.id === id)!;
     await destination.selectOption(id);
-    await page.getByRole('button', { name: 'Analisar e tratar', exact: true }).click();
+    await page.getByRole('button', { name: 'Aplicar tratamento', exact: true }).click();
     await expect(
-      page.getByRole('heading', { name: `Tratamento completo · V${i + 1}`, exact: true }),
+      page.getByRole('heading', { name: `Preparar entrega · V${i + 1}`, exact: true }),
     ).toBeVisible({ timeout: 90000 });
     const result = await report(page);
-    expect(result.processingSettings.deliveryPreset).toBe(id);
-    expect(result.processingSettings.clippingRepair.method).toBe('autoregressive');
+    expect(result.processingSettings.masterPreset).toBe(id);
     expect(Math.abs(result.after.lufs - preset.lufs)).toBeLessThanOrEqual(0.75);
     expect(result.after.truePeak).toBeLessThanOrEqual(preset.peak + 0.15);
     expect(result.output.duration).toBeCloseTo(original.output.duration, 3);

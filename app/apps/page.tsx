@@ -86,7 +86,7 @@ export default function Apps() {
         </div>
       </section>
       <p className="apps-note">
-        Os arquivos de áudio ficam no dispositivo onde foram importados. A conta e o saldo semanal
+        Os arquivos de áudio ficam no dispositivo onde foram importados. A conta e a franquia mensal
         são compartilhados; os projetos de áudio não são sincronizados entre aparelhos.
       </p>
     </main>

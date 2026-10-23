@@ -212,7 +212,8 @@ export default function Assistant({
         </div>
         {cloud && (
           <p className="field-hint">
-            Seu pedido e as medições são enviados à Anthropic. O áudio continua no seu dispositivo.
+            Seu pedido e as medições são enviados à Anthropic. A restauração avançada envia uma
+            cópia temporária do áudio à GPU; os projetos ficam neste dispositivo.
           </p>
         )}
         {!loading && !authenticated && (

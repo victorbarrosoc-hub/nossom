@@ -4,7 +4,9 @@ import { useRouter } from 'next/navigation';
 import { motion, useReducedMotion } from 'motion/react';
 import { Check, LoaderCircle, LockKeyhole, Mail, UserRound } from 'lucide-react';
 import { accountPlan, type Account } from '@/lib/accounts';
-import type { AudioUsage } from '@/lib/usage';
+import PlanCards from './plan-cards';
+import Link from 'next/link';
+import { usageLabel, type AudioUsage } from '@/lib/usage';
 export default function AccountSettings({
   account,
   usage,
@@ -80,7 +82,7 @@ export default function AccountSettings({
         <span className="account-profile-avatar">{account.name[0].toUpperCase()}</span>
         <div>
           <strong>{account.name}</strong>
-          <span className="account-plan">{accountPlan(account)}</span>
+          <span className="account-plan">{accountPlan(account, usage)}</span>
           <p>{account.email}</p>
         </div>
         <span>{account.isAdmin ? 'Administrador' : 'Conta NOSSOM'}</span>
@@ -94,6 +96,11 @@ export default function AccountSettings({
         <p className="account-settings-success" role="status">
           {success}
         </p>
+      )}
+      {account.isAdmin && (
+        <Link className="button secondary" href="/studio/admin">
+          Abrir painel de administração
+        </Link>
       )}
       <div className="account-settings-grid">
         <form
@@ -134,9 +141,9 @@ export default function AccountSettings({
           </label>
           <p>
             {usage?.unlimited
-              ? 'Sua conta ADM não tem limite semanal de tratamentos.'
+              ? 'Sua conta ADM não tem limite de minutos de restauração.'
               : usage
-                ? `${usage.remaining} de 10 tratamentos disponíveis nesta semana.`
+                ? usageLabel(usage)
                 : 'Consulte seu saldo na navegação.'}
           </p>
           <p>A IA já está incluída na sua conta.</p>
@@ -212,6 +219,7 @@ export default function AccountSettings({
           {button('password', 'Atualizar senha')}
         </form>
       </div>
+      {!account.isAdmin && <PlanCards current={usage?.planId} />}
     </motion.section>
   );
 }

@@ -1,5 +1,15 @@
 # Validação — contas, IA e motor NOSSOM
 
+## Restauração D, planos e ADM — 23/10/2026
+
+Esta atualização substitui as descrições históricas abaixo de cota semanal, demo sintética e ondas estáticas. Planos mensais: Grátis 5 min, Essencial 2 h/R$ 39 e Studio 6 h/R$ 99, ativação manual. O preset D torna-se o padrão automático remoto, com acabamento local opcional e original float32 preservado. A demo pública usa somente o trecho autorizado de 35 s, original versus D, com volume igualado por ganho estático; não é resultado Adobe nem promessa de equivalência.
+
+37 testes unitários Node e 3 testes de transporte Python aprovados. Sete testes em PostgreSQL 17 real isolado incluem permissões, concorrência, limite mensal, cobrança mínima de um minuto, devolução em falha, idempotência e administração de planos. O build de produção e a formatação passaram. Mocks de RunPod no navegador verificam o fluxo de aplicação, sem executar GPU nem confirmar escala até zero. Os testes e as migrações locais não alteram o Supabase remoto. Cenários de navegador também validam cadastro/conta, proteção do ADM, alteração manual de plano, layout de 1920/390 px, acessibilidade, importação float, restauração simulada, presets após IA, gravação, limpeza e exportação reais locais. A correção móvel mantém a tabela com rolagem interna sem alargar a página.
+
+Ondas animadas em canvas, até 30 fps, sem mutação de paths ou layouts contínuos. Uma amostra Chromium com CPU 6× mediu 1,49 s de tarefas/6 s e zero layouts, contra 4,70 s e 299 layouts no movimento antigo. Isso não comprova desempenho em iPhone físico. Teste visual verifica pausa fora da tela e reduzir movimento.
+
+Ativação operacional pendente: aplicar public/setup/cloud-restoration.sql, construir a imagem Docker, criar endpoint Serverless Flex com mínimo zero, configurar RUNPOD_ENDPOINT_ID/CRON_SECRET, homologar um trabalho real e conferir workers voltando a zero. Downloads nativos ainda dependem de builds: o último workflow não iniciou etapas por falha de pagamento/limite de gastos do GitHub; não existem instaladores públicos validados.
+
 Ambiente: Node.js 24, Next.js 16, Chromium Linux. FFmpeg/WASM, RNNoise e DeepFilterNet3 servidos pelo próprio domínio. Validação de navegador em build local de produção.
 
 - Build e TypeScript aprovados, com rotas próprias do estúdio e endpoints de IA.

@@ -17,7 +17,7 @@ import {
 import { AccountForm } from './account-access';
 import { useDialog } from '@/lib/use-dialog';
 import { accountPlan, type Account } from '@/lib/accounts';
-import type { AudioUsage } from '@/lib/usage';
+import { usageLabel, type AudioUsage } from '@/lib/usage';
 export default function AccountMenu({
   account: initialAccount,
   usage,
@@ -183,7 +183,7 @@ export default function AccountMenu({
                         </span>
                         <div>
                           <strong>{account.name}</strong>
-                          <span className="account-plan">{accountPlan(account)}</span>
+                          <span className="account-plan">{accountPlan(account, saldo)}</span>
                           <p>{account.email}</p>
                           <span className="account-profile-badge">
                             <ShieldCheck size={12} />
@@ -196,23 +196,23 @@ export default function AccountMenu({
                           <>
                             <div>
                               <span>
-                                {saldo.unlimited
-                                  ? 'Seu espaço, sem limites'
-                                  : `${saldo.remaining} tratamentos disponíveis`}
+                                {saldo.unlimited ? 'Seu espaço, sem limites' : usageLabel(saldo)}
                               </span>
-                              <strong>{saldo.unlimited ? 'ADM' : `${saldo.used}/10`}</strong>
+                              <strong>
+                                {saldo.unlimited ? 'ADM' : `${Math.round(saldo.used / 60)} min`}
+                              </strong>
                             </div>
                             {!saldo.unlimited && (
                               <progress
-                                max={10}
+                                max={Math.max(1, saldo.limit ?? 300)}
                                 value={saldo.used}
-                                aria-label="Uso semanal da sua conta"
+                                aria-label="Uso mensal da sua conta"
                               />
                             )}
                             <small>
                               {saldo.unlimited
-                                ? 'Sem cota semanal de tratamentos.'
-                                : 'O saldo renova às segundas, à 0h de Brasília.'}
+                                ? 'Sem limite de minutos de restauração.'
+                                : 'O saldo renova no dia 1, à 0h de Brasília.'}
                             </small>
                           </>
                         ) : (

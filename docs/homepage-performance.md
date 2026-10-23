@@ -1,5 +1,11 @@
 # Homepage: custo da onda e comparação de voz
 
+## Atualização de 23/10: movimento fluido e candidato D
+
+A implementação atual volta a desenhar ondas fluidas em canvas (11 linhas, 81 pontos, até 30 fps, DPR limitado a 1,5). Não altera paths SVG por frame nem dispara renderizações React continuamente. Pausa em aba oculta, fora da tela e com reduzir movimento. O SVG estático serve de alternativa acessível. Em Chromium 390×844/CPU 6×, uma amostra de seis segundos registrou 1,491 s de TaskDuration, 0,157 s de script e zero layouts/recalculos. O movimento custa mais que a versão estática abaixo, mas menos que a interpolação antiga de paths. Onda visível no rodapé continua animando; não se afirma custo zero após rolar. Não foi homologado em iPhone físico.
+
+A demo atual usa 35 segundos da gravação real autorizada pelo titular, a partir de 30 s do original, e o candidato D escolhido por ele. O volume foi igualado com ganho estático; nenhum ruído foi acrescentado. A reconstrução pode alterar fonemas. O padrão remoto é Resemble Enhance lambda 0,5/tau 0,1, não motor Adobe. Endpoint/imagem/escala a zero ainda precisam de ativação e homologação reais na RunPod. As seções seguintes registram os resultados das versões anteriores.
+
 A onda anterior interpolava o atributo `d` de 13 paths por instância em loops Motion. As três instâncias continuavam trabalhando fora do viewport. O card do hero aplicava backdrop blur sobre um SVG de fundo também animado.
 
 A revisão mantém nove curvas estáticas por instância e anima somente o transform da superfície SVG. IntersectionObserver e visibilitychange pausam a animação fora da tela e com a aba oculta. Reduzir movimento desliga a animação. O fundo grande fica estático, o card não aplica backdrop blur e o cabeçalho móvel usa uma superfície opaca.

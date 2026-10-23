@@ -1,4 +1,4 @@
-# Contas Supabase e limite semanal
+# Contas Supabase e planos mensais
 
 O login e cadastro usam e-mail/senha no Supabase Auth. Contas já criadas nesse projeto podem entrar diretamente. A aplicação não guarda contas fictícias ou senhas no localStorage. O nome de exibição pode ser fictício; com confirmação de e-mail habilitada, o endereço precisa receber o link.
 
@@ -12,21 +12,21 @@ O login e cadastro usam e-mail/senha no Supabase Auth. Contas já criadas nesse 
 6. Entre com `victorbarrosoc@gmail.com` e confirme o endereço no Supabase. Não provisionamos uma senha nem alteramos uma conta existente. A conta ADM será reconhecida automaticamente pelo e-mail confirmado; `user_metadata`, nome, parâmetros de URL e corpo do pedido não concedem esse papel.
 7. Faça novo deploy após configurar as variáveis. O diagnóstico público `GET /api/account?verify=1` verifica as credenciais e a presença da função de quota sem criar usuários, enviar e-mails ou gerar chamadas pagas; retorna apenas indicadores de disponibilidade. A chave Anthropic e o agente são da plataforma, configurados uma vez no servidor conforme `docs/claude-setup.md`. Usuários nunca preenchem IDs, API keys ou código de conexão.
 
-## Cota
+## Restauração e planos atuais
 
-Cada autorização para iniciar uma aplicação de tratamento consome um dos **10 tratamentos semanais**. Desfazer, refazer, importar, reproduzir, restaurar o original e exportar versões salvas não consomem tratamentos. Um cancelamento/falha depois da autorização não devolve automaticamente o uso. A interface consulta e mostra o saldo; falha de consulta/autorização bloqueia novos tratamentos, preservando acesso aos projetos.
+Execute `public/setup/cloud-restoration.sql`, que combina `202610230001_cloud_restoration.sql` e `202610230002_plans_and_admin.sql`, após a migração original de contas. Isso cria bucket privado, jobs, planos, minutos mensais, assinaturas manuais e RPCs do painel ADM. Nenhuma chave administrativa deve ser colocada em variável `NEXT_PUBLIC_`.
 
-A semana começa segunda-feira à 0h de `America/Fortaleza` (Brasília). O contador é por `auth.uid()`, no PostgreSQL, e persiste entre dispositivos, novos logins, abas e deploys. A função usa um lock transacional por usuário: requisições concorrentes não ultrapassam 10. A autorização HTTP sempre gera um ID novo no servidor; IDs e papéis enviados pelo cliente são ignorados. A chave primária oferece idempotência interna à função SQL. A função recusa reaproveitamento de IDs de outra semana/operação.
+Grátis: 300 segundos/mês; Essencial: 7200 por R$ 39; Studio: 21600 por R$ 99. A reserva cobra a duração do arquivo (arredondada para cima) com mínimo de 60 segundos por restauração. A duração vem do job autorizado, não de um valor escolhido na RPC pelo navegador. O worker também verifica o arquivo. Falha/cancelamento confirmado devolve a reserva. Somente restauração remota gasta minutos; edição e acabamento locais não gastam. A franquia renova dia 1 à 0h em America/Fortaleza. ADM confirmado é ilimitado, mas seu uso continua registrado.
 
-A tabela fica em schema privado com RLS, sem acesso direto de anon/authenticated. A função pública aceita apenas usuários autenticados e deriva usuário/papel de `auth.uid()` e `auth.users`. E-mail ADM precisa estar confirmado. Os clientes não podem editar/apagar o contador ou escolher outro usuário.
+A migração antiga semanal permanece como histórico; a aplicação atual consulta `nossom_plan_usage`. `/studio/admin` permite administrar planos, franquias, vencimentos e bloqueios; acesso é validado também no SQL. Não há cobrança de cartão automática.
 
-O processamento ainda ocorre no navegador: a cota controla as aplicações autorizadas pela NOSSOM, não impede alguém de executar os modelos públicos por conta própria fora do produto. Para medição inviolável de execução/renderização, uma futura versão deve mover o motor para jobs autenticados no servidor. Não há promessa de DRM sobre WASM local.
+Para ativar a GPU, siga `workers/restoration/README.md`: imagem Docker, endpoint Serverless com mínimo zero, RUNPOD_ENDPOINT_ID e CRON_SECRET na Vercel, além das chaves já configuradas. A aplicação mostra conexão pendente enquanto a configuração/migração não estiver pronta.
 
 ## Sessões e arquivos
 
 Tokens Supabase ficam criptografados por AES-256-GCM em cookie HttpOnly/SameSite=Lax/Secure em produção. O proxy renova tokens e propaga a sessão atualizada para a mesma renderização. As APIs verificam a identidade no Auth; não confiam apenas em campos enviados pelo navegador. Logout solicita revogação da sessão de refresh e apaga o cookie local.
 
-Contas e contadores estão na nuvem. Áudios, versões e presets continuam no navegador, separados por ID da conta: login em outro aparelho não transfere arquivos. A primeira conta que entrar neste navegador herda o workspace local anterior, sem apagar arquivos. Isso separa espaços na interface, sem criptografar blobs contra acesso físico/DevTools no mesmo perfil do navegador.
+Contas e contadores estão na nuvem. Projetos e versões continuam no navegador; a restauração usa cópias temporárias privadas na nuvem. Os dados locais são separados por ID da conta: login em outro aparelho não transfere arquivos. A primeira conta que entrar neste navegador herda o workspace local anterior, sem apagar arquivos. Isso separa espaços na interface, sem criptografar blobs contra acesso físico/DevTools no mesmo perfil do navegador.
 
 ## Testes
 

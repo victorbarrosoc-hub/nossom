@@ -32,6 +32,7 @@ import { Brand, SoundRibbon } from './brand';
 import AIMotion from './ai-motion';
 import Assistant from './assistant';
 import DemoPlayer from './demo-player';
+import PlanCards from './plan-cards';
 import InstallApp from './install-app';
 import AccountMenu from './account-menu';
 import DesktopUpdates from './desktop-updates';
@@ -61,8 +62,8 @@ const examples = [
   {
     label: 'Limpar minha voz',
     request: 'Quero tirar o ruído sem perder minha voz.',
-    reply: 'Vamos começar pela limpeza da fala e equilibrar o volume.',
-    tags: ['Limpeza neural', 'Voz em destaque'],
+    reply: 'Vamos restaurar a fala. Depois você escolhe o corpo e o acabamento.',
+    tags: ['NOSSOM Restore D', 'EQ depois da IA'],
   },
   {
     label: 'Preparar pro YouTube',
@@ -148,15 +149,15 @@ const faqs = [
   ],
   [
     'O que está incluído na minha conta?',
-    'O plano gratuito inclui 10 tratamentos por semana. Você tem acesso ao assistente da plataforma, às ferramentas de áudio, aos presets e ao histórico de versões. O saldo renova às segundas, à 0h de Brasília.',
+    'O Grátis inclui 5 minutos de restauração por mês. Essencial: 2 horas por R$39/mês; Studio: 6 horas por R$99/mês. Cada restauração usa no mínimo 1 minuto; EQ, efeitos e masterização local não descontam minutos. A franquia renova no dia 1. Planos pagos são ativados pelo administrador após contato, sem cobrança automática nesta etapa.',
   ],
   [
     'Meu áudio é enviado à IA?',
-    'A leitura, o tratamento e a exportação acontecem no seu dispositivo. O assistente recebe a conversa e medições técnicas da gravação, sem enviar o arquivo de áudio. Seus projetos ficam neste navegador, sem sincronização entre aparelhos.',
+    'Ao restaurar com IA, uma cópia temporária do arquivo vai para armazenamento privado e uma GPU da plataforma. Os projetos e originais ficam neste navegador. EQ, masterização e efeitos continuam locais. O assistente Claude recebe texto e medições, sem o arquivo de áudio.',
   ],
   [
     'Quais arquivos posso usar?',
-    'WAV, MP3, M4A, FLAC, OGG e áudio de MP4 ou MOV, conforme o codec. Até 100 MB e 10 minutos, mono ou estéreo. Exporte WAV de 16 bits ou MP3 a 320 kbps, em 48 kHz.',
+    'WAV, MP3, M4A, FLAC, OGG e áudio de MP4 ou MOV, conforme o codec. Até 100 MB e 10 minutos. A restauração de fala gera mono em WAV float32 a 44,1 kHz. A finalização local permite WAV ou MP3 a 48 kHz.',
   ],
   [
     'Posso desfazer um tratamento?',
@@ -182,7 +183,7 @@ export default function Landing() {
               ['Produto', 'produto'],
               ['Ouça a diferença', 'experimente'],
               ['Como funciona', 'como-funciona'],
-              ['Acesso', 'acesso'],
+              ['Planos', 'planos'],
             ].map(([label, id]) => (
               <a key={id} href={`#${id}`} onClick={() => setMenu(false)}>
                 {label}
@@ -238,7 +239,7 @@ export default function Landing() {
               </div>
               <div className="home-hero-proof">
                 <ShieldCheck size={15} />
-                <span>10 tratamentos grátis por semana. Seu áudio fica com você.</span>
+                <span>5 minutos grátis de restauração por mês. Seu original preservado.</span>
               </div>
             </Reveal>
             <Reveal className="home-hero-interface" delay={0.12}>
@@ -311,8 +312,8 @@ export default function Landing() {
                 <br />O ruído, bem menos.
               </h3>
               <p>
-                Limpeza neural, redução de vento e realce de fala. Comece pelo tratamento automático
-                ou controle a intensidade de cada ajuste.
+                Restaure a fala com NOSSOM Restore D. Ouça o antes e depois e, depois da IA, escolha
+                quanto corpo, presença e textura quer acrescentar.
               </p>
               <div className="home-restoration-art" aria-hidden="true">
                 <AIMotion state="speaking" compact />
@@ -339,8 +340,8 @@ export default function Landing() {
                 aonde vai.
               </h3>
               <p>
-                Presets de equalização e masterização, compressão multibanda e perfis de entrega
-                para o lugar onde você vai publicar.
+                Abra seu EQ, encorpe com o preset de multibanda e limitador inspirado na cadeia do
+                Premiere ou escolha um perfil para o lugar onde você vai publicar.
               </p>
               <div className="home-destination-art">
                 <div>
@@ -415,14 +416,14 @@ export default function Landing() {
               {
                 icon: Sparkles,
                 n: '02',
-                title: 'Revise. Escute.',
-                text: 'A IA sugere um tratamento a partir do seu objetivo e da análise do áudio. Revise a proposta e compare o resultado.',
+                title: 'Restaure. Escute.',
+                text: 'O motor restaura a fala com o preset D. Compare com o original e revise a pronúncia antes de seguir.',
               },
               {
                 icon: Headphones,
                 n: '03',
                 title: 'Ajuste. Compartilhe.',
-                text: 'Aperfeiçoe no estúdio, escolha o destino e exporte. Seus presets e versões ficam neste dispositivo.',
+                text: 'Abra os botões de acabamento: encorpar, equalizar, adicionar efeitos ou preparar para publicar. Cada ajuste cria uma nova versão.',
               },
             ].map((step) => (
               <Reveal key={step.n} className="home-step">
@@ -479,11 +480,11 @@ export default function Landing() {
               NOSSOM <span>Gratuito</span>
             </h3>
             <div className="home-plan-count">
-              <strong>10</strong>
+              <strong>5</strong>
               <span>
-                tratamentos
+                minutos de IA
                 <br />
-                por semana
+                por mês
               </span>
             </div>
             <ul>
@@ -504,6 +505,9 @@ export default function Landing() {
             </Link>
             <p>Sem chave de API para configurar.</p>
           </Reveal>
+        </section>
+        <section className="ns-wrap" id="planos">
+          <PlanCards />
         </section>
         <section className="ns-faq ns-wrap">
           <Reveal>

@@ -33,7 +33,7 @@ function usage(user: string, id?: string, op = 'auto') {
 }
 // Isolated container only: minimal GoTrue tables/roles, never a production project.
 sql(
-  `create role anon; create role authenticated; create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; insert into auth.users values ('${alice}','alice@example.test',now()),('${bob}','bob@example.test',now()),('${admin}','victorbarrosoc@gmail.com',now()),('${unconfirmed}','victorbarrosoc@gmail.com',null);`,
+  `create role anon; create role authenticated; create role service_role; create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]); create schema auth; create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz,raw_user_meta_data jsonb default '{}',created_at timestamptz default now()); create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid $$; insert into auth.users(id,email,email_confirmed_at) values ('${alice}','alice@example.test',now()),('${bob}','bob@example.test',now()),('${admin}','victorbarrosoc@gmail.com',now()),('${unconfirmed}','victorbarrosoc@gmail.com',null);`,
 );
 sql(readFileSync('supabase/migrations/202610220001_accounts_and_weekly_usage.sql', 'utf8'));
 test('real PostgreSQL authorizes exactly 10 concurrent treatments per user across connections', async () => {
@@ -110,5 +110,218 @@ test('anonymous calls, direct ledger edits and missing identities are rejected b
   assert.throws(
     () => sql(`set role authenticated; select public.nossom_audio_usage();`),
     /Authentication required/,
+  );
+});
+
+// New queue RPC is service-only; use the same isolated PostgreSQL container.
+sql(readFileSync('supabase/migrations/202610230001_cloud_restoration.sql', 'utf8'));
+const cloudUser = '55555555-5555-4555-8555-555555555555';
+sql(
+  `insert into auth.users(id,email,email_confirmed_at) values ('${cloudUser}','cloud@example.test',now());`,
+);
+function cloudQuery(action: string, id: string, user = cloudUser, data: unknown = {}) {
+  return `set role service_role; select public.nossom_restoration_job('${action}','${user}','${id}','${JSON.stringify(data)}'::jsonb);`;
+}
+function cloud(action: string, id: string, user = cloudUser, data: unknown = {}) {
+  return JSON.parse(
+    sql(cloudQuery(action, id, user, data))
+      .split('\n')
+      .find((x) => x.startsWith('{'))!,
+  );
+}
+test('GPU queue claims one dispatch across concurrent connections and enforces private ownership', async () => {
+  const id = randomUUID();
+  assert.equal(
+    cloud('prepare', id, cloudUser, { input_bytes: 1000, input_parts: 1, duration: 1 }).job.id,
+    id,
+  );
+  assert.equal(
+    cloud('prepare', randomUUID(), cloudUser, { input_bytes: 1000, input_parts: 1, duration: 1 })
+      .job,
+    null,
+  );
+  const claims = await Promise.all(
+    Array.from(
+      { length: 8 },
+      () =>
+        new Promise<any>((resolve, reject) => {
+          const child = spawn('docker', [
+            'exec',
+            '-i',
+            container,
+            'psql',
+            '-U',
+            'postgres',
+            '-tA',
+            '-v',
+            'ON_ERROR_STOP=1',
+          ]);
+          let out = '',
+            err = '';
+          child.stdout.on('data', (d) => (out += d));
+          child.stderr.on('data', (d) => (err += d));
+          child.on('close', (code) =>
+            code
+              ? reject(new Error(err))
+              : resolve(JSON.parse(out.split('\n').find((x) => x.startsWith('{'))!)),
+          );
+          child.stdin.end(cloudQuery('claim', id));
+        }),
+    ),
+  );
+  assert.equal(claims.filter((x) => x.claimed).length, 1);
+  assert.equal(cloud('get', id, bob).job, null);
+  assert.throws(
+    () =>
+      sql(
+        `set role authenticated; select public.nossom_restoration_job('get','${cloudUser}','${id}');`,
+      ),
+    /permission denied/,
+  );
+  assert.throws(
+    () =>
+      sql(`set role anon; select public.nossom_restoration_job('prepare','${cloudUser}','${id}');`),
+    /permission denied/,
+  );
+  assert.equal(usage(cloudUser, id).used, 1);
+  assert.equal(cloud('fail', id).job.status, 'failed');
+  assert.equal(usage(cloudUser).used, 0);
+  assert.equal(cloud('claim', id).claimed, false);
+  assert.equal(cloud('release', id).job.status, 'released');
+});
+
+sql(readFileSync('supabase/migrations/202610230002_plans_and_admin.sql', 'utf8'));
+function planUsage(user: string, id?: string) {
+  return JSON.parse(
+    sql(
+      `begin; set local role authenticated; set local "request.jwt.claim.sub"='${user}'; select public.nossom_plan_usage(${id ? `'${id}'::uuid` : ''}); commit;`,
+    )
+      .split('\n')
+      .find((x) => x.startsWith('{'))!,
+  );
+}
+function adminRpc(user: string, action: string, data: unknown = {}) {
+  return JSON.parse(
+    sql(
+      `begin; set local role authenticated; set local "request.jwt.claim.sub"='${user}'; select public.nossom_admin('${action}','${JSON.stringify(data)}'::jsonb); commit;`,
+    )
+      .split('\n')
+      .find((x) => x.startsWith('{'))!,
+  );
+}
+test('monthly GPU minutes enforce free duration atomically, minimum one minute, and refund confirmed failures', async () => {
+  assert.equal(planUsage(cloudUser).limitSeconds, 300);
+  const ids = Array.from({ length: 4 }, () => randomUUID());
+  for (const id of ids)
+    sql(
+      `insert into nossom_private.restoration_jobs(id,user_id,status,input_bytes,input_parts,duration) values('${id}','${cloudUser}','submitting',1000,1,120);`,
+    );
+  const results = await Promise.all(
+    ids.map(
+      (id) =>
+        new Promise<any>((resolve, reject) => {
+          const child = spawn('docker', [
+            'exec',
+            '-i',
+            container,
+            'psql',
+            '-U',
+            'postgres',
+            '-tA',
+            '-v',
+            'ON_ERROR_STOP=1',
+          ]);
+          let out = '',
+            err = '';
+          child.stdout.on('data', (d) => (out += d));
+          child.stderr.on('data', (d) => (err += d));
+          child.on('close', (code) =>
+            code
+              ? reject(new Error(err))
+              : resolve(JSON.parse(out.split('\n').find((x) => x.startsWith('{'))!)),
+          );
+          child.stdin.end(
+            `begin;set local role authenticated;set local "request.jwt.claim.sub"='${cloudUser}';select public.nossom_plan_usage('${id}');commit;`,
+          );
+        }),
+    ),
+  );
+  assert.equal(results.filter((r) => r.allowed).length, 2);
+  assert.equal(planUsage(cloudUser).usedSeconds, 240);
+  const approved = ids.find((_, i) => results[i].allowed)!;
+  assert.equal(planUsage(cloudUser, approved).usedSeconds, 240);
+  cloud('fail', approved);
+  assert.equal(planUsage(cloudUser).usedSeconds, 120);
+  const short = randomUUID();
+  sql(
+    `insert into nossom_private.restoration_jobs(id,user_id,status,input_bytes,input_parts,duration) values('${short}','${cloudUser}','submitting',1000,1,2);`,
+  );
+  assert.equal(planUsage(cloudUser, short).usedSeconds, 180);
+  assert.throws(() => planUsage(bob, short), /not authorized/);
+  assert.equal(planUsage(admin).unlimited, true);
+});
+test('admin alone assigns paid plans, changes catalog, views charts; expired membership falls back to free', () => {
+  assert.throws(() => adminRpc(bob, 'dashboard'), /Admin required/);
+  assert.throws(() => adminRpc(unconfirmed, 'dashboard'), /Admin required/);
+  assert.throws(
+    () =>
+      adminRpc(bob, 'set_member', {
+        userId: bob,
+        planId: 'studio',
+        secondsOverride: null,
+        expiresAt: null,
+        blocked: false,
+      }),
+    /Admin required/,
+  );
+  assert.equal(
+    adminRpc(admin, 'set_member', {
+      userId: bob,
+      planId: 'essential',
+      secondsOverride: null,
+      expiresAt: null,
+      blocked: false,
+    }).ok,
+    true,
+  );
+  assert.equal(planUsage(bob).limitSeconds, 7200);
+  assert.equal(
+    adminRpc(admin, 'set_member', {
+      userId: bob,
+      planId: 'studio',
+      secondsOverride: 900,
+      expiresAt: null,
+      blocked: false,
+    }).ok,
+    true,
+  );
+  assert.equal(planUsage(bob).limitSeconds, 900);
+  adminRpc(admin, 'set_member', {
+    userId: bob,
+    planId: 'studio',
+    secondsOverride: 900,
+    expiresAt: '2020-01-01T00:00:00Z',
+    blocked: false,
+  });
+  assert.equal(planUsage(bob).planId, 'free');
+  assert.equal(planUsage(bob).limitSeconds, 300);
+  adminRpc(admin, 'set_plan', {
+    planId: 'essential',
+    name: 'Essencial',
+    monthlySeconds: 7500,
+    priceCents: 3900,
+  });
+  const dashboard = adminRpc(admin, 'dashboard');
+  assert.equal(dashboard.days.length, 30);
+  assert.ok(dashboard.users.length >= 5);
+  assert.equal(dashboard.plans.find((p: any) => p.id === 'essential').monthly_seconds, 7500);
+  assert.ok(dashboard.totals.monthlySeconds >= 180);
+  assert.throws(
+    () => sql('set role anon; select public.nossom_plan_usage();'),
+    /permission denied/,
+  );
+  assert.throws(
+    () => sql('set role authenticated; select * from nossom_private.memberships;'),
+    /permission denied/,
   );
 });

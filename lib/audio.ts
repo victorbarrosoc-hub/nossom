@@ -352,7 +352,7 @@ export async function importAudio(file: File, onStatus?: (s: string) => void) {
           '-ar',
           '48000',
           '-c:a',
-          'pcm_s16le',
+          'pcm_f32le',
           'import.wav',
         ]);
         const bytes = await ff.readFile('import.wav');
@@ -370,7 +370,8 @@ export async function importAudio(file: File, onStatus?: (s: string) => void) {
   if (buffer.duration < 0.1) throw new Error('O áudio precisa ter pelo menos 0,1 segundo.');
   if (buffer.numberOfChannels > 2)
     throw new Error('Use um arquivo mono ou estéreo. Áudio multicanal ainda não é suportado.');
-  const blob = encodeWav(buffer),
+  // Keep float headroom through import; restoration must see the original peaks.
+  const blob = encodeWav(buffer, true),
     info = inspect(buffer),
     metrics = await measure(blob, onStatus);
   checkCancellation(epoch);

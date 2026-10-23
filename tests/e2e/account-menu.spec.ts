@@ -74,7 +74,7 @@ test('account menu shows the actual profile and balance, navigates and logs out 
   const dialog = page.getByRole('dialog', { name: 'Sua conta', exact: true });
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText('Pessoa de teste', { exact: true })).toBeVisible();
-  await expect(dialog.getByText('10 tratamentos disponíveis', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('5 de 5 min disponíveis neste mês', { exact: true })).toBeVisible();
   expect(
     (await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze())
       .violations,
