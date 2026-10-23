@@ -27,6 +27,11 @@ const config = {
   ...pkg.build,
   extraMetadata: { ...pkg.build.extraMetadata, nossomUpdates: false },
 };
+// Test builds still need a valid bundle signature after Electron is renamed.
+// Ad-hoc signing proves integrity; it does not replace Apple's notarization.
+if (target === 'mac' && !process.env.CSC_LINK) {
+  config.mac = { ...config.mac, identity: '-', hardenedRuntime: false, notarize: false };
+}
 if (process.env.NOSSOM_UPDATE_BASE_URL) {
   const base = new URL(process.env.NOSSOM_UPDATE_BASE_URL);
   if (base.protocol !== 'https:' || base.username || base.password || base.search || base.hash)

@@ -34,6 +34,13 @@ jobs:
           cache-dependency-path: desktop/package-lock.json
       - run: npm ci
         working-directory: desktop
+      - name: Inspect previous Mac preview
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          curl --fail --location --silent --show-error "https://github.com/victorbarrosoc-hub/nossom/releases/download/desktop-v0.1.0/NOSSOM-0.1.0-mac-${{ matrix.arch }}.zip" -o "$RUNNER_TEMP/previous.zip"
+          ditto -x -k "$RUNNER_TEMP/previous.zip" "$RUNNER_TEMP/previous"
+          python3 desktop/verify-mac.py "$RUNNER_TEMP/previous/NOSSOM.app" --inspect
       - name: Package installer
         shell: bash
         run: |
@@ -49,6 +56,15 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      - name: Validate Mac bundle and installer
+        if: matrix.platform == 'mac'
+        shell: bash
+        run: |
+          set -o pipefail
+          if [ "${{ matrix.arch }}" = arm64 ]; then app=dist/mac-arm64/NOSSOM.app; else app=dist/mac/NOSSOM.app; fi
+          python3 verify-mac.py "$app" 2>&1 | tee -a "$RUNNER_TEMP/nossom-build.log"
+          for dmg in dist/*.dmg; do hdiutil verify "$dmg"; done
+        working-directory: desktop
       - name: Report packaging error
         if: failure()
         shell: bash
@@ -96,7 +112,7 @@ jobs:
           version=$(node -p "require('./desktop/package.json').version")
           tag="desktop-v${version}"
           cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
-          Instaladores NOSSOM para teste. Sem assinatura digital/notarização nesta prévia.
+          Instaladores NOSSOM para teste. O Mac usa assinatura local de integridade (ad-hoc), sem certificado de desenvolvedor ou notarização Apple.
           Não foram homologados em computadores físicos Mac/Windows.
           Atualizações automáticas do instalador ainda não estão habilitadas nesta distribuição.
           O aplicativo acessa a NOSSOM online; os projetos ficam no perfil local do aplicativo.
