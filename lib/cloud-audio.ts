@@ -3,8 +3,8 @@ import { restorationD, validCloudReport } from './restoration';
 import type { AudioUsage } from './usage';
 
 export class CloudCancelled extends Error {
-  constructor() {
-    super('Processamento cancelado. O original foi preservado.');
+  constructor(message = 'Cancelamento solicitado. O original foi preservado.') {
+    super(message);
   }
 }
 async function api(body: Record<string, unknown>, signal?: AbortSignal) {
@@ -61,13 +61,16 @@ export async function restoreCloud(
         });
         if (!response.ok)
           throw new Error('Não foi possível enviar o áudio. Seu original foi preservado.');
-        options.onProgress(Math.round((15 * (i + 1)) / prepared.uploadUrls.length));
+        options.onProgress(Math.round((100 * (i + 1)) / prepared.uploadUrls.length));
       }
+      options.onStatus('Confirmando o envio do áudio…');
+      options.onProgress(-1);
       const submitted = await api({ action: 'submit', id }, options.signal);
       if (submitted.usage) options.onUsage(submitted.usage);
     }
     let status: Record<string, unknown> | undefined;
-    const deadline = Date.now() + 35 * 60000;
+    const waitingSince = Date.now();
+    const deadline = waitingSince + 35 * 60000;
     while (Date.now() < deadline) {
       if (options.signal.aborted) throw new CloudCancelled();
       const response = await fetch(`/api/audio/jobs?id=${id}`, {
@@ -82,12 +85,17 @@ export async function restoreCloud(
         throw new Error(
           'A restauração não foi concluída. Seu original foi preservado; confira seu saldo atualizado.',
         );
+      const seconds = Math.floor((Date.now() - waitingSince) / 1000);
+      const waiting = seconds >= 60 ? ` há ${Math.floor(seconds / 60)}min ${seconds % 60}s` : '';
       options.onStatus(
         status?.status === 'running'
-          ? 'Restaurando a fala com NOSSOM Restore D…'
-          : 'Aguardando a GPU · a primeira inicialização pode levar alguns minutos…',
+          ? 'Melhorando sua voz…'
+          : status?.status === 'submitting'
+            ? 'Aguardando confirmação do pedido. O processamento ainda não foi confirmado.'
+            : `Seu áudio está na fila${waiting}. O tratamento ainda não começou.`,
       );
-      options.onProgress(status?.status === 'running' ? 55 : 20);
+      // The provider supplies stages, not an inference percentage.
+      options.onProgress(-1);
       await new Promise<void>((resolve, reject) => {
         const cancel = () => {
           clearTimeout(timer);
@@ -109,7 +117,9 @@ export async function restoreCloud(
       throw new Error(
         'A restauração ainda não foi concluída. Consulte o tratamento antes de iniciar outro.',
       );
+    options.onStatus('Recebendo o áudio tratado…');
     const parts: Blob[] = [];
+    let receivedBytes = 0;
     for (const [index, url] of (status.downloadUrls as string[]).entries()) {
       const response = await fetch(url, { signal: options.signal, cache: 'no-store' });
       if (!response.ok) throw new Error('Não foi possível baixar o resultado.');
@@ -117,10 +127,12 @@ export async function restoreCloud(
       if (part.size !== status.report.chunks[index]?.bytes)
         throw new Error('O resultado foi recebido incompleto.');
       parts.push(part);
-      options.onProgress(75 + Math.round((15 * parts.length) / status.downloadUrls.length));
+      receivedBytes += part.size;
+      options.onProgress(Math.round((100 * receivedBytes) / status.report.totalBytes));
     }
     const blob = new Blob(parts, { type: 'audio/wav' });
     options.onStatus('Verificando o resultado e preparando seus ajustes…');
+    options.onProgress(-1);
     const buffer = await decode(blob);
     if (Math.abs(buffer.duration - duration) > 0.1 || buffer.numberOfChannels !== 1)
       throw new Error('A duração do resultado não corresponde ao original.');
@@ -144,8 +156,24 @@ export async function restoreCloud(
     };
   } catch (error) {
     if (options.signal.aborted) {
-      if (id) void api({ action: 'cancel', id }).catch(() => {});
-      throw new CloudCancelled();
+      if (!id) throw new CloudCancelled('Envio interrompido. Seu original foi preservado.');
+      options.onStatus('Confirmando o cancelamento…');
+      options.onProgress(-1);
+      let cancelled;
+      try {
+        cancelled = await api({ action: 'cancel', id });
+      } catch {
+        throw new Error(
+          'Não foi possível confirmar o cancelamento. Use Verificar andamento antes de iniciar outro pedido.',
+        );
+      }
+      throw new CloudCancelled(
+        ['cancelled', 'failed', 'released'].includes(cancelled.status)
+          ? 'Pedido encerrado. O original foi preservado; você pode iniciar outra restauração.'
+          : cancelled.status === 'completed'
+            ? 'O resultado já está pronto. Retome o pedido para salvar o áudio tratado.'
+            : 'Cancelamento solicitado. Verifique o andamento para confirmar o encerramento.',
+      );
     }
     throw error;
   }

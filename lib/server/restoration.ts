@@ -283,7 +283,11 @@ export async function clearJob(job: RestorationJob) {
 export async function cancelJob(user: string, id: string) {
   const job = await ownedJob(user, id);
   if (job.provider_id && ['queued', 'running'].includes(job.status)) {
-    await runpod(`cancel/${job.provider_id}`, 'POST');
+    const result = await runpod(`cancel/${job.provider_id}`, 'POST');
+    if (['CANCELLED', 'FAILED', 'TIMED_OUT'].includes(result.status)) {
+      await jobAction('fail', user, id);
+      return { id, status: result.status === 'CANCELLED' ? 'cancelled' : 'failed' };
+    }
     // Do not stop a shared worker: RunPod handles the queue and scale-down.
     return { id, status: 'cancelling' };
   }

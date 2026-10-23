@@ -254,3 +254,59 @@ test('RunPod owner diagnostics hide secrets and explicit provider rejection rele
       else process.env[key] = old[key];
   }
 });
+
+test('confirmed provider cancellation ends the reservation without dispatching another job', async () => {
+  const restore = authEnvironment(),
+    before = globalThis.fetch;
+  const keys = ['RUNPOD_API_KEY', 'RUNPOD_ENDPOINT_ID', 'SUPABASE_SERVICE_ROLE_KEY'];
+  const saved = Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  for (const key of keys) process.env[key] = 'test-cancellation-only';
+  const job = {
+    id: '99999999-9999-4999-8999-999999999999',
+    user_id: testUser.id,
+    status: 'queued',
+    provider_id: 'private-provider-id',
+    input_parts: 1,
+    input_bytes: 500,
+    duration: 1,
+  };
+  let cancelled = 0,
+    failed = 0;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input),
+      body = init?.body ? JSON.parse(String(init.body)) : {};
+    if (url.endsWith('/auth/v1/user')) return Response.json(testUser);
+    if (url.endsWith('/rpc/nossom_restoration_job')) {
+      if (body.p_action === 'fail') {
+        failed++;
+        job.status = 'failed';
+      }
+      return Response.json({ job });
+    }
+    if (url.endsWith('/cancel/private-provider-id')) {
+      cancelled++;
+      return Response.json({ status: 'CANCELLED' });
+    }
+    throw new Error('Unexpected request');
+  };
+  try {
+    const response = await POST(
+      new Request('http://localhost/api/audio/jobs', {
+        method: 'POST',
+        headers: { cookie: testCookie(), Origin: 'http://localhost' },
+        body: JSON.stringify({ action: 'cancel', id: job.id }),
+      }),
+    );
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).status, 'cancelled');
+    assert.equal(cancelled, 1);
+    assert.equal(failed, 1);
+    assert.equal(job.status, 'failed');
+  } finally {
+    globalThis.fetch = before;
+    restore();
+    for (const key of keys)
+      if (saved[key] === undefined) delete process.env[key];
+      else process.env[key] = saved[key];
+  }
+});

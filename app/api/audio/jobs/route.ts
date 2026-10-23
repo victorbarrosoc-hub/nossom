@@ -46,7 +46,32 @@ export async function GET(request: Request) {
         );
       if (!allowRequest('cloud-health:' + account.id, 6, 60000))
         throw new RestorationError('Aguarde um instante.', 429);
-      return Response.json(await restorationHealth(), { headers: privateHeaders });
+      const health = await restorationHealth();
+      let pending = null;
+      let requestStateUnavailable = false;
+      try {
+        const { job } = await jobAction('pending', account.id);
+        if (job) {
+          let status = job.status;
+          try {
+            status = (await jobStatus(account.id, job.id)).status;
+          } catch {
+            requestStateUnavailable = true;
+          }
+          pending = {
+            status,
+            dispatchConfirmed: !!job.provider_id,
+            createdAt: job.created_at,
+            duration: job.duration,
+          };
+        }
+      } catch {
+        requestStateUnavailable = true;
+      }
+      return Response.json(
+        { ...health, request: pending, requestStateUnavailable },
+        { headers: privateHeaders },
+      );
     }
     const id = new URL(request.url).searchParams.get('id');
     if (id) {

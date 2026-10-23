@@ -302,3 +302,67 @@ test('selection can be drawn on the wave, adjusted by keyboard and cleared on de
   await page.getByRole('button', { name: 'Áudio inteiro', exact: true }).click();
   await expect(surface).toBeHidden();
 });
+
+test('queued audio has no invented percentage and a confirmed cancellation permits a new request', async ({
+  page,
+}) => {
+  const id = '99999999-9999-4999-8999-999999999999';
+  let state = 'queued',
+    prepared = false,
+    cancellation = 0;
+  await page.route('https://nossom-test.supabase.co/**', (route) =>
+    route.fulfill({
+      body: '{}',
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'PUT,OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    }),
+  );
+  await page.route('**/api/audio/jobs*', (route) => {
+    const request = route.request();
+    if (request.method() === 'GET')
+      return route.fulfill({
+        json: request.url().includes('?id=')
+          ? { id, status: state }
+          : {
+              configured: true,
+              pending: prepared && state !== 'failed' ? { id, status: state } : null,
+            },
+      });
+    const data = request.postDataJSON();
+    if (data.action === 'prepare') {
+      prepared = true;
+      return route.fulfill({
+        json: {
+          id,
+          partBytes: 20 * 1024 * 1024,
+          uploadUrls: ['https://nossom-test.supabase.co/input'],
+        },
+      });
+    }
+    if (data.action === 'submit') return route.fulfill({ json: { id, status: state } });
+    if (data.action === 'cancel') {
+      cancellation++;
+      state = 'failed';
+      return route.fulfill({ json: { id, status: 'cancelled' } });
+    }
+    throw new Error('Unexpected action');
+  });
+  await page.goto('/studio/automatico');
+  await page
+    .locator('input[type=file]')
+    .first()
+    .setInputFiles({ name: 'fila.wav', mimeType: 'audio/wav', buffer: wav(48000, 2) });
+  await page.getByRole('button', { name: 'Restaurar com IA', exact: true }).click();
+  const banner = page.locator('.processing-banner');
+  await expect(banner).toContainText('O tratamento ainda não começou.');
+  await expect(banner).not.toContainText('20%');
+  await expect(banner.locator('progress')).not.toHaveAttribute('value', /.+/);
+  await banner.getByRole('button', { name: 'Cancelar', exact: true }).click();
+  await expect(banner).toBeHidden();
+  await expect(page.getByRole('button', { name: 'Restaurar com IA', exact: true })).toBeEnabled();
+  await expect(page.getByText(/Pedido encerrado. O original foi preservado/)).toBeVisible();
+  expect(cancellation).toBe(1);
+});

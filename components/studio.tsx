@@ -1295,15 +1295,29 @@ export default function Studio({ account }: { account: Account }) {
                   aba aberta.
                 </small>
               </div>
-              {progress > 0 && <progress value={progress} max={100} />}
+              {progress !== 0 && (
+                <progress
+                  value={progress < 0 ? undefined : progress}
+                  max={100}
+                  aria-label={
+                    progress < 0
+                      ? 'Etapa em andamento, sem percentual disponível'
+                      : 'Progresso da etapa atual'
+                  }
+                />
+              )}
               <button
                 className="text-link"
                 onClick={() => {
-                  cloudAbort.current?.abort();
-                  cancelProcessing();
-                  setError(
-                    'Processamento cancelado. O original e as versões salvas foram preservados.',
-                  );
+                  if (cloudAbort.current) {
+                    setBusy('Solicitando cancelamento…');
+                    cloudAbort.current.abort();
+                  } else {
+                    cancelProcessing();
+                    setError(
+                      'Processamento cancelado. O original e as versões salvas foram preservados.',
+                    );
+                  }
                 }}
               >
                 Cancelar
