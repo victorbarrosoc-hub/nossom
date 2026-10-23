@@ -211,7 +211,9 @@ export default function DemoPlayer() {
           <div>
             <strong>{version === 'original' ? 'Antes do tratamento' : 'Tratamento NOSSOM'}</strong>
             <span>
-              {version === 'original' ? 'Voz com ruído adicionado' : 'Limpeza neural + finalização'}
+              {version === 'original'
+                ? 'Voz com ruído adicionado'
+                : 'Limpeza neural · volumes igualados'}
             </span>
           </div>
         </div>
@@ -255,7 +257,8 @@ export default function DemoPlayer() {
             fonte · CC BY 4.0
           </a>
           ). Trechos unidos, com ruído adicionado para comparar; a versão NOSSOM foi renderizada
-          pelo Tratamento completo da plataforma. O resultado varia conforme a gravação.
+          pela limpeza automática da plataforma. Os volumes foram igualados para comparar a limpeza.
+          O resultado varia conforme a gravação.
         </p>
       </details>
     </div>

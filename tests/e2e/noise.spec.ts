@@ -111,3 +111,63 @@ test('neural speech cleanup reduces measured background noise while preserving v
   await page.getByRole('button', { name: 'Estimar pelo áudio', exact: true }).click();
   await expect(page.getByText(/Piso estimado|Não encontrei uma pausa clara/)).toBeVisible();
 });
+
+test('automatic cleanup improves controlled human Portuguese speech noise without relying on output loudness', async ({
+  page,
+}, testInfo) => {
+  const clean = await readFile('tests/fixtures/portuguese-voice.wav'),
+    reference = samples(clean),
+    noisy = Buffer.from(clean);
+  let seed = 75,
+    pink = 0;
+  for (let i = 0; i < reference.data.length; i++) {
+    seed = (seed * 16807) % 2147483647;
+    pink = 0.92 * pink + 0.08 * (seed / 2147483647 - 0.5);
+    const value = Math.max(-0.98, Math.min(0.98, reference.data[i] + pink * 0.65));
+    noisy.writeInt16LE(Math.round(value * 32767), reference.offset + i * 2);
+  }
+  function score(a: Float32Array, b: Float32Array) {
+    let aa = 0,
+      ab = 0;
+    for (let i = 0; i < a.length; i++) {
+      aa += a[i] ** 2;
+      ab += a[i] * b[i];
+    }
+    const scale = ab / aa;
+    let target = 0,
+      error = 0;
+    for (let i = 0; i < a.length; i++) {
+      target += (a[i] * scale) ** 2;
+      error += (b[i] - a[i] * scale) ** 2;
+    }
+    return 10 * Math.log10(target / error);
+  }
+  await page.goto('/studio/limpeza');
+  await page
+    .getByLabel('Importar arquivo de áudio', { exact: true })
+    .setInputFiles({ name: 'voz-humana-com-ruido.wav', mimeType: 'audio/wav', buffer: noisy });
+  await expect(page.getByRole('heading', { name: 'Original', exact: true })).toBeVisible({
+    timeout: 90000,
+  });
+  await page.getByRole('button', { name: 'Analisar e tratar', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Reduzir ruído · V1', exact: true })).toBeVisible({
+    timeout: 90000,
+  });
+  const wait = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Baixar WAV', exact: true }).click();
+  const output = samples(await readFile((await (await wait).path())!)).data;
+  expect(output.length).toBe(reference.data.length);
+  const before = score(reference.data, samples(noisy).data),
+    after = score(reference.data, output);
+  console.log('Human Portuguese cleanup:', JSON.stringify({ before, after, gain: after - before }));
+  expect(after - before).toBeGreaterThan(3);
+  await testInfo.attach('human-portuguese-signal.json', {
+    body: JSON.stringify({
+      before,
+      after,
+      gain: after - before,
+      note: 'Human recording with controlled noise; gain-invariant signal comparison, not proof of Adobe-equivalent sound.',
+    }),
+    contentType: 'application/json',
+  });
+});

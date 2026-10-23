@@ -3112,3 +3112,34 @@
   top: 22px;
   z-index: 50;
 }
+/* One cached SVG surface: no per-frame path morphing or layout writes. */
+.ai-motion-signal {
+  transform-origin: 50% 50%;
+  animation: ai-signal-breathe 7s ease-in-out infinite alternate;
+  animation-play-state: paused;
+}
+.ai-motion.is-running .ai-motion-signal {
+  animation-play-state: running;
+  will-change: transform;
+}
+.ai-motion.state-thinking .ai-motion-signal {
+  animation-duration: 3.8s;
+}
+.ai-motion.state-speaking .ai-motion-signal,
+.ai-motion.state-listening .ai-motion-signal {
+  animation-duration: 2s;
+}
+@keyframes ai-signal-breathe {
+  from {
+    transform: translate3d(-0.4%, 2px, 0) scaleY(0.88);
+  }
+  to {
+    transform: translate3d(0.4%, -2px, 0) scaleY(1.08);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-motion .ai-motion-signal {
+    animation: none;
+    will-change: auto;
+  }
+}

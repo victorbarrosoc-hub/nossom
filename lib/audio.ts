@@ -664,7 +664,7 @@ export async function processAudio(blob: Blob, options: ProcessOptions) {
           engine: neural
             ? mode === 'voice'
               ? 'RNNoise + FFmpeg'
-              : 'NOSSOM Voice Natural 2 / DeepFilterNet3 + linked spectral gains + FFmpeg'
+              : 'NOSSOM Voice Natural 3 / DeepFilterNet3 + linked spectral gains + FFmpeg'
             : 'FFmpeg',
           strength,
           noiseFloor: settings.noiseFloor ?? profile.floorDb,

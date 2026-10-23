@@ -38,7 +38,7 @@ Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile 
 - Desfazer, refazer e restaurar original com histórico e versão ativa persistidos. Novos ajustes podem formar ramificações sem apagar as versões anteriores.
 - Importação de WAV, MP3, M4A, FLAC, OGG e áudio de MP4/MOV conforme codec. O conteúdo é decodificado e validado, independentemente da extensão. Máximo de 100 MB, 10 minutos, mono ou estéreo.
 - Gravação por microfone, mediante permissão. Máximo de 10 minutos.
-- NOSSOM Voice Natural 2: DeepFilterNet3 estima a fala; ganhos espectrais vinculados preservam a fase da gravação e a relação entre canais. A análise automática adapta a supressão, protege fala e verifica volume/picos. RNNoise é a opção de compatibilidade. O modo espectral atende áudio geral.
+- NOSSOM Voice Natural 3: DeepFilterNet3 estima a fala; ganhos espectrais vinculados preservam a fase da gravação e a relação entre canais. A análise automática adapta a supressão, protege fala e verifica volume/picos. RNNoise é a opção de compatibilidade. O modo espectral atende áudio geral.
 - Controles de 0–100%, redução máxima/piso de ruído, presença, compressão, corte de graves, volume final, teto de pico e ducking. Estimativa de piso por análise das janelas silenciosas.
 - FFmpeg WebAssembly executado em worker local: redução espectral de ruído contínuo, EQ de presença, passa-altas para vento, compressão, normalização de loudness e mixagem com sidechain ducking.
 - Waveform real, busca de posição, seleção de trecho, reprodução A/B sincronizada e compensação de loudness na escuta.
