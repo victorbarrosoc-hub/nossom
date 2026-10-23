@@ -48,7 +48,7 @@ export default function AIMotion({
       width = 720,
       height = 220;
     const render = (time: number) => {
-      const phase = time * (active ? 0.0008 : 0.0004);
+      const phase = time * (active ? 0.0024 : 0.0004);
       context.clearRect(0, 0, width, height);
       const color = context.createLinearGradient(0, 0, width, 0);
       color.addColorStop(0, '#b7d8ff00');
@@ -68,7 +68,7 @@ export default function AIMotion({
             height * 0.5 +
             envelope *
               height *
-              (movement * (active ? 0.22 : 0.16) + spread * (0.13 + 0.035 * Math.cos(phase)));
+              (movement * (active ? 0.31 : 0.12) + spread * (0.13 + 0.035 * Math.cos(phase)));
           if (step === 0) context.moveTo(0, y);
           else context.lineTo(t * width, y);
         }

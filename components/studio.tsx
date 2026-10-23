@@ -8,6 +8,7 @@ import { toolPath, routeOperation } from '@/lib/studio-routes';
 import { activateVersion, activeIndex, previousIndex, nextIndex } from '@/lib/history';
 import { EqualizerControls, BroadcastControls } from './preset-controls';
 import AssistantHome from './assistant-home';
+import AIMotion from './ai-motion';
 import AdminDashboard from './admin-dashboard';
 import { accountPlan, type Account } from '@/lib/accounts';
 import { eqPresets, type EqGains } from '@/lib/equalizer';
@@ -1287,6 +1288,9 @@ export default function Studio({ account }: { account: Account }) {
           )}
           {busy && (
             <div className="processing-banner" role="status">
+              <div className="processing-wave" aria-hidden="true">
+                <AIMotion state="thinking" compact />
+              </div>
               <LoaderCircle className="spin" size={19} />
               <div>
                 <strong>{busy}</strong>

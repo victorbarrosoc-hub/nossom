@@ -7,30 +7,20 @@ import {
   ArrowUpRight,
   ArrowDown,
   Play,
-  AudioLines,
   Sparkles,
-  SlidersHorizontal,
   ShieldCheck,
-  History,
-  Mic,
   Download,
-  Monitor,
-  Smartphone,
   Check,
   Menu,
   X,
   Plus,
   Minus,
-  Headphones,
   FileAudio,
-  Lock,
-  Layers,
   Send,
   Paperclip,
 } from 'lucide-react';
 import { Brand, SoundRibbon } from './brand';
 import AIMotion from './ai-motion';
-import Assistant from './assistant';
 import DemoPlayer from './demo-player';
 import PlanCards from './plan-cards';
 import InstallApp from './install-app';
@@ -166,7 +156,6 @@ const faqs = [
 ];
 export default function Landing() {
   const [menu, setMenu] = useState(false),
-    [assistant, setAssistant] = useState(false),
     [faq, setFaq] = useState<number | null>(null);
   return (
     <div className="ns-site home-v2">
@@ -260,228 +249,38 @@ export default function Landing() {
                 <span>se ouve.</span>
               </h2>
             </div>
-            <p>
-              Uma gravação de voz, antes e depois.
-              <br />
-              Dê play e alterne entre as versões
-              <br className="home-desktop-break" /> sem perder o ponto da conversa.
-            </p>
+            <p>Dê play e compare o antes e depois.</p>
           </Reveal>
           <Reveal>
             <DemoPlayer />
           </Reveal>
-          <div className="home-process-strip">
-            <span>
-              <Sparkles size={16} /> Limpeza neural
-            </span>
-            <span>
-              <SlidersHorizontal size={16} /> EQ e dinâmica
-            </span>
-            <span>
-              <AudioLines size={16} /> Finalização automática
-            </span>
-            <span>
-              <History size={16} /> Original preservado
-            </span>
-          </div>
         </section>
-        <section className="home-product ns-wrap" id="produto">
-          <Reveal className="home-section-heading">
-            <h2>
-              Da primeira ideia
-              <br />
-              ao seu <span>melhor som.</span>
-            </h2>
-            <p>O assistente encontra um caminho. Você tem espaço para explorar cada detalhe.</p>
-          </Reveal>
-          <div className="home-features">
-            <Reveal className="home-feature home-feature-main">
-              <div className="home-feature-top">
-                <span className="home-feature-icon">
-                  <Sparkles size={23} />
-                </span>
-                <span>01 / RESTAURAÇÃO</span>
-              </div>
-              <h3>
-                A voz que importa.
-                <br />O ruído, bem menos.
-              </h3>
-              <p>
-                Restaure a fala com NOSSOM Restore D. Ouça o antes e depois e, depois da IA, escolha
-                quanto corpo, presença e textura quer acrescentar.
-              </p>
-              <div className="home-restoration-art" aria-hidden="true">
-                <AIMotion state="speaking" compact />
-                <div>
-                  <span>Ruído</span>
-                  <i />
-                  <strong>Voz</strong>
-                </div>
-              </div>
-              <Link href="/studio/automatico">
-                Encontrar meu tratamento <ArrowUpRight size={17} />
-              </Link>
-            </Reveal>
-            <Reveal className="home-feature home-feature-master" delay={0.06}>
-              <div className="home-feature-top">
-                <span className="home-feature-icon">
-                  <SlidersHorizontal size={23} />
-                </span>
-                <span>02 / FINALIZAÇÃO</span>
-              </div>
-              <h3>
-                Seu áudio sabe
-                <br />
-                aonde vai.
-              </h3>
-              <p>
-                Abra seu EQ, encorpe com o preset de multibanda e limitador inspirado na cadeia do
-                Premiere ou escolha um perfil para o lugar onde você vai publicar.
-              </p>
-              <div className="home-destination-art">
-                <div>
-                  <span>PERFIL DE ENTREGA</span>
-                  <strong>
-                    YouTube <ArrowUpRight size={20} />
-                  </strong>
-                </div>
-                <span>Podcast</span>
-                <span>Redes sociais</span>
-                <span>TV · EBU / ATSC</span>
-                <span>Netflix · diálogo</span>
-              </div>
-              <Link href="/studio/masterizacao">
-                Explorar a finalização <ArrowUpRight size={17} />
-              </Link>
-            </Reveal>
-            {[
-              {
-                icon: Mic,
-                title: 'Grave enquanto é ideia.',
-                text: 'Capture pelo microfone ou importe áudio e vídeo. Comece pelo que você já tem.',
-                href: '/studio',
-              },
-              {
-                icon: Layers,
-                title: 'Mais textura. Mais intenção.',
-                text: 'Rádio, telefone, capela e igreja. Experimente efeitos e escolha a intensidade.',
-                href: '/studio/efeitos',
-              },
-              {
-                icon: History,
-                title: 'Liberdade para voltar.',
-                text: 'Compare versões, desfaça e remova efeitos. O original permanece preservado.',
-                href: '/studio/projetos',
-              },
-              {
-                icon: Download,
-                title: 'Pronto para o próximo play.',
-                text: 'Exporte em WAV ou MP3. Leve seu áudio para o vídeo, podcast ou próximo projeto.',
-                href: '/studio',
-              },
-            ].map((item, i) => (
-              <Reveal className="home-feature home-feature-small" delay={i * 0.04} key={item.title}>
-                <item.icon size={23} />
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
-                <Link aria-label={item.title} href={item.href}>
-                  <ArrowUpRight size={19} />
-                </Link>
-              </Reveal>
-            ))}
+        <section className="home-quick ns-wrap" id="produto">
+          <h2>Do áudio ao resultado.</h2>
+          <div id="como-funciona" className="home-quick-steps">
+            <p>
+              <Paperclip size={22} />
+              <strong>1. Envie</strong> Sua voz, do celular ou computador.
+            </p>
+            <p>
+              <Sparkles size={22} />
+              <strong>2. Melhore</strong> Limpe a voz e ajuste seu som.
+            </p>
+            <p>
+              <Download size={22} />
+              <strong>3. Baixe</strong> Compare e exporte em WAV ou MP3.
+            </p>
           </div>
-        </section>
-        <section className="home-workflow ns-wrap" id="como-funciona">
-          <Reveal className="home-section-heading">
-            <h2>
-              Você conta a ideia.
-              <br />
-              <span>A NOSSOM acompanha.</span>
-            </h2>
-          </Reveal>
-          <div className="home-steps">
-            {[
-              {
-                icon: Paperclip,
-                n: '01',
-                title: 'Envie. Conte.',
-                text: 'Anexe sua gravação ao assistente e diga o que quer melhorar. Não precisa escolher parâmetros para começar.',
-              },
-              {
-                icon: Sparkles,
-                n: '02',
-                title: 'Restaure. Escute.',
-                text: 'O motor restaura a fala com o preset D. Compare com o original e revise a pronúncia antes de seguir.',
-              },
-              {
-                icon: Headphones,
-                n: '03',
-                title: 'Ajuste. Compartilhe.',
-                text: 'Abra os botões de acabamento: encorpar, equalizar, adicionar efeitos ou preparar para publicar. Cada ajuste cria uma nova versão.',
-              },
-            ].map((step) => (
-              <Reveal key={step.n} className="home-step">
-                <div>
-                  <span>{step.n}</span>
-                  <step.icon size={23} />
-                </div>
-                <h3>{step.title}</h3>
-                <p>{step.text}</p>
-              </Reveal>
-            ))}
-          </div>
-          <Reveal className="home-workflow-cta">
-            <button className="button secondary" onClick={() => setAssistant(true)}>
-              Vamos conversar <AudioLines size={17} />
-            </button>
-            <span>Conheça o assistente. Entre na sua conta para usar a IA da plataforma.</span>
-          </Reveal>
-        </section>
-        <section className="home-access ns-wrap" id="acesso">
-          <Reveal className="home-access-content">
-            <div>
-              <h2>
-                Onde estiver.
-                <br />
-                <span>No seu fluxo.</span>
-              </h2>
-              <p>
-                No computador, mais espaço para finalizar.
-                <br />
-                No celular, uma ideia a um toque de distância.
-              </p>
-            </div>
-            <div>
-              <div className="home-access-actions">
-                <Link className="button primary" href="/studio">
-                  Abrir meu estúdio <ArrowRight size={16} />
-                </Link>
-                <Link href="/apps" className="button secondary">
-                  <Monitor size={17} /> Aplicativos
-                </Link>
-              </div>
-              <div className="home-device-labels">
-                <span>
-                  <Monitor size={17} /> Mac e Windows
-                </span>
-                <span>
-                  <Smartphone size={17} /> iPhone e Android
-                </span>
-              </div>
-              <small>Projetos locais, sem sincronização de áudio entre dispositivos.</small>
-            </div>
-          </Reveal>
+          <Link href="/studio" className="button primary">
+            Experimentar grátis <ArrowRight size={16} />
+          </Link>
         </section>
         <section className="ns-wrap" id="planos">
           <PlanCards />
         </section>
         <section className="ns-faq ns-wrap">
           <Reveal>
-            <h2>
-              Algumas respostas.
-              <br />
-              <span>Mais possibilidades.</span>
-            </h2>
+            <h2>Dúvidas?</h2>
           </Reveal>
           <div>
             {faqs.map(([question, answer], i) => (
@@ -501,24 +300,6 @@ export default function Landing() {
             ))}
           </div>
         </section>
-        <section className="home-finale">
-          <div aria-hidden="true">
-            <AIMotion state="idle" compact />
-          </div>
-          <Reveal>
-            <h2>
-              Vamos ouvir
-              <br />
-              <span>o que vem agora?</span>
-            </h2>
-            <Link href="/studio" className="button primary">
-              Criar com a NOSSOM <ArrowUpRight size={17} />
-            </Link>
-            <p>
-              <Lock size={14} /> Seu áudio com você. Sua próxima ideia, aqui.
-            </p>
-          </Reveal>
-        </section>
       </main>
       <footer className="ns-footer ns-wrap">
         <div>
@@ -537,7 +318,6 @@ export default function Landing() {
           <span>© {new Date().getFullYear()} NOSSOM</span>
         </nav>
       </footer>
-      {assistant && <Assistant onClose={() => setAssistant(false)} />}
     </div>
   );
 }

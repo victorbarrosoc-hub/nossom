@@ -14,6 +14,7 @@ import {
   Sparkles,
   ArrowRight,
 } from 'lucide-react';
+import { toolPath } from '@/lib/studio-routes';
 import { inferPlan, operations, type Operation } from '@/lib/presets';
 export default function Assistant({
   onClose = () => {},
@@ -54,7 +55,10 @@ export default function Assistant({
   }
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/ai/status', { cache: 'no-store', signal: controller.signal })
+    fetch('/api/ai/status', {
+      cache: 'no-store',
+      signal: AbortSignal.any([controller.signal, AbortSignal.timeout(8000)]),
+    })
       .then((r) => r.json())
       .then((s) => {
         setAuthenticated(s.authorized === true);
@@ -98,7 +102,7 @@ export default function Assistant({
   }, [fileName]);
   const connected = conversation.status === 'connected';
   async function suggest(value: string) {
-    if (loading || !authenticated || disabled) return;
+    if (loading || !authenticated || disabled || !value.trim()) return;
     setText(value);
     setError('');
     setRecommended({});
@@ -113,9 +117,10 @@ export default function Assistant({
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: value, context, conversation: managedConversation.current }),
-          signal: controller.signal,
+          signal: AbortSignal.any([controller.signal, AbortSignal.timeout(30000)]),
         });
         const result = await response.json();
+        if (controller.signal.aborted || pending.current !== controller) return;
         if (!response.ok) throw new Error(result.error);
         if (typeof result.conversation === 'string')
           managedConversation.current = result.conversation;
@@ -124,9 +129,18 @@ export default function Assistant({
         setRecommended({ intensity: result.intensity, eqPreset: result.eqPreset });
       } catch (e) {
         if (!controller.signal.aborted)
-          setError(e instanceof Error ? e.message : 'O Claude não concluiu a sugestão.');
+          setError(
+            e instanceof DOMException && e.name === 'TimeoutError'
+              ? 'A resposta demorou. Tente novamente ou escolha um dos atalhos.'
+              : e instanceof Error
+                ? e.message
+                : 'Não foi possível concluir. Tente novamente.',
+          );
       } finally {
-        if (!controller.signal.aborted) setThinking(false);
+        if (pending.current === controller) {
+          pending.current = null;
+          setThinking(false);
+        }
       }
       return;
     }
@@ -162,7 +176,6 @@ export default function Assistant({
         onClick={(e) => e.stopPropagation()}
       >
         <header>
-          <span className="eyebrow">UMA NOVA FORMA DE CRIAR</span>
           {!embedded && (
             <button className="icon-button" aria-label="Fechar assistente" onClick={onClose}>
               <X size={19} />
@@ -170,6 +183,7 @@ export default function Assistant({
           )}
         </header>
         <AIMotion
+          compact
           state={
             error
               ? 'error'
@@ -177,21 +191,17 @@ export default function Assistant({
                 ? 'speaking'
                 : connected
                   ? 'listening'
-                  : thinking
+                  : thinking || disabled
                     ? 'thinking'
-                    : reply
-                      ? 'speaking'
-                      : 'idle'
+                    : 'idle'
           }
         />
         <Title id={id + '-title'}>
-          O que vamos ouvir
-          <br />
-          <span className="text-gradient">de diferente hoje?</span>
+          Seu áudio, <span className="text-gradient">melhor.</span>
         </Title>
         <p>
           {embedded ? (
-            'Envie seu áudio e conte o que quer melhorar.'
+            'Anexe um áudio. Escolha o que quer fazer.'
           ) : (
             <>
               Descreva o que quer melhorar.
@@ -205,17 +215,11 @@ export default function Assistant({
           {loading
             ? 'Preparando seu assistente…'
             : cloud
-              ? 'IA NOSSOM · pronta para conversar'
+              ? 'Pronta para ajudar'
               : authenticated
                 ? 'Ajuda básica · IA temporariamente indisponível'
                 : 'Entre na sua conta para conversar'}
         </div>
-        {cloud && (
-          <p className="field-hint">
-            Seu pedido e as medições são enviados à Anthropic. A restauração avançada envia uma
-            cópia temporária do áudio à GPU; os projetos ficam neste dispositivo.
-          </p>
-        )}
         {!loading && !authenticated && (
           <a className="button primary" href="/entrar?next=%2Fstudio%2Fia">
             Entrar para conversar
@@ -226,7 +230,7 @@ export default function Assistant({
             <FileAudio size={20} />
             <span>
               <strong>{fileName}</strong>
-              <small>Áudio anexado · pronto para análise</small>
+              <small>Original preservado</small>
             </span>
           </div>
         )}
@@ -254,7 +258,7 @@ export default function Assistant({
             id={id + '-text'}
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="O que vamos fazer com o seu áudio?"
+            placeholder="Ou conte sua ideia…"
             maxLength={1500}
             disabled={thinking || loading || !authenticated || disabled}
             required
@@ -268,19 +272,44 @@ export default function Assistant({
           </button>
         </form>
         <div className="suggestion-chips">
-          {['Melhorar minha voz', 'Nivelar volumes', 'Preparar para publicar'].map((s) => (
+          {(
+            [
+              { label: 'Melhorar minha voz', operation: 'auto' },
+              { label: 'Nivelar volumes', operation: 'level' },
+              { label: 'Preparar para publicar', operation: 'master' },
+            ] as const
+          ).map((shortcut) => (
             <button
-              key={s}
-              disabled={thinking || loading || !authenticated || disabled}
-              onClick={() => suggest(s)}
+              key={shortcut.operation}
+              disabled={disabled}
+              onClick={() => {
+                pending.current?.abort();
+                pending.current = null;
+                setThinking(false);
+                if (onPlan) {
+                  onPlan(shortcut.operation);
+                  onClose();
+                } else location.href = toolPath(shortcut.operation);
+              }}
             >
-              {s}
+              {shortcut.label}
             </button>
           ))}
         </div>
         {thinking && (
           <p className="field-hint" role="status">
-            A NOSSOM está analisando seu pedido e as medições…
+            Pensando no seu áudio…{' '}
+            <button
+              type="button"
+              className="text-link"
+              onClick={() => {
+                pending.current?.abort();
+                pending.current = null;
+                setThinking(false);
+              }}
+            >
+              Cancelar
+            </button>
           </p>
         )}
         {reply && (
@@ -293,7 +322,7 @@ export default function Assistant({
                   if (onPlan) {
                     onPlan(plan, recommended.intensity, recommended.eqPreset);
                     onClose();
-                  } else location.href = `/studio?tool=${plan}`;
+                  } else location.href = toolPath(plan);
                 }}
               >
                 Revisar tratamento <ArrowRight size={14} />
@@ -301,6 +330,14 @@ export default function Assistant({
             )}
           </div>
         )}
+        <details className="assistant-details">
+          <summary>Privacidade e formatos</summary>
+          <p>Até 100 MB e 10 minutos. WAV, MP3, M4A, FLAC, OGG, MP4 ou MOV.</p>
+          <p>
+            O assistente recebe seu texto e medições. Na restauração, uma cópia temporária do áudio
+            é processada na nuvem. O original fica neste dispositivo.
+          </p>
+        </details>
         {agentId && (
           <div className="voice-connect">
             <button

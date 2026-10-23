@@ -35,11 +35,6 @@ export default function AssistantHome({
         context={context}
         onPlan={onPlan}
       />
-      <p className="assistant-upload-hint">
-        Arraste um áudio para cá ou use o clipe para anexar.
-        <br />
-        WAV, MP3, M4A, FLAC, OGG, MP4 e MOV · até 100 MB / 10 min.
-      </p>
     </section>
   );
 }

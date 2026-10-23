@@ -47,7 +47,10 @@ test('landing, responsive navigation, functional demonstration and assistant', a
   await expect(page.getByRole('button', { name: 'Pausar demonstração' })).toBeVisible();
   await page.getByRole('button', { name: 'NOSSOM', exact: true }).click();
   await page.getByRole('button', { name: 'Pausar demonstração' }).click();
-  await page.getByRole('button', { name: 'Vamos conversar' }).click();
+  await page.route('**/api/ai/status', (r) =>
+    r.fulfill({ json: { configured: false, authorized: true } }),
+  );
+  await page.goto('/studio');
   await page.getByLabel('Descreva seu objetivo').fill('Reduzir ruído de uma entrevista');
   await page.getByRole('button', { name: 'Encontrar tratamento' }).click();
   await expect(page.getByRole('button', { name: 'Revisar tratamento' })).toBeVisible();

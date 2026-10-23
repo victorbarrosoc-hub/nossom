@@ -23,9 +23,7 @@ test('home is the assistant, attaches an audio file, sends measurements and open
     });
   });
   await page.goto('/studio');
-  await expect(
-    page.getByRole('heading', { name: 'O que vamos ouvir de diferente hoje?' }),
-  ).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Seu áudio, melhor.' })).toBeVisible();
   await page
     .getByLabel('Importar arquivo de áudio', { exact: true })
     .setInputFiles('tests/fixtures/synthetic-speech.wav');
