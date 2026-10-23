@@ -836,14 +836,23 @@
   line-height: 1.6;
 }
 .home-access {
-  display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
-  gap: 100px;
-  align-items: center;
+  display: block;
   padding-block: 85px 95px;
   border-top: 1px solid var(--home-line);
   border-bottom: 1px solid var(--home-line);
   scroll-margin-top: 100px;
+}
+.home-access-content {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: clamp(32px, 5vw, 100px);
+  align-items: center;
+}
+@media (max-width: 600px) {
+  .home-access-content {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
 }
 .home-access h2 {
   margin: 20px 0;
@@ -875,77 +884,6 @@
   line-height: 1.6;
   color: #aab8cb;
   margin-top: 17px;
-}
-.home-plan-card {
-  border: 1px solid #bad2ff3d;
-  background: radial-gradient(ellipse at 50% 0, #5574ab25, transparent 70%), #111b28;
-  border-radius: 23px;
-  padding: 33px;
-}
-.home-plan-card > span {
-  color: #b4c5e0;
-  font-size: 12px;
-  letter-spacing: 0.13em;
-}
-.home-plan-card h3 {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-  font-size: 26px;
-  letter-spacing: 0.03em;
-  font-weight: 500;
-  margin: 21px 0 27px;
-}
-.home-plan-card h3 > span {
-  border: 1px solid #b6c8f947;
-  padding: 5px 9px;
-  font-size: 13px;
-  border-radius: 100px;
-  color: #c2d7ff;
-  letter-spacing: 0;
-}
-.home-plan-count {
-  display: flex;
-  align-items: center;
-  gap: 17px;
-  padding-bottom: 25px;
-  border-bottom: 1px solid var(--home-line);
-}
-.home-plan-count strong {
-  font-size: 72px;
-  line-height: 1;
-  letter-spacing: -0.07em;
-  font-weight: 400;
-}
-.home-plan-count > span {
-  color: #b8c9e0;
-  font-size: 16px;
-  line-height: 1.6;
-}
-.home-plan-card ul {
-  list-style: none;
-  padding: 0;
-  margin: 27px 0;
-}
-.home-plan-card li {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #cad7eb;
-  font-size: 15px;
-  margin: 15px 0;
-}
-.home-plan-card li svg {
-  color: #9fc6c7;
-}
-.home-plan-card > .button {
-  width: 100%;
-}
-.home-plan-card > p {
-  text-align: center;
-  font-size: 13px;
-  margin: 14px 0 0;
 }
 .home-v2 .ns-faq {
   padding-block: 100px;
@@ -1156,9 +1094,6 @@
   }
   .home-access {
     gap: 35px;
-  }
-  .home-plan-card {
-    padding: 24px;
   }
   .home-v2 .ns-faq {
     grid-template-columns: 1fr;
@@ -1484,9 +1419,6 @@
     grid-template-columns: 1fr;
     gap: 35px;
     padding-block: 55px;
-  }
-  .home-plan-card {
-    padding: 27px;
   }
   .home-v2 .ns-faq {
     padding-block: 60px;

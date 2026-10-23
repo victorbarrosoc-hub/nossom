@@ -444,66 +444,39 @@ export default function Landing() {
           </Reveal>
         </section>
         <section className="home-access ns-wrap" id="acesso">
-          <Reveal>
-            <span className="ns-kicker">SEU ESPAÇO, ABERTO PARA CRIAR</span>
-            <h2>
-              Onde estiver.
-              <br />
-              <span>No seu fluxo.</span>
-            </h2>
-            <p>
-              No computador, mais espaço para finalizar.
-              <br />
-              No celular, uma ideia a um toque de distância.
-            </p>
-            <div className="home-access-actions">
-              <Link className="button primary" href="/studio">
-                Abrir meu estúdio <ArrowRight size={16} />
-              </Link>
-              <Link href="/apps" className="button secondary">
-                <Monitor size={17} /> Aplicativos
-              </Link>
-            </div>
-            <div className="home-device-labels">
-              <span>
-                <Monitor size={17} /> Mac e Windows
-              </span>
-              <span>
-                <Smartphone size={17} /> iPhone e Android
-              </span>
-            </div>
-            <small>Projetos locais, sem sincronização de áudio entre dispositivos.</small>
-          </Reveal>
-          <Reveal className="home-plan-card">
-            <span>SEU PLANO PARA COMEÇAR</span>
-            <h3>
-              NOSSOM <span>Gratuito</span>
-            </h3>
-            <div className="home-plan-count">
-              <strong>5</strong>
-              <span>
-                minutos de IA
+          <Reveal className="home-access-content">
+            <div>
+              <span className="ns-kicker">SEU ESPAÇO, ABERTO PARA CRIAR</span>
+              <h2>
+                Onde estiver.
                 <br />
-                por mês
-              </span>
+                <span>No seu fluxo.</span>
+              </h2>
+              <p>
+                No computador, mais espaço para finalizar.
+                <br />
+                No celular, uma ideia a um toque de distância.
+              </p>
             </div>
-            <ul>
-              {[
-                'Assistente de IA da plataforma',
-                'Tratamentos, efeitos e presets',
-                'Histórico e comparação A/B',
-                'Exportação WAV e MP3',
-              ].map((item) => (
-                <li key={item}>
-                  <Check size={16} />
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Link href="/entrar?modo=criar" className="button primary">
-              Criar minha conta <ArrowUpRight size={16} />
-            </Link>
-            <p>Sem chave de API para configurar.</p>
+            <div>
+              <div className="home-access-actions">
+                <Link className="button primary" href="/studio">
+                  Abrir meu estúdio <ArrowRight size={16} />
+                </Link>
+                <Link href="/apps" className="button secondary">
+                  <Monitor size={17} /> Aplicativos
+                </Link>
+              </div>
+              <div className="home-device-labels">
+                <span>
+                  <Monitor size={17} /> Mac e Windows
+                </span>
+                <span>
+                  <Smartphone size={17} /> iPhone e Android
+                </span>
+              </div>
+              <small>Projetos locais, sem sincronização de áudio entre dispositivos.</small>
+            </div>
           </Reveal>
         </section>
         <section className="ns-wrap" id="planos">
