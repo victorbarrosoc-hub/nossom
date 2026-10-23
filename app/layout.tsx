@@ -10,8 +10,8 @@ export const metadata: Metadata = {
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'NOSSOM', statusBarStyle: 'black-translucent' },
   icons: {
-    icon: '/icon.svg',
-    apple: [{ url: '/pwa/icon-180.png', sizes: '180x180', type: 'image/png' }],
+    icon: [{ url: '/pwa/icon-64.png?v=2', sizes: '64x64', type: 'image/png' }],
+    apple: [{ url: '/pwa/icon-180.png?v=2', sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
     type: 'website',
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'NOSSOM — O som em outra escala.',
     description: 'Crie, trate e entregue seu áudio. Tudo acontece no som.',
-    images: ['/opengraph-image'],
+    images: ['/opengraph-image?v=2'],
   },
 };
 export const viewport: Viewport = {
