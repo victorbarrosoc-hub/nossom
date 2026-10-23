@@ -49,7 +49,10 @@ if (process.env.NOSSOM_UPDATE_BASE_URL) {
   config.extraMetadata.nossomUpdates = true;
   config.publish = {
     provider: 'generic',
-    url: base.href.replace(/\/$/, '') + '/' + target + '-' + arch + '/',
+    url:
+      process.env.NOSSOM_UPDATE_FLAT_FEED === 'true'
+        ? base.href.replace(/\/$/, '') + '/'
+        : base.href.replace(/\/$/, '') + '/' + target + '-' + arch + '/',
     useMultipleRangeRequest: false,
   };
   if (target === 'mac') config.mac = { ...config.mac, notarize: true };

@@ -1,6 +1,11 @@
 // Only packaged, signed distributions with a configured HTTPS feed can update.
 function createUpdates({ app, updater, notify, broadcast, enabled }) {
-  let state = { status: enabled ? 'idle' : 'unavailable', version: app.getVersion(), progress: 0 },
+  let state = {
+      status: enabled ? 'idle' : 'unavailable',
+      version: app.getVersion(),
+      progress: 0,
+      automatic: enabled,
+    },
     timer,
     notifiedVersion;
   const send = (patch) => {
@@ -13,11 +18,19 @@ function createUpdates({ app, updater, notify, broadcast, enabled }) {
   updater.allowPrerelease = false;
   updater.on('checking-for-update', () => send({ status: 'checking', error: undefined }));
   updater.on('update-available', (info) => {
+    if (
+      !enabled ||
+      (state.nextVersion === info.version &&
+        ['downloading', 'downloaded', 'installing'].includes(state.status))
+    )
+      return;
     send({ status: 'available', nextVersion: info.version, progress: 0 });
     if (notifiedVersion !== info.version) {
       notifiedVersion = info.version;
       notify(info.version);
     }
+    // Download once in the main process; the renderer installs after its work is saved.
+    void command('download');
   });
   updater.on('update-not-available', () =>
     send({ status: 'current', nextVersion: undefined, progress: 0 }),
@@ -58,7 +71,7 @@ function createUpdates({ app, updater, notify, broadcast, enabled }) {
     return state;
   }
   function start() {
-    if (!enabled) return;
+    if (!enabled || timer) return;
     timer = setTimeout(() => {
       void command('check');
       timer = setInterval(() => void command('check'), 4 * 60 * 60 * 1000);
@@ -69,6 +82,7 @@ function createUpdates({ app, updater, notify, broadcast, enabled }) {
   function stop() {
     clearTimeout(timer);
     clearInterval(timer);
+    timer = undefined;
   }
   return { command, getState: () => state, start, stop };
 }

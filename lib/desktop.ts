@@ -14,6 +14,7 @@ export type UpdateState = {
   progress: number;
   error?: string;
   installRequested?: boolean;
+  automatic?: boolean;
 };
 export type DesktopBridge = {
   getUpdateState: () => Promise<UpdateState>;

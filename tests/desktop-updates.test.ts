@@ -23,7 +23,7 @@ class Updater extends EventEmitter {
     this.installs.push(args);
   }
 }
-test('desktop update flow checks, notifies once, downloads on request, validates completion before installing', async () => {
+test('signed desktop updates download automatically once and validate completion before installing', async () => {
   const updater = new Updater(),
     messages: unknown[] = [],
     notices: string[] = [];
@@ -43,14 +43,16 @@ test('desktop update flow checks, notifies once, downloads on request, validates
   assert.equal(updater.installs.length, 0);
   await updates.command('check');
   await updates.command('check');
-  assert.equal(updates.getState().status, 'available');
+  assert.equal(updates.getState().status, 'downloading');
+  updater.emit('update-available', { version: '0.2.0' });
+  assert.equal(updates.getState().automatic, true);
   assert.deepEqual(notices, ['0.2.0']);
   await updates.command('download');
   await updates.command('download');
   await updates.command('check');
   assert.equal(updater.downloads, 1);
   assert.equal(updates.getState().installRequested, true);
-  assert.equal(updater.checks, 2);
+  assert.equal(updater.checks, 1);
   updater.emit('download-progress', { percent: 43.6 });
   assert.equal(updates.getState().progress, 44);
   await updates.command('install');

@@ -1185,7 +1185,7 @@ export default function Studio({ account }: { account: Account }) {
             )}
           </div>
           <div className="studio-header-actions">
-            <DesktopUpdates blocked={!!busy || recording} />
+            <DesktopUpdates blocked={!!busy || recording || renaming || !!deleteId} />
             <AccountMenu account={account} usage={usage} disabled={!!busy || recording} />
             <label className="theme-control">
               <span className="sr-only">Tema do estúdio</span>

@@ -3991,3 +3991,32 @@
   color: var(--muted);
   font-size: 14px;
 }
+.desktop-web-update {
+  position: fixed;
+  z-index: 145;
+  bottom: 28px;
+  right: 24px;
+  width: min(370px, calc(100vw - 36px));
+  padding: 20px;
+  border: 1px solid var(--hairline, #34445c);
+  border-radius: 18px;
+  background: var(--panel, #111b29);
+  color: var(--text, #edf3fc);
+  box-shadow: 0 12px 40px #0005;
+}
+.desktop-web-update strong {
+  display: block;
+  font-size: 15px;
+}
+.desktop-web-update p {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted, #b3c1d3);
+  margin: 8px 0 0;
+}
+@media (max-width: 680px) {
+  .desktop-web-update {
+    right: 18px;
+    bottom: 90px;
+  }
+}

@@ -71,7 +71,7 @@ app.whenReady().then(() => {
       if (!Notification.isSupported()) return;
       const notification = new Notification({
         title: 'Uma nova NOSSOM chegou',
-        body: `A versão ${version} está disponível. Atualize pelo aplicativo.`,
+        body: `A versão ${version} será baixada automaticamente e instalada quando você terminar seu trabalho.`,
         silent: true,
       });
       notification.on('click', () => {

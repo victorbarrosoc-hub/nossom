@@ -6,6 +6,7 @@ export const metadata: Metadata = {
   description:
     'Do áudio gravado ao áudio pronto para entregar. Trate, mixe e finalize seu som em um estúdio que acompanha o seu fluxo.',
   applicationName: 'NOSSOM',
+  other: { 'nossom-release': process.env.VERCEL_GIT_COMMIT_SHA || 'development' },
   manifest: '/manifest.webmanifest',
   appleWebApp: { capable: true, title: 'NOSSOM', statusBarStyle: 'black-translucent' },
   icons: {
