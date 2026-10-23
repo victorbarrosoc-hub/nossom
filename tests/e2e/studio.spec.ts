@@ -33,7 +33,7 @@ test('landing, responsive navigation, functional demonstration and assistant', a
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
   await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Seu som tem mais a dizer.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Seu som,.*em outra escala/ })).toBeVisible();
   await page.evaluate(async () => {
     for (let y = 0; y < document.body.scrollHeight; y += 600) {
       window.scrollTo({ top: y, behavior: 'instant' });
@@ -62,7 +62,7 @@ test('landing, responsive navigation, functional demonstration and assistant', a
   await page.goto('/');
   await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();
   await expect(
-    page.getByRole('navigation').getByRole('link', { name: 'Produto', exact: true }),
+    page.getByRole('navigation').getByRole('link', { name: 'Planos', exact: true }),
   ).toBeVisible();
   await page.getByRole('button', { name: 'Fechar menu' }).click();
   await page.screenshot({ path: 'test-results/landing-mobile.png', fullPage: true });
@@ -304,10 +304,10 @@ test('studio themes persist, responsive layouts fit and reduced motion pauses de
   await expect(page.getByRole('heading', { name: 'Meus projetos.' })).toBeVisible();
   await page.emulateMedia({ reducedMotion: 'reduce', colorScheme: 'dark' });
   await page.goto('/');
-  await expect(page.locator('.home-ai-presence')).toBeVisible();
+  await expect(page.locator('.chrome-hero-art')).toBeVisible();
   expect(
     await page
-      .locator('.home-ai-presence .ai-motion-signal')
+      .locator('.chrome-hero-art .ribbon-sculpture')
       .first()
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe('none');

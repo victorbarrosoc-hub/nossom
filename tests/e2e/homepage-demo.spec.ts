@@ -58,7 +58,10 @@ test('human voice demo plays real files, preserves time on A/B, seeks and contro
   ).toBeCloseTo(4.25, 1);
   await page.getByText('Sobre esta demonstração', { exact: true }).click();
   await expect(page.getByText(/Gravação real em português/)).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Isolar cantor', exact: true })).toHaveAttribute('href','/studio/isolar-voz');
+  await expect(page.getByRole('link', { name: 'Isolar cantor', exact: true })).toHaveAttribute(
+    'href',
+    '/studio/isolar-voz',
+  );
   await page.getByRole('button', { name: 'Ouvir demonstração', exact: true }).click();
   await page
     .locator('audio')

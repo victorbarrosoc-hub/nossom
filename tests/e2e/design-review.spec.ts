@@ -69,6 +69,7 @@ test('public pages and every studio tool fit mobile and desktop workspaces', asy
       '/studio/projetos',
       '/studio/conta',
       '/studio/automatico',
+      '/studio/isolar-voz',
       '/studio/limpeza',
       '/studio/voz',
       '/studio/equalizacao',
