@@ -2,6 +2,18 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { spawnSync } = require('node:child_process');
 const pkg = require('./package.json');
+// GitHub supplies an empty string for missing secrets. electron-builder treats
+// an explicitly empty CSC_LINK as a certificate path pointing at the cwd.
+for (const name of [
+  'CSC_LINK',
+  'CSC_KEY_PASSWORD',
+  'APPLE_ID',
+  'APPLE_APP_SPECIFIC_PASSWORD',
+  'APPLE_TEAM_ID',
+]) {
+  if (process.env[name] === '') delete process.env[name];
+}
+
 const args = process.argv.slice(2),
   target = args.includes('--mac')
     ? 'mac'
