@@ -49,6 +49,7 @@ test('desktop update flow checks, notifies once, downloads on request, validates
   await updates.command('download');
   await updates.command('check');
   assert.equal(updater.downloads, 1);
+  assert.equal(updates.getState().installRequested, true);
   assert.equal(updater.checks, 2);
   updater.emit('download-progress', { percent: 43.6 });
   assert.equal(updates.getState().progress, 44);

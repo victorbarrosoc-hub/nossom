@@ -13,6 +13,7 @@ export type UpdateState = {
   nextVersion?: string;
   progress: number;
   error?: string;
+  installRequested?: boolean;
 };
 export type DesktopBridge = {
   getUpdateState: () => Promise<UpdateState>;

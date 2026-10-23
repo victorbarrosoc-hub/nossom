@@ -33,6 +33,7 @@ export default function DesktopUpdates({
     let alive = true;
     const receive = (next: UpdateState) => {
       if (!alive || !next) return;
+      if (next.status === 'error') installing.current = false;
       setState(next);
       if (['available', 'downloaded', 'error'].includes(next.status)) setOpen(true);
     };
@@ -47,7 +48,13 @@ export default function DesktopUpdates({
     };
   }, []);
   useEffect(() => {
-    if (state?.status !== 'downloaded' || !requested || blocked || installing.current) return;
+    if (
+      state?.status !== 'downloaded' ||
+      !(requested || state.installRequested) ||
+      blocked ||
+      installing.current
+    )
+      return;
     const timer = setTimeout(() => {
       installing.current = true;
       window.nossomDesktop
@@ -62,7 +69,7 @@ export default function DesktopUpdates({
         });
     }, 3000);
     return () => clearTimeout(timer);
-  }, [state?.status, requested, blocked]);
+  }, [state?.status, state?.installRequested, requested, blocked]);
   async function act(action: 'check' | 'download' | 'install') {
     if (action === 'download') setRequested(true);
     try {
@@ -137,7 +144,7 @@ export default function DesktopUpdates({
                   <p role="status">
                     Aguardando sua gravação ou tratamento terminar antes de reiniciar.
                   </p>
-                ) : requested ? (
+                ) : requested || state.installRequested ? (
                   <p role="status">O download terminou. Reiniciando para instalar…</p>
                 ) : (
                   <button className="button primary" onClick={() => setRequested(true)}>

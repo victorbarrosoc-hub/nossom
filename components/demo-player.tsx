@@ -25,12 +25,13 @@ export default function DemoPlayer() {
     id = useId().replace(/:/g, '');
   const duration = demo.duration,
     progress = Math.min(100, (position / duration) * 100);
-  useEffect(
-    () => () => {
-      Object.values(tracks.current).forEach((audio) => audio?.pause());
-    },
-    [],
-  );
+  useEffect(() => {
+    const elements = Object.values(tracks.current);
+    return () => {
+      switching.current++;
+      elements.forEach((audio) => audio?.pause());
+    };
+  }, []);
   function failure() {
     setPlaying(false);
     setError('Não foi possível tocar o exemplo. Tente novamente.');

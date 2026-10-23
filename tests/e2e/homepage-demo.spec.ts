@@ -64,6 +64,16 @@ test('human voice demo plays real files, preserves time on A/B, seeks and contro
       exact: true,
     }),
   ).toBeVisible();
+  await page.getByRole('button', { name: 'Ouvir demonstração', exact: true }).click();
+  await page
+    .locator('audio')
+    .first()
+    .evaluate((el) => {
+      (window as any).__demoAudio = el;
+    });
+  await page.locator('.voice-player-try').click();
+  await expect(page).toHaveURL(/\/studio$/);
+  expect(await page.evaluate(() => (window as any).__demoAudio.paused)).toBe(true);
 });
 test('immersive homepage fits desktop and mobile, respects reduced motion and remains accessible', async ({
   page,

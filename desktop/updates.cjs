@@ -43,7 +43,7 @@ function createUpdates({ app, updater, notify, broadcast, enabled }) {
       )
         await updater.checkForUpdates();
       else if (action === 'download' && state.status === 'available') {
-        send({ status: 'downloading', progress: 0 });
+        send({ status: 'downloading', progress: 0, installRequested: true });
         await updater.downloadUpdate();
       } else if (action === 'install' && state.status === 'downloaded') {
         send({ status: 'installing' });
