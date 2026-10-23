@@ -6,6 +6,7 @@ import {
   clearJob,
   jobAction,
   jobStatus,
+  jobSource,
   ownedJob,
   prepareJob,
   restorationConfigured,
@@ -52,17 +53,43 @@ export async function GET(request: Request) {
       if (!uuid.test(id)) throw new RestorationError('Pedido inválido.', 400);
       if (!allowRequest('cloud-poll:' + account.id, 60, 60000))
         throw new RestorationError('Aguarde um instante.', 429);
-      return Response.json(await jobStatus(account.id, id), { headers: privateHeaders });
+      return Response.json(
+        new URL(request.url).searchParams.get('source') === '1'
+          ? await jobSource(account.id, id)
+          : await jobStatus(account.id, id),
+        { headers: privateHeaders },
+      );
     }
     const configured = restorationConfigured();
     let ready = false;
-    let pending: { id: string; status: string } | null = null;
+    let pending: {
+      id: string;
+      status: string;
+      duration: number;
+      bytes: number;
+      createdAt: string;
+    } | null = null;
     if (configured) {
       try {
         const result = await jobAction('pending', account.id);
         await audioUsage(request);
         ready = true;
-        if (result.job) pending = { id: result.job.id, status: result.job.status };
+        if (result.job) {
+          let status = result.job.status;
+          try {
+            status = (await jobStatus(account.id, result.job.id)).status;
+          } catch {
+            /* Keep the last confirmed state when the provider cannot be reached. */
+          }
+          if (!['released', 'failed', 'cancelled'].includes(status))
+            pending = {
+              id: result.job.id,
+              status,
+              duration: result.job.duration,
+              bytes: result.job.input_bytes,
+              createdAt: result.job.created_at,
+            };
+        }
       } catch {
         /* Database migration must exist before enabling cloud work. */
       }

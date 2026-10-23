@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Activity, Clock, Users, RefreshCw, Search, Settings2, X } from 'lucide-react';
+import ProviderBalances from './provider-balances';
 import { useDialog } from '@/lib/use-dialog';
 import { allowance, minutes, price, type Plan } from '@/lib/plans';
 type Member = {
@@ -194,6 +195,7 @@ export default function AdminDashboard() {
           Atualizar
         </button>
       </div>
+      <ProviderBalances />
       {error && (
         <div className="alert error" role="alert">
           <p>{error}</p>

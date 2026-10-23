@@ -175,3 +175,130 @@ test('unconfigured cloud restoration is explicit and keeps local tools available
   await page.getByRole('button', { name: /Experimentar outra limpeza/ }).click();
   await expect(page).toHaveURL(/\/studio\/limpeza\?project=/);
 });
+
+test('pending audio from another browser can be recovered and resumed without submitting a second GPU job', async ({
+  page,
+}) => {
+  const source = wav(48000, 2),
+    output = wav(44100, 2),
+    id = '88888888-8888-4888-8888-888888888888';
+  let released = false,
+    newSubmissions = 0;
+  const report = {
+    preset: 'resemble-d-v1',
+    chunks: [{ index: 0, bytes: output.length }],
+    totalBytes: output.length,
+    frames: 88200,
+    sampleRate: 44100,
+    channels: 1,
+    gainDb: 0,
+  };
+  await page.route('https://nossom-test.supabase.co/**', (route) =>
+    route.fulfill({
+      body: route.request().url().endsWith('/source') ? source : output,
+      headers: { 'Access-Control-Allow-Origin': '*' },
+    }),
+  );
+  await page.route('**/api/audio/jobs*', (route) => {
+    const req = route.request();
+    if (req.method() === 'POST') {
+      const body = req.postDataJSON();
+      if (body.action === 'release') {
+        released = true;
+        return route.fulfill({ json: { ok: true } });
+      }
+      newSubmissions++;
+      return route.fulfill({ status: 500, json: { error: 'Unexpected duplicate submission' } });
+    }
+    if (req.url().includes('source=1'))
+      return route.fulfill({
+        json: {
+          id,
+          duration: 2,
+          bytes: source.length,
+          downloadUrls: ['https://nossom-test.supabase.co/source'],
+        },
+      });
+    if (req.url().includes('?id='))
+      return route.fulfill({
+        json: {
+          id,
+          status: 'completed',
+          report,
+          downloadUrls: ['https://nossom-test.supabase.co/output'],
+        },
+      });
+    return route.fulfill({
+      json: {
+        configured: true,
+        pending: released
+          ? null
+          : {
+              id,
+              status: 'completed',
+              duration: 2,
+              bytes: source.length,
+              createdAt: '2026-10-23T18:00:00Z',
+            },
+      },
+    });
+  });
+  await page.goto('/studio/automatico');
+  await page
+    .locator('input[type=file]')
+    .first()
+    .setInputFiles({ name: 'outro.wav', mimeType: 'audio/wav', buffer: source });
+  await expect(page.getByText('Resultado pronto para salvar', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: 'Recuperar áudio deste pedido' }).click();
+  await expect(
+    page.getByRole('button', { name: 'Retomar restauração', exact: true }),
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Retomar restauração', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Agora, deixe do seu jeito.' })).toBeVisible({
+    timeout: 90000,
+  });
+  expect(newSubmissions).toBe(0);
+  expect(released).toBe(true);
+});
+
+test('selection can be drawn on the wave, adjusted by keyboard and cleared on desktop and touch', async ({
+  page,
+}) => {
+  await page.route('**/api/audio/jobs*', (route) =>
+    route.fulfill({ json: { configured: true, pending: null } }),
+  );
+  await page.goto('/studio/automatico');
+  await page
+    .locator('input[type=file]')
+    .first()
+    .setInputFiles({ name: 'trecho.wav', mimeType: 'audio/wav', buffer: wav(48000, 4) });
+  await page.getByRole('button', { name: 'Selecionar trecho', exact: true }).click();
+  const surface = page.locator('.wave-selection-surface');
+  await expect(surface).toBeVisible();
+  const box = (await surface.boundingBox())!;
+  await page.mouse.move(box.x + box.width * 0.25, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * 0.75, box.y + box.height / 2, { steps: 5 });
+  await page.mouse.up();
+  await expect(page.getByLabel('Início do trecho em segundos')).toHaveValue('1');
+  await expect(page.getByLabel('Fim do trecho em segundos')).toHaveValue('3');
+  await page.getByRole('button', { name: 'Ajustar início do trecho' }).focus();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByLabel('Início do trecho em segundos')).toHaveValue('1.1');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await surface.scrollIntoViewIfNeeded();
+  const touchBox = (await surface.boundingBox())!;
+  const session = await page.context().newCDPSession(page);
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ x: touchBox.x + touchBox.width * 0.5, y: touchBox.y + 30 }],
+  });
+  await session.send('Input.dispatchTouchEvent', {
+    type: 'touchMove',
+    touchPoints: [{ x: touchBox.x + touchBox.width * 0.9, y: touchBox.y + 30 }],
+  });
+  await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await expect(page.getByLabel('Início do trecho em segundos')).toHaveValue('2');
+  await page.getByRole('button', { name: 'Áudio inteiro', exact: true }).click();
+  await expect(surface).toBeHidden();
+});

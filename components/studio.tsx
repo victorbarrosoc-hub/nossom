@@ -289,6 +289,9 @@ export default function Studio({ account }: { account: Account }) {
     id: string;
     status: string;
     projectId?: string;
+    duration?: number;
+    bytes?: number;
+    createdAt?: string;
   } | null>(null);
   const cloudAbort = useRef<AbortController | null>(null);
   async function refreshCloud() {
@@ -302,17 +305,82 @@ export default function Studio({ account }: { account: Account }) {
       } catch {
         /* No recoverable local mapping. */
       }
+      const mappedId =
+        saved?.id === data.pending?.id &&
+        saved?.projectId &&
+        (await getProject(saved.projectId, account.id))
+          ? saved.projectId
+          : undefined;
       setPendingJob(
         data.pending && !(saved?.id === data.pending.id && saved.saved)
           ? {
               ...data.pending,
-              projectId: saved?.id === data.pending.id ? saved.projectId : undefined,
+              projectId: mappedId,
             }
           : null,
       );
     } catch {
       setCloudReady(false);
     }
+  }
+  async function recoverPendingAudio() {
+    if (!pendingJob || busy) return;
+    await run(async () => {
+      if (projects.length >= 20)
+        throw new Error('Libere espaço em Meus projetos antes de recuperar este áudio.');
+      setBusy('Recuperando o áudio do seu pedido…');
+      const response = await fetch(`/api/audio/jobs?id=${pendingJob.id}&source=1`, {
+        cache: 'no-store',
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Não foi possível recuperar o áudio.');
+      if (
+        !Array.isArray(data.downloadUrls) ||
+        !data.downloadUrls.length ||
+        data.downloadUrls.length > 5
+      )
+        throw new Error('O original não está disponível neste pedido.');
+      const parts: Blob[] = [];
+      for (const url of data.downloadUrls) {
+        const part = await fetch(url, { cache: 'no-store' });
+        if (!part.ok) throw new Error('Não foi possível recuperar o original. Tente novamente.');
+        parts.push(await part.blob());
+      }
+      const original = new Blob(parts);
+      if (original.size !== data.bytes)
+        throw new Error('O original foi recebido incompleto. Tente novamente.');
+      const file = new File([original], 'Áudio recuperado.wav');
+      const imported = await importAudio(file, setBusy);
+      if (Math.abs(imported.info.duration - data.duration) > 0.1)
+        throw new Error('O original recebido não corresponde ao pedido.');
+      const now = Date.now();
+      const recovered: Project = {
+        id: crypto.randomUUID(),
+        name: 'Áudio em restauração',
+        createdAt: now,
+        updatedAt: now,
+        originalFile: file,
+        originalName: file.name,
+        versions: [{ id: crypto.randomUUID(), label: 'Original', createdAt: now, ...imported }],
+      };
+      await saveProject(recovered, account.id);
+      localStorage.setItem(
+        'nossom-cloud:' + account.id,
+        JSON.stringify({ id: pendingJob.id, projectId: recovered.id }),
+      );
+      setPendingJob({ ...pendingJob, projectId: recovered.id });
+      setProject(recovered);
+      setVersionIndex(0);
+      setRegion(null);
+      setMusic(null);
+      setOperation('auto');
+      setView('editor');
+      router.push(toolPath('auto', recovered.id), { scroll: false });
+      await refresh();
+      notify(
+        'Original recuperado. Clique em Retomar restauração para acompanhar e salvar o resultado.',
+      );
+    });
   }
   async function refreshUsage() {
     try {
@@ -616,10 +684,6 @@ export default function Studio({ account }: { account: Account }) {
         if (!cloudReady)
           throw new Error(
             'A restauração avançada está sendo conectada. Você pode usar as ferramentas de limpeza local e acabamento.',
-          );
-        if (region)
-          throw new Error(
-            'Desative a seleção de trecho. A restauração com IA usa a gravação inteira e gera voz em mono.',
           );
         if (pendingJob && pendingJob.projectId !== project.id)
           throw new Error(
@@ -956,40 +1020,44 @@ export default function Studio({ account }: { account: Account }) {
         <div className="workspace-label">
           <span className="workspace-avatar">{account.name.slice(0, 1).toUpperCase()}</span>
           <div>
-            {account.name}
+            <strong className="workspace-name" title={account.name}>
+              {account.name}
+            </strong>
             <span className="account-plan">{accountPlan(account, usage)}</span>
-            <small>{account.email}</small>
+            <small title={account.email}>{account.email}</small>
           </div>
           <span className="local-badge">{account.isAdmin ? 'ADM' : 'CONTA'}</span>
         </div>
-        <div className="weekly-usage" role="status">
-          <span>{usage ? usageLabel(usage) : usageError || 'Consultando tratamentos…'}</span>
-          {usage && !usage.unlimited && (
-            <>
-              <progress
-                max={Math.max(1, usage.limit ?? 300)}
-                value={usage.used}
-                aria-label="Minutos da franquia usados ou reservados neste mês"
-              />
-              <small>
-                Renova dia{' '}
-                {Number.isFinite(Date.parse(usage.resetAt))
-                  ? new Intl.DateTimeFormat('pt-BR', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      timeZone: 'America/Fortaleza',
-                    }).format(new Date(usage.resetAt))
-                  : '1 do próximo mês'}
-                , à 0h · Brasília
-              </small>
-            </>
-          )}
-          {usageError && (
-            <button className="text-link" onClick={refreshUsage}>
-              Tentar novamente
-            </button>
-          )}
-        </div>
+        {!account.isAdmin && (
+          <div className="weekly-usage" role="status">
+            <span>{usage ? usageLabel(usage) : usageError || 'Consultando tratamentos…'}</span>
+            {usage && !usage.unlimited && (
+              <>
+                <progress
+                  max={Math.max(1, usage.limit ?? 300)}
+                  value={usage.used}
+                  aria-label="Minutos da franquia usados ou reservados neste mês"
+                />
+                <small>
+                  Renova dia{' '}
+                  {Number.isFinite(Date.parse(usage.resetAt))
+                    ? new Intl.DateTimeFormat('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        timeZone: 'America/Fortaleza',
+                      }).format(new Date(usage.resetAt))
+                    : '1 do próximo mês'}
+                  , à 0h · Brasília
+                </small>
+              </>
+            )}
+            {usageError && (
+              <button className="text-link" onClick={refreshUsage}>
+                Tentar novamente
+              </button>
+            )}
+          </div>
+        )}
         <button
           className="button primary new-project"
           onClick={() => fileInput.current?.click()}
@@ -1042,22 +1110,22 @@ export default function Studio({ account }: { account: Account }) {
         </nav>
         <div className="sidebar-bottom">
           <InstallApp onOpen={() => setSidebar(false)} />
-          <Link href="/apps">
-            Aplicativos para Mac e Windows <Download size={15} />
+          <Link
+            href="/apps"
+            className="sidebar-apps-link"
+            aria-label="Aplicativos para Mac e Windows"
+          >
+            <Download size={18} />{' '}
+            <span>
+              Aplicativos<small>Mac e Windows</small>
+            </span>
           </Link>
           <div className="local-note">
             <ShieldCheck size={17} />
-            <div>
-              Seu áudio fica com você.
-              <p>
-                Projetos neste navegador.
-                <br />
-                Restauração com IA na nuvem.
-              </p>
-            </div>
+            <div>Originais preservados.</div>
           </div>
           <Link href="/privacidade">
-            Privacidade e armazenamento <ArrowUpRight size={13} />
+            Privacidade <ArrowUpRight size={13} />
           </Link>
         </div>
       </aside>
@@ -1143,6 +1211,31 @@ export default function Studio({ account }: { account: Account }) {
           </div>
         </header>
         <main id="studio-main" className="studio-main">
+          {pendingJob && ['home', 'projects', 'ai'].includes(view) && (
+            <section className="cloud-pending-short" aria-label="Pedido de áudio pendente">
+              <div>
+                <strong>
+                  {pendingJob.status === 'completed'
+                    ? 'Seu resultado está pronto para salvar'
+                    : 'Você tem um pedido de restauração pendente'}
+                </strong>
+                <p>Abra o pedido para acompanhar o estado e salvar o resultado.</p>
+              </div>
+              {pendingJob.projectId ? (
+                <Link className="button secondary" href={toolPath('auto', pendingJob.projectId)}>
+                  Abrir áudio do pedido <ArrowRight size={15} />
+                </Link>
+              ) : (
+                <button
+                  className="button secondary"
+                  disabled={!!busy || pendingJob.status === 'uploading'}
+                  onClick={() => void recoverPendingAudio()}
+                >
+                  Recuperar áudio deste pedido <ArrowRight size={15} />
+                </button>
+              )}
+            </section>
+          )}
           <input
             ref={fileInput}
             className="sr-only"
@@ -1498,6 +1591,7 @@ export default function Studio({ account }: { account: Account }) {
                     version={version}
                     region={region}
                     onRegion={setRegion}
+                    previewOnly={operation === 'auto'}
                   />
                   {versionIndex > 0 &&
                     project.versions.some((v) => v.processing?.cloudRestoration) && (
@@ -1774,11 +1868,13 @@ export default function Studio({ account }: { account: Account }) {
                   {operation === 'auto' && (
                     <div className="cloud-restoration-note">
                       <strong>
-                        {cloudReady === null
-                          ? 'Preparando…'
-                          : cloudReady
-                            ? 'Pronto para melhorar sua voz'
-                            : 'A melhoria com IA está temporariamente indisponível'}
+                        {pendingJob
+                          ? 'Seu pedido de restauração'
+                          : cloudReady === null
+                            ? 'Preparando…'
+                            : cloudReady
+                              ? 'Pronto para melhorar sua voz'
+                              : 'A melhoria com IA está temporariamente indisponível'}
                       </strong>
                       <p>
                         Seu áudio é enviado com segurança para o tratamento. O original fica
@@ -1796,10 +1892,44 @@ export default function Studio({ account }: { account: Account }) {
                       {pendingJob && (
                         <div className="cloud-pending">
                           <p>
-                            Você tem um áudio em andamento.{' '}
+                            <strong>
+                              {(
+                                {
+                                  uploading: 'Envio incompleto',
+                                  submitting: 'Aguardando confirmação do envio',
+                                  queued: 'Na fila de restauração',
+                                  running: 'Restaurando seu áudio',
+                                  completed: 'Resultado pronto para salvar',
+                                } as Record<string, string>
+                              )[pendingJob.status] || 'Pedido em andamento'}
+                            </strong>
+                            {pendingJob.createdAt && (
+                              <>
+                                {' '}
+                                · Enviado em{' '}
+                                {new Date(pendingJob.createdAt).toLocaleString('pt-BR', {
+                                  timeZone: 'America/Fortaleza',
+                                  dateStyle: 'short',
+                                  timeStyle: 'short',
+                                })}
+                              </>
+                            )}
+                            {pendingJob.duration && (
+                              <>
+                                {' '}
+                                · {Math.floor(pendingJob.duration / 60)}min{' '}
+                                {Math.round(pendingJob.duration % 60)}s
+                              </>
+                            )}
+                          </p>
+                          <p>
                             {pendingJob.projectId === project.id
-                              ? 'Clique em Retomar para continuar.'
-                              : 'Abra esse áudio para continuar ou cancele para começar outro.'}
+                              ? 'Este é o áudio do pedido. Clique em Retomar restauração.'
+                              : pendingJob.projectId
+                                ? 'O pedido está vinculado a outro projeto neste dispositivo.'
+                                : 'Este pedido foi iniciado em outro navegador ou no app. Recupere o original aqui para acompanhar e salvar o resultado.'}
+                            {pendingJob.status === 'submitting' &&
+                              ' Ainda não recebemos confirmação de que o tratamento começou.'}
                           </p>
                           {pendingJob.projectId && pendingJob.projectId !== project.id && (
                             <Link
@@ -1809,12 +1939,31 @@ export default function Studio({ account }: { account: Account }) {
                               Abrir áudio em andamento
                             </Link>
                           )}
+                          {!pendingJob.projectId && (
+                            <button
+                              className="button secondary"
+                              disabled={!!busy || pendingJob.status === 'uploading'}
+                              onClick={() => void recoverPendingAudio()}
+                            >
+                              Recuperar áudio deste pedido <ArrowRight size={15} />
+                            </button>
+                          )}
+                          {!pendingJob.projectId && pendingJob.status === 'uploading' && (
+                            <p>
+                              Para concluir o envio, volte ao navegador onde começou. O arquivo
+                              ainda não foi enviado por completo.
+                            </p>
+                          )}
                           <button
                             className="text-link"
                             disabled={!!busy}
                             onClick={async () => {
                               try {
-                                await cancelCloudJob(pendingJob.id);
+                                const cancellation = await cancelCloudJob(pendingJob.id);
+                                if (cancellation.status === 'submitting')
+                                  throw new Error(
+                                    'O envio ainda está sem confirmação. Não foi possível confirmar o cancelamento; verifique o andamento novamente.',
+                                  );
                                 const r = await fetch(`/api/audio/jobs?id=${pendingJob.id}`, {
                                   cache: 'no-store',
                                 });
@@ -1826,9 +1975,11 @@ export default function Studio({ account }: { account: Account }) {
                                 notify(
                                   'Cancelamento solicitado. Seu áudio original continua salvo.',
                                 );
-                              } catch {
+                              } catch (error) {
                                 setError(
-                                  'Não foi possível confirmar o cancelamento. Tente novamente.',
+                                  error instanceof Error
+                                    ? error.message
+                                    : 'Não foi possível confirmar o cancelamento. Tente novamente.',
                                 );
                               }
                             }}

@@ -6,6 +6,7 @@ test('administrator manages a plan in a wide, responsive dashboard; ordinary use
   await page.goto('/studio/admin');
   await expect(page.getByText('Acesso restrito ao administrador.', { exact: true })).toBeVisible();
   expect((await page.request.get('/api/admin')).status()).toBe(403);
+  expect((await page.request.get('/api/admin/billing')).status()).toBe(403);
   const credentials = { email: 'victorbarrosoc@gmail.com', password: 'test-only-password' };
   const registered = await page.request.post('/api/account', {
     headers: { Origin: 'http://localhost:3000' },
@@ -64,7 +65,26 @@ test('administrator manages a plan in a wide, responsive dashboard; ordinary use
     },
   };
   let update: any;
-  await page.route('**/api/admin*', (route) => {
+  await page.route('**/api/admin/billing', (route) =>
+    route.fulfill({
+      json: {
+        checkedAt: '2026-10-23T18:00:00Z',
+        runpod: { balanceUsd: 9.18, spendUsdHour: 0.69, message: 'Saldo informado pela RunPod.' },
+        claude: {
+          balanceUsd: null,
+          message: 'A integração atual não informa o saldo de créditos.',
+        },
+      },
+    }),
+  );
+  await page.route('**/api/admin?*', (route) => {
+    if (route.request().method() === 'POST') {
+      update = route.request().postDataJSON();
+      return route.fulfill({ json: { ok: true } });
+    }
+    return route.fulfill({ json: data });
+  });
+  await page.route('**/api/admin', (route) => {
     if (route.request().method() === 'POST') {
       update = route.request().postDataJSON();
       return route.fulfill({ json: { ok: true } });
@@ -72,13 +92,30 @@ test('administrator manages a plan in a wide, responsive dashboard; ordinary use
     return route.fulfill({ json: data });
   });
   await page.goto('/studio/admin');
+  await expect(page.getByText('US$ 9,18', { exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Ver créditos do Claude' })).toHaveAttribute(
+    'href',
+    'https://console.anthropic.com/settings/billing',
+  );
   await expect(
     page.getByRole('heading', { name: 'Seu negócio, em sintonia.', exact: true }),
   ).toBeVisible();
   await page.setViewportSize({ width: 1920, height: 1080 });
+  await expect
+    .poll(async () => {
+      const content = (await page.locator('.admin-dashboard').boundingBox())!;
+      const sidebar = (await page.locator('.studio-sidebar').boundingBox())!;
+      return content.x - sidebar.x - sidebar.width;
+    })
+    .toBeGreaterThanOrEqual(16);
   const box = await page.locator('.admin-dashboard').boundingBox();
   expect(box!.width).toBeGreaterThan(1450);
-  await page.screenshot({ path: 'artifacts/nossom-admin-desktop.png', fullPage: true });
+  await page.screenshot({
+    path: 'artifacts/nossom-admin-desktop.png',
+    fullPage: true,
+    animations: 'disabled',
+  });
+
   await page.getByRole('button', { name: 'Gerenciar', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Plano de Pessoa Plano' });
   await dialog.getByRole('combobox', { name: 'Plano', exact: true }).selectOption('essential');

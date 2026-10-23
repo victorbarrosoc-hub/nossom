@@ -8,11 +8,13 @@ export function WavePlayer({
   version,
   region,
   onRegion,
+  previewOnly = false,
 }: {
   original: Version;
   version: Version;
   region: { start: number; end: number } | null;
   onRegion: (region: { start: number; end: number } | null) => void;
+  previewOnly?: boolean;
 }) {
   const [mode, setMode] = useState<'original' | 'result'>('result'),
     [playing, setPlaying] = useState(false),
@@ -24,6 +26,15 @@ export function WavePlayer({
     timeRef = useRef(0),
     playingRef = useRef(false),
     regionRef = useRef(region);
+  const drag = useRef<{ edge: string; anchor: number } | null>(null);
+  function setSelection(start: number, end: number) {
+    const next = {
+      start: Math.max(0, Math.min(start, duration - 0.1)),
+      end: Math.min(duration, Math.max(end, start + 0.1)),
+    };
+    regionRef.current = next;
+    onRegion(next);
+  }
   const active = mode === 'original' ? original : version;
   const duration = active.info.duration;
   useEffect(() => {
@@ -119,7 +130,7 @@ export function WavePlayer({
           </button>
         </div>
       </div>
-      <div className="wave-container">
+      <div className={`wave-container ${region ? 'is-selecting' : ''}`}>
         <svg viewBox="0 0 960 130" preserveAspectRatio="none" aria-hidden="true">
           {active.info.wave.map((value, i) => (
             <rect
@@ -162,7 +173,79 @@ export function WavePlayer({
           onChange={(e) => seek(Number(e.target.value))}
           aria-label="Posição da reprodução"
           className="wave-seek"
+          style={region ? { pointerEvents: 'none' } : undefined}
         />
+        {region && (
+          <div
+            className="wave-selection-surface"
+            onPointerDown={(event) => {
+              if (event.pointerType === 'mouse' && event.button !== 0) return;
+              event.preventDefault();
+              const box = event.currentTarget.getBoundingClientRect();
+              const point = Math.max(
+                0,
+                Math.min(duration, ((event.clientX - box.left) / box.width) * duration),
+              );
+              const edge =
+                (event.target as HTMLElement).closest<HTMLElement>('[data-region-edge]')?.dataset
+                  .regionEdge || 'range';
+              drag.current = { edge, anchor: point };
+              event.currentTarget.setPointerCapture(event.pointerId);
+              if (edge === 'range')
+                setSelection(Math.min(point, duration - 0.1), Math.min(duration, point + 0.1));
+            }}
+            onPointerMove={(event) => {
+              if (!drag.current) return;
+              const box = event.currentTarget.getBoundingClientRect();
+              const point = Math.max(
+                0,
+                Math.min(duration, ((event.clientX - box.left) / box.width) * duration),
+              );
+              const current = regionRef.current!;
+              if (drag.current.edge === 'start')
+                setSelection(Math.min(point, current.end - 0.1), current.end);
+              else if (drag.current.edge === 'end')
+                setSelection(current.start, Math.max(point, current.start + 0.1));
+              else
+                setSelection(
+                  Math.min(drag.current.anchor, point),
+                  Math.max(drag.current.anchor, point),
+                );
+            }}
+            onPointerUp={() => {
+              drag.current = null;
+            }}
+            onPointerCancel={() => {
+              drag.current = null;
+            }}
+          >
+            {(['start', 'end'] as const).map((edge) => (
+              <button
+                key={edge}
+                type="button"
+                className={`wave-region-handle ${edge}`}
+                data-region-edge={edge}
+                style={{ left: `${(region[edge] / duration) * 100}%` }}
+                aria-label={edge === 'start' ? 'Ajustar início do trecho' : 'Ajustar fim do trecho'}
+                onKeyDown={(event) => {
+                  if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                  event.preventDefault();
+                  const value =
+                    event.key === 'Home'
+                      ? 0
+                      : event.key === 'End'
+                        ? duration
+                        : region[edge] +
+                          (event.key === 'ArrowLeft' ? -1 : 1) * (event.shiftKey ? 1 : 0.1);
+                  if (edge === 'start') setSelection(Math.min(value, region.end - 0.1), region.end);
+                  else setSelection(region.start, Math.max(value, region.start + 0.1));
+                }}
+              >
+                <span />
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <div className="player-times">
         <span>{formatTime(time)}</span>
@@ -202,7 +285,16 @@ export function WavePlayer({
         </label>
         <button
           className={`button small ${region ? 'selected' : 'secondary'}`}
-          onClick={() => onRegion(region ? null : { start: 0, end: Math.min(duration, 10) })}
+          aria-pressed={!!region}
+          onClick={() => {
+            if (region) {
+              regionRef.current = null;
+              onRegion(null);
+            } else {
+              const start = Math.min(time, Math.max(0, duration - 0.1));
+              setSelection(start, Math.min(duration, start + 10));
+            }
+          }}
         >
           <Repeat2 size={14} /> {region ? 'Áudio inteiro' : 'Selecionar trecho'}
         </button>
@@ -248,7 +340,11 @@ export function WavePlayer({
             />{' '}
             s
           </label>
-          <span>Reprodução e tratamento restritos ao trecho; o restante é preservado.</span>
+          <span>
+            {previewOnly
+              ? 'Arraste na onda para ouvir um trecho. A restauração com IA trata o áudio inteiro.'
+              : 'Arraste na onda ou ajuste os tempos. O tratamento afeta apenas o trecho; o restante é preservado.'}
+          </span>
         </div>
       )}
       {error && (

@@ -121,6 +121,17 @@ test('restoration verifies identity, owns jobs, fixes D server-side, dispatches 
     assert.equal(data.status, 'completed');
     assert.equal(data.downloadUrls.length, 1);
     assert.equal(JSON.stringify(data).includes('private-runpod-test'), false);
+    const source = await GET(
+      new Request(`http://localhost/api/audio/jobs?id=${id}&source=1`, {
+        headers: { cookie: testCookie() },
+      }),
+    );
+    const recovered = await source.json();
+    assert.equal(source.status, 200);
+    assert.equal(recovered.bytes, 30 * 1024 * 1024);
+    assert.equal(recovered.downloadUrls.length, 2);
+    assert.ok(recovered.downloadUrls.every((url: string) => url.includes(`/source-`)));
+
     const other = testCookie({ ...testUser, id: '22222222-2222-4222-8222-222222222222' });
     // Auth provider validates the actual identity, not the encrypted-cookie metadata.
     const previousFetch = globalThis.fetch;
@@ -129,6 +140,17 @@ test('restoration verifies identity, owns jobs, fixes D server-side, dispatches 
         ? Response.json({ ...testUser, id: '22222222-2222-4222-8222-222222222222' })
         : previousFetch(input, init);
     assert.equal((await POST(request({ action: 'release', id }, other))).status, 404);
+    assert.equal(
+      (
+        await GET(
+          new Request(`http://localhost/api/audio/jobs?id=${id}&source=1`, {
+            headers: { cookie: other },
+          }),
+        )
+      ).status,
+      404,
+    );
+
     globalThis.fetch = previousFetch;
     assert.equal((await POST(request({ action: 'release', id }))).status, 200);
     assert.equal(removed.length, 8);

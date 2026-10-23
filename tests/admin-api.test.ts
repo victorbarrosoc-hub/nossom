@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { GET as billingGET } from '../app/api/admin/billing/route';
 import { GET, POST } from '../app/api/admin/route';
 import { authEnvironment, testCookie, testUser } from './helpers/auth';
 test('admin API checks live verified owner, same-origin writes and plan bounds; never trusts client roles', async () => {
@@ -27,6 +28,7 @@ test('admin API checks live verified owner, same-origin writes and plan bounds; 
       (await POST(request({ action: 'set_member', isAdmin: true, data: {} }))).status,
       403,
     );
+    assert.equal((await billingGET(request())).status, 403);
     assert.equal(calls, 0);
     user = { ...testUser, email: 'victorbarrosoc@gmail.com', email_confirmed_at: null };
     assert.equal((await GET(request())).status, 403);

@@ -255,6 +255,23 @@ export async function jobStatus(user: string, id: string) {
       : {}),
   };
 }
+/** Recover only the authenticated owner's uploaded original on another device. */
+export async function jobSource(user: string, id: string) {
+  const job = await ownedJob(user, id);
+  if (!['submitting', 'queued', 'running', 'completed'].includes(job.status))
+    throw new RestorationError(
+      'O envio do original não foi concluído. Retome no navegador onde você começou ou cancele este pedido.',
+      409,
+    );
+  return {
+    id,
+    duration: job.duration,
+    bytes: job.input_bytes,
+    downloadUrls: await Promise.all(
+      Array.from({ length: job.input_parts }, (_, i) => readURL(job, 'source', i)),
+    ),
+  };
+}
 export async function clearJob(job: RestorationJob) {
   const prefixes = [
     ...Array.from({ length: job.input_parts }, (_, i) => objectPath(job, 'source', i)),
