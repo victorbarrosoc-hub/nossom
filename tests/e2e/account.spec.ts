@@ -1,9 +1,10 @@
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 async function openAccess(page: Page) {
-  const open = page.getByRole('button', { name: 'Acessar minha conta', exact: true });
-  if (await open.isVisible()) await open.click();
-  await expect(page.locator('.account-form-wrap')).toHaveClass(/is-expanded/);
+  const card = page.locator('.account-form-wrap');
+  await expect(card).toHaveCSS('opacity', '1');
+  await card.hover();
+  await expect(card).toHaveClass(/is-expanded/);
 }
 async function create(page: Page, name: string, email: string) {
   await page.goto('/entrar');

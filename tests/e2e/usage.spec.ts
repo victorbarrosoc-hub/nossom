@@ -52,7 +52,7 @@ test('verified administrator has no monthly minute limit and normal users cannot
     expect(login.status()).toBe(200);
   }
   await page.goto('/studio');
-  await expect(page.getByText('ADM · tratamentos ilimitados', { exact: true })).toBeVisible();
+  await expect(page.getByText('ADM · restaurações ilimitadas', { exact: true })).toBeVisible();
   for (let i = 0; i < 12; i++)
     expect(
       (
@@ -69,8 +69,8 @@ test('verified administrator has no monthly minute limit and normal users cannot
 test('email confirmation cannot create an authenticated session', async ({ page }) => {
   await page.request.delete('/api/account', { headers: { Origin: 'http://localhost:3000' } });
   await page.goto('/entrar');
-  const open = page.getByRole('button', { name: 'Acessar minha conta', exact: true });
-  if (await open.isVisible()) await open.click();
+  await expect(page.locator('.account-form-wrap')).toHaveCSS('opacity', '1');
+  await page.locator('.account-form-wrap').hover();
   await page.getByRole('button', { name: 'Criar conta', exact: true }).click();
   await page.getByLabel('Nome', { exact: true }).fill('Confirmar conta');
   await page.getByLabel('E-mail', { exact: true }).fill('confirm.new@example.test');
