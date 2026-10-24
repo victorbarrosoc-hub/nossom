@@ -63,7 +63,13 @@ import Assistant from './assistant';
 import { WavePlayer } from './wave-player';
 import { restoreCloud, releaseCloudJob, cancelCloudJob } from '@/lib/cloud-audio';
 import { usageLabel, type AudioUsage } from '@/lib/usage';
-import { operations, deliveryPresets, type Operation, type DenoiseMode } from '@/lib/presets';
+import {
+  operations,
+  deliveryPresets,
+  studioVoice,
+  type Operation,
+  type DenoiseMode,
+} from '@/lib/presets';
 import { estimateNoiseFloor } from '@/lib/noise-profile';
 import {
   decode,
@@ -198,6 +204,12 @@ export default function Studio({ account }: { account: Account }) {
     setMasterRecipe(id);
     if (id === 'broadcast') {
       setBroadcast(freshBroadcast());
+      setIntensity(100);
+      return;
+    }
+    if (id === studioVoice.id) {
+      setTarget(studioVoice.lufs);
+      setPeak(studioVoice.peak);
       setIntensity(100);
       return;
     }
@@ -685,7 +697,7 @@ export default function Studio({ account }: { account: Account }) {
     }
     if (s.masterPreset) {
       setMasterRecipe(s.masterPreset);
-      if (s.masterPreset !== 'broadcast') setPreset(s.masterPreset);
+      if (deliveryPresets.some((p) => p.id === s.masterPreset)) setPreset(s.masterPreset);
     }
     if (s.broadcast) setBroadcast(structuredClone(s.broadcast));
   }
@@ -807,7 +819,9 @@ export default function Studio({ account }: { account: Account }) {
               : operation === 'master'
                 ? masterRecipe === 'broadcast'
                   ? 'Transmissão + Limite −3 dB'
-                  : `${preset} / alvo ${target} LUFS / pico ${peak} dBTP / v2`
+                  : masterRecipe === studioVoice.id
+                    ? `${studioVoice.label} / alvo ${target} LUFS / pico ${peak} dBTP / ${studioVoice.version}`
+                    : `${preset} / alvo ${target} LUFS / pico ${peak} dBTP / v2`
                 : operation === 'effects'
                   ? `${effectPresets.find((p) => p.id === effect)?.label} · ${effectMix}%`
                   : operation === 'eq'
@@ -1677,6 +1691,24 @@ export default function Studio({ account }: { account: Account }) {
                           <button
                             disabled={!!busy}
                             onClick={() => {
+                              selectMaster(studioVoice.id);
+                              chooseTool('master');
+                              setTimeout(
+                                () =>
+                                  document
+                                    .querySelector('.treatment-panel')
+                                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                                120,
+                              );
+                            }}
+                          >
+                            <Mic size={22} />
+                            <strong>Voz de estúdio</strong>
+                            <span>Voz próxima e clara, volume de podcast (−16 LUFS).</span>
+                          </button>
+                          <button
+                            disabled={!!busy}
+                            onClick={() => {
                               selectMaster('broadcast');
                               chooseTool('master');
                               setTimeout(
@@ -2173,6 +2205,18 @@ export default function Studio({ account }: { account: Account }) {
                             <strong>Transmissão + Limite −3 dB</strong>
                             <span>
                               Sua cadeia do Premiere, com quatro bandas e dois limitadores.
+                            </span>
+                          </button>
+                          <button
+                            className={masterRecipe === studioVoice.id ? 'active' : ''}
+                            aria-pressed={masterRecipe === studioVoice.id}
+                            disabled={!!busy}
+                            onClick={() => selectMaster(studioVoice.id)}
+                          >
+                            <strong>{studioVoice.label}</strong>
+                            <span>
+                              Graves limpos, presença, de-esser leve e {studioVoice.lufs} LUFS ·{' '}
+                              {studioVoice.peak} dBTP
                             </span>
                           </button>
                           {deliveryPresets.map((p) => (

@@ -131,3 +131,21 @@ test('homepage renders without the two removed phrases and decorative arrow', as
   await expect(page.getByText('Do primeiro impulso.', { exact: false })).toHaveCount(0);
   await expect(page.locator('.ns-ribbon-note')).toHaveCount(0);
 });
+test('studio voice finishing renders a close-mic chain at podcast loudness without clipping', async ({
+  page,
+}) => {
+  await page.goto('/studio/masterizacao');
+  await page
+    .getByLabel('Importar arquivo de áudio', { exact: true })
+    .setInputFiles('tests/fixtures/synthetic-speech.wav');
+  await expect(page.getByRole('button', { name: 'Aplicar tratamento', exact: true })).toBeVisible({
+    timeout: 90000,
+  });
+  await page.getByRole('button', { name: 'Voz de estúdio', exact: false }).click();
+  await expect(page.getByRole('slider', { name: 'Volume final', exact: true })).toHaveValue('-16');
+  await render(page, 'Preparar entrega · V1');
+  const result = await report(page);
+  expect(result.processingSettings.masterPreset).toBe('studio-voice');
+  expect(Math.abs(result.after.lufs - -16)).toBeLessThanOrEqual(0.75);
+  expect(result.after.truePeak).toBeLessThanOrEqual(-1 + 0.15);
+});
