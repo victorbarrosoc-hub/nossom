@@ -27,7 +27,7 @@ export default function PlanCards({ current }: { current?: string }) {
       <div className="plans-grid">
         {plans.map((plan: Plan) => (
           <article
-            className={`plan-choice ${plan.id === 'essential' ? 'featured' : ''}`}
+            className={`plan-choice lg ${plan.id === 'essential' ? 'featured' : ''}`}
             key={plan.id}
           >
             <div className="plan-choice-head">
@@ -35,8 +35,8 @@ export default function PlanCards({ current }: { current?: string }) {
               {current === plan.id && <span>Seu plano</span>}
             </div>
             <div className="plan-price">
-              <strong>{plan.price_cents === 0 ? 'Grátis' : price(plan.price_cents)}</strong>
-              {plan.price_cents > 0 && <span>/mês</span>}
+              <strong>{price(plan.price_cents)}</strong>
+              <span>/mês</span>
             </div>
             <p className="plan-time">
               <strong>{allowance(plan.monthly_seconds)}</strong> de restauração por mês

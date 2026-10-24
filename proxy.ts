@@ -3,6 +3,8 @@ import { ACCOUNT_COOKIE, refreshAccount, sessionCookie } from './lib/server/acco
 export async function proxy(request: NextRequest) {
   const before = request.cookies.get(ACCOUNT_COOKIE)?.value;
   const session = await refreshAccount(before);
+  // A transient Auth failure must not sign everyone out: keep the cookie and let the route decide.
+  if (session === 'unavailable') return NextResponse.next();
   if (session) {
     const headers = new Headers(request.headers);
     // Forward a rotated session to Server Components in the same request.

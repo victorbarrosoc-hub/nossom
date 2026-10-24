@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
-import { useState, type ReactNode } from 'react';
-import { motion, useReducedMotion } from 'motion/react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { LayoutGroup, motion, useReducedMotion } from 'motion/react';
 import {
   AudioLines,
   Mic2,
@@ -9,14 +9,11 @@ import {
   ArrowRight,
   ArrowUpRight,
   Play,
-  Sparkles,
   ShieldCheck,
-  Download,
   Menu,
   X,
   Plus,
   Minus,
-  Paperclip,
 } from 'lucide-react';
 import CinematicRibbon from './cinematic-ribbon';
 import SignalField from './signal-field';
@@ -26,6 +23,108 @@ import PlanCards from './plan-cards';
 import InstallApp from './install-app';
 import AccountMenu from './account-menu';
 import DesktopUpdates from './desktop-updates';
+import SiteMotion from './site-motion';
+import SoundToggle from './sound-toggle';
+const sections = [
+  ['Ouça a diferença', 'experimente'],
+  ['Como funciona', 'produto'],
+  ['Planos', 'planos'],
+] as const;
+// Lights the nav item of the section in view; one state change per section, not per frame.
+function useSectionInView() {
+  const [active, setActive] = useState<string | null>(null);
+  useEffect(() => {
+    const seen = new Map<string, boolean>();
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) seen.set(e.target.id, e.isIntersecting);
+        setActive(sections.find(([, id]) => seen.get(id))?.[1] ?? null);
+      },
+      { rootMargin: '-45% 0px -50% 0px' },
+    );
+    for (const [, id] of sections) {
+      const el = document.getElementById(id);
+      if (el) io.observe(el);
+    }
+    return () => io.disconnect();
+  }, []);
+  return active;
+}
+function StepArt({ kind }: { kind: 'send' | 'clean' | 'export' }) {
+  const bars = Array.from({ length: 11 }, (_, i) => i);
+  return (
+    <svg className="step-art" viewBox="0 0 190 56" aria-hidden="true">
+      <defs>
+        <linearGradient id={`step-${kind}`} x1="0" x2="1">
+          <stop stopColor="#5ab4ff" />
+          <stop offset=".55" stopColor="#e9f6ff" />
+          <stop offset="1" stopColor="#8fb3d6" />
+        </linearGradient>
+      </defs>
+      {kind === 'send' && (
+        <>
+          <rect
+            className="chip"
+            x="64"
+            y="10"
+            width="62"
+            height="36"
+            rx="11"
+            fill="#9fd6ff1a"
+            stroke={`url(#step-${kind})`}
+          />
+          {bars.slice(0, 7).map((i) => (
+            <rect
+              key={i}
+              x={76 + i * 6}
+              y={28 - [4, 9, 6, 12, 7, 10, 5][i]}
+              width="3"
+              height={[4, 9, 6, 12, 7, 10, 5][i] * 2}
+              rx="1.5"
+              fill={`url(#step-${kind})`}
+            />
+          ))}
+        </>
+      )}
+      {kind === 'clean' &&
+        bars.map((i) => {
+          const noisy = [8, 17, 5, 20, 11, 19, 6, 15, 9, 18, 7][i];
+          return (
+            <rect
+              key={i}
+              className="bar"
+              x={40 + i * 10}
+              y={28 - noisy}
+              width="4"
+              height={noisy * 2}
+              rx="2"
+              fill={`url(#step-${kind})`}
+              style={{
+                ['--from' as string]: 1,
+                ['--to' as string]: (6 + (i % 3) * 3) / noisy,
+                animationDelay: `${i * 70}ms`,
+              }}
+            />
+          );
+        })}
+      {kind === 'export' && (
+        <>
+          <path d="M60 40h70" stroke="#9fd6ff55" strokeWidth="2" strokeLinecap="round" />
+          <g className="arrow">
+            <path
+              d="M95 10v22m-8-8 8 8 8-8"
+              fill="none"
+              stroke={`url(#step-${kind})`}
+              strokeWidth="3"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </g>
+        </>
+      )}
+    </svg>
+  );
+}
 function Reveal({
   children,
   className = '',
@@ -72,27 +171,55 @@ const faqs = [
 ];
 export default function Landing() {
   const [menu, setMenu] = useState(false),
-    [faq, setFaq] = useState<number | null>(null);
+    [faq, setFaq] = useState<number | null>(null),
+    [hover, setHover] = useState<string | null>(null),
+    reduced = useReducedMotion(),
+    inView = useSectionInView(),
+    lens = hover ?? inView;
   return (
     <div className="ns-site home-v2 chrome-site">
+      <SiteMotion />
       <a className="skip-link" href="#conteudo">
         Pular para o conteúdo
       </a>
       <header className="ns-header">
-        <div className="ns-wrap ns-nav">
+        <div className="ns-wrap ns-nav lg">
+          <span className="nav-progress" aria-hidden="true" />
           <Link href="/" aria-label="NOSSOM início">
             <Brand />
           </Link>
-          <nav className={menu ? 'open' : ''} aria-label="Navegação principal">
-            {[
-              ['Ouça a diferença', 'experimente'],
-              ['Planos', 'planos'],
-            ].map(([label, id]) => (
-              <a key={id} href={`#${id}`} onClick={() => setMenu(false)}>
-                {label}
-              </a>
-            ))}
-          </nav>
+          <LayoutGroup id="site-nav">
+            <nav
+              className={menu ? 'open' : ''}
+              aria-label="Navegação principal"
+              onPointerLeave={() => setHover(null)}
+            >
+              {sections.map(([label, id]) => (
+                <a
+                  key={id}
+                  href={`#${id}`}
+                  aria-current={inView === id ? 'true' : undefined}
+                  onPointerEnter={() => setHover(id)}
+                  onFocus={() => setHover(id)}
+                  onBlur={() => setHover(null)}
+                  onClick={() => setMenu(false)}
+                >
+                  {lens === id && (
+                    <motion.span
+                      className="nav-lens"
+                      layoutId="nav-lens"
+                      transition={
+                        reduced
+                          ? { duration: 0 }
+                          : { type: 'spring', stiffness: 520, damping: 38, mass: 0.7 }
+                      }
+                    />
+                  )}
+                  {label}
+                </a>
+              ))}
+            </nav>
+          </LayoutGroup>
           <div className="ns-nav-actions">
             <DesktopUpdates />
             <AccountMenu />
@@ -105,7 +232,15 @@ export default function Landing() {
               aria-label={menu ? 'Fechar menu' : 'Abrir menu'}
               aria-expanded={menu}
             >
-              {menu ? <X size={21} /> : <Menu size={21} />}
+              <motion.span
+                key={menu ? 'x' : 'menu'}
+                initial={reduced ? false : { rotate: -90, scale: 0.6, opacity: 0 }}
+                animate={{ rotate: 0, scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                style={{ display: 'inline-flex' }}
+              >
+                {menu ? <X size={21} /> : <Menu size={21} />}
+              </motion.span>
             </button>
           </div>
         </div>
@@ -145,7 +280,12 @@ export default function Landing() {
             className="home-intents chrome-intents ns-wrap"
             aria-label="Escolha o que fazer com seu áudio"
           >
-            <Link href="/studio/automatico" data-intent="auto" aria-label="Limpar fala">
+            <Link
+              href="/studio/automatico"
+              data-intent="auto"
+              className="lg"
+              aria-label="Limpar fala"
+            >
               <AudioLines size={32} />
               <span>
                 <strong>Limpar fala</strong>
@@ -153,7 +293,12 @@ export default function Landing() {
               </span>
               <ArrowRight size={18} />
             </Link>
-            <Link href="/studio/isolar-voz" data-intent="vocals" aria-label="Isolar cantor">
+            <Link
+              href="/studio/isolar-voz"
+              data-intent="vocals"
+              className="lg"
+              aria-label="Isolar cantor"
+            >
               <Mic2 size={32} />
               <span>
                 <strong>Isolar cantor</strong>
@@ -161,7 +306,12 @@ export default function Landing() {
               </span>
               <ArrowRight size={18} />
             </Link>
-            <Link href="/studio/efeitos" data-intent="effects" aria-label="Criar efeitos">
+            <Link
+              href="/studio/efeitos"
+              data-intent="effects"
+              className="lg"
+              aria-label="Criar efeitos"
+            >
               <SlidersHorizontal size={32} />
               <span>
                 <strong>Criar efeitos</strong>
@@ -183,16 +333,16 @@ export default function Landing() {
         <section className="home-quick ns-wrap" id="produto">
           <h2>Do áudio ao resultado.</h2>
           <div id="como-funciona" className="home-quick-steps">
-            <p>
-              <Paperclip size={22} />
+            <p className="lg">
+              <StepArt kind="send" />
               <strong>1. Envie</strong> Sua voz, do celular ou computador.
             </p>
-            <p>
-              <Sparkles size={22} />
+            <p className="lg">
+              <StepArt kind="clean" />
               <strong>2. Melhore</strong> Limpe a voz e ajuste seu som.
             </p>
-            <p>
-              <Download size={22} />
+            <p className="lg">
+              <StepArt kind="export" />
               <strong>3. Baixe</strong> Compare e exporte em WAV ou MP3.
             </p>
           </div>
@@ -235,6 +385,7 @@ export default function Landing() {
         </div>
         <nav aria-label="Rodapé">
           <InstallApp />
+          <SoundToggle />
           <Link href="/apps">Aplicativos para Mac e Windows</Link>
           <Link href="/privacidade">Privacidade</Link>
           <Link href="/studio">

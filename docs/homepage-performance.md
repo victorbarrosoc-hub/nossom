@@ -18,6 +18,14 @@ O titular gostou do núcleo cromado, mas achou o deslocamento da imagem quase es
 - `components/ai-motion.tsx`: estados reutilizados no assistente, login e banner de processamento.
 - `app/styles/cinematic.css`: luz azul, materiais, contraste, tipografia e ajustes de viewport. Ele é importado depois dos estilos legados; confira a cascata antes de adicionar outra regra.
 
+### Camada Liquid Glass (site público)
+
+- `app/styles/liquid.css`, importado por último e restrito a `.chrome-site`: material `.lg` (preenchimento translúcido, borda de luz por máscara, reflexo que segue o ponteiro via variáveis CSS), cabeçalho em cápsula flutuante que encolhe com histerese de rolagem, linha de progresso por `animation-timeline: scroll()` quando suportado, folha de menu no mobile e planos em linha deslizante abaixo de 680 px.
+- `components/site-motion.tsx`: listeners delegados (rolagem, clique, ponteiro em `requestAnimationFrame`, IntersectionObserver das ilustrações). Nenhum estado React por frame ou por movimento do ponteiro.
+- A pílula da navegação usa `layoutId` do `motion` e muda apenas por hover/foco ou seção visível.
+- `lib/ui-sound.ts`: sons curtos sintetizados com Web Audio, sem arquivos, criados no primeiro gesto; o player de demonstração fica silencioso. Preferência em `localStorage` (`nossom:ui-sound`) e botão “Sons da interface” no rodapé. Não usar no estúdio, onde o usuário está ouvindo o próprio áudio.
+- Técnicas portadas do Carro do Freela (curvas `--ease`/`--spring`, pílula deslizante, folha com mola, SFX sintetizados com delegação). SOBEDESCE é referência de calma estilo Finder/Ajustes + ElevenLabs.
+
 Não remova a pausa/redução de movimento para tornar uma demo mais chamativa. Não introduza grandes blurs animados, WebGL obrigatório, remounts do estúdio ou renderizações React por frame.
 
 ## Verificação

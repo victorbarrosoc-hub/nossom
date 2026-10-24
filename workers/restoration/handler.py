@@ -98,7 +98,9 @@ def handler(job):
             download_parts(urls, source, size)
             # Decode in float, reserving over-zero headroom of float recordings.
             process = subprocess.run([
-                'ffmpeg', '-nostdin', '-v', 'error', '-i', str(source), '-vn',
+                # Uploaded bytes may not reference other files or network resources.
+                'ffmpeg', '-nostdin', '-v', 'error', '-protocol_whitelist', 'file',
+                '-i', str(source), '-vn',
                 '-t', '601', '-ac', str(channels), '-ar', '44100', '-f', 'f32le', 'pipe:1',
             ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=90, check=False)
             if process.returncode:

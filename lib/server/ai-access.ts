@@ -66,3 +66,17 @@ export function allowRequest(key: string, limit = 20, period = 3600000) {
   return entry.count <= limit;
 }
 export const privateHeaders = { 'Cache-Control': 'no-store' };
+// Our own errors carry Portuguese messages for the person; runtime and network errors
+// (fetch failed, timeouts, aborts) stay internal and become the fallback.
+export function publicError(error: unknown, fallback: string) {
+  if (
+    !(error instanceof Error) ||
+    error instanceof TypeError ||
+    error instanceof SyntaxError ||
+    error instanceof RangeError ||
+    error.name === 'AbortError' ||
+    error.name === 'TimeoutError'
+  )
+    return fallback;
+  return error.message;
+}

@@ -1,4 +1,10 @@
-import { allowRequest, authorized, privateHeaders, sameOrigin } from '@/lib/server/ai-access';
+import {
+  allowRequest,
+  authorized,
+  privateHeaders,
+  publicError,
+  sameOrigin,
+} from '@/lib/server/ai-access';
 import { currentAccount } from '@/lib/server/account';
 import {
   agentConnection,
@@ -45,7 +51,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return Response.json(
-      { error: error instanceof Error ? error.message : 'Não foi possível obter a sugestão.' },
+      { error: publicError(error, 'Não foi possível obter a sugestão.') },
       { status: 502, headers: privateHeaders },
     );
   }
