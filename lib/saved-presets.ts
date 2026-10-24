@@ -1,6 +1,7 @@
 import {
   operations,
   deliveryPresets,
+  studioVoice,
   type Operation,
   type DenoiseMode,
   type FilterSettings,
@@ -53,6 +54,7 @@ export function validRecipe(value: unknown): value is SavedRecipe {
   if (
     s.masterPreset &&
     s.masterPreset !== 'broadcast' &&
+    s.masterPreset !== studioVoice.id &&
     !deliveryPresets.some((p) => p.id === s.masterPreset)
   )
     return false;

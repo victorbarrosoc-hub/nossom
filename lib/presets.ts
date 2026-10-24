@@ -155,6 +155,26 @@ export const deliveryPresets = [
     note: 'Referência de −24 LKFS para broadcast. Confirme requisitos de medição, canais, loudness e pico com a emissora.',
   },
 ] as const;
+/** Close-mic finishing for a restored voice: rumble cut, less box, presence, gentle de-ess and
+ * compression, then two-pass loudness. Fixed and conservative; not a copy of any other product. */
+export const studioVoice = {
+  id: 'studio-voice',
+  label: 'Voz de estúdio',
+  lufs: -16,
+  peak: -1,
+  version: 'nossom-studio-voice-1',
+} as const;
+export function studioVoiceChain(strength: number) {
+  const s = Math.min(1, Math.max(0, strength));
+  return [
+    'highpass=f=75:p=2',
+    `equalizer=f=250:t=q:w=0.9:g=${(-2.5 * s).toFixed(2)}`,
+    `equalizer=f=3200:t=q:w=0.8:g=${(2.5 * s).toFixed(2)}`,
+    `equalizer=f=10000:t=h:w=0.7:g=${(1.5 * s).toFixed(2)}`,
+    `deesser=i=${(0.35 * s).toFixed(3)}:m=0.5:f=0.5`,
+    `acompressor=threshold=0.1:ratio=${(1 + 1.5 * s).toFixed(2)}:attack=12:release=200:makeup=1`,
+  ].join(',');
+}
 export function treatmentFilter(
   operation: Operation,
   intensity: Intensity,
@@ -194,6 +214,8 @@ export function treatmentFilter(
     case 'level':
       return `dynaudnorm=f=250:g=15:p=0.8:m=${(1 + strength * 7).toFixed(2)}:s=5,acompressor=threshold=0.12:ratio=${ratio}:attack=10:release=220:makeup=1,alimiter=limit=0.8913:level=0:latency=1`;
     case 'master':
+      if (settings.masterPreset === studioVoice.id)
+        return `${studioVoiceChain(strength)},loudnorm=I=${finite(target, studioVoice.lufs, -30, -10)}:TP=${finite(peak, studioVoice.peak, -6, -1)}:LRA=${Math.round(14 - strength * 7)}:print_format=json`;
       return `${settings.eq ? equalizerFilter(settings.eq, settings.highpass, strength) + ',' : ''}${settings.compression ? `acompressor=threshold=0.12:ratio=${ratio}:attack=15:release=160:makeup=1,` : ''}loudnorm=I=${finite(target, -16, -30, -10)}:TP=${finite(peak, -1, -6, -1)}:LRA=${Math.round(14 - strength * 10)}:print_format=json`;
   }
 }

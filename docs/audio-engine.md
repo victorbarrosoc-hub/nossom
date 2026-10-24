@@ -8,6 +8,14 @@ DeepFilterNet3 processa PCM float a 48 kHz em quadros de 480 amostras. O modelo 
 
 ## Padrão automático e preservação da voz
 
+> Estado atual: `/studio/automatico` envia o original ao worker remoto (Resemble Enhance D, `resemble-d-v1`). A cadeia local descrita abaixo (DeepFilterNet + Transmissão) continua implementada no motor, mas não é o caminho acionado pela página automática. Ver [architecture.md](architecture.md).
+
+## Voz de estúdio (acabamento local depois da restauração)
+
+Preset de finalização `studio-voice` (`lib/presets.ts`, versão `nossom-studio-voice-1`), oferecido no painel de acabamento depois do D e em Preparar entrega. Roda no navegador, não consome minutos GPU e cria uma nova versão; o resultado bruto do D fica intacto.
+
+Cadeia, escalada pela intensidade: passa-altas 75 Hz (12 dB/oit.), −2,5 dB em 250 Hz, +2,5 dB em 3,2 kHz, +1,5 dB de prateleira em 10 kHz, de-esser leve, compressor 2,5:1 (ataque 12 ms, liberação 200 ms) e normalização em duas passagens para −16 LUFS / −1 dBTP (alvo ajustável). Valores fixos e conservadores, escolhidos para voz próxima e clara; não reproduzem o algoritmo de nenhum produto. A qualidade perceptual em gravações reais ainda precisa de audição cega.
+
 O padrão anterior aplicava a saída neural diretamente, a 100% e com supressão máxima de 60 dB. No par real enviado pelo usuário, o resultado ficou mais baixo e dois canais quase idênticos ficaram menos correlacionados. As medições de regressão iniciais em fala sintética não eram suficientes para validar a qualidade perceptual.
 
 Natural 3 usa a estimativa neural para calcular ganhos espectrais; a reconstrução mantém a fase do sinal original. FFT 1.024, hop 512, janela de raiz de Hann e sobreposição com soma unitária. O ganho é comum aos canais. A saída é escrita em blocos já consumidos para evitar uma terceira cópia integral do áudio no worker. Ganho unitário reconstrói inclusive as bordas; há teste de impulsos no primeiro e último samples.
