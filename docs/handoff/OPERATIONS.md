@@ -65,6 +65,7 @@ Para um projeto novo, a ordem é:
 1. `supabase/migrations/202610220001_accounts_and_weekly_usage.sql` — base Auth/cota.
 2. `supabase/migrations/202610230001_cloud_restoration.sql` — jobs/bucket privado.
 3. `supabase/migrations/202610230002_plans_and_admin.sql` — planos/minutos mensais/ADM.
+4. `supabase/migrations/202610240001_ai_allowance_and_orphan_sweep.sql` — limite diário de 40 conversas novas do assistente por conta (ADM sem limite), varredura diária de objetos de jobs liberados/falhos nos últimos 3 dias e no máximo 40 envios GPU por conta em 24 h. O app tolera a ausência dessa migração (mantém o limite por instância e pula a varredura); aplique-a para ativar as proteções.
 
 `public/setup/cloud-restoration.sql` combina as duas últimas; depende da base. A migração inicial se chama semanal por motivo histórico, mas a aplicação atual usa planos **mensais**. Não implementar de novo 10 tratamentos por semana.
 
