@@ -248,7 +248,7 @@ test('pending audio from another browser can be recovered and resumed without su
     .locator('input[type=file]')
     .first()
     .setInputFiles({ name: 'outro.wav', mimeType: 'audio/wav', buffer: source });
-  await expect(page.getByText('Resultado pronto para salvar', { exact: true })).toBeVisible();
+  await expect(page.getByText('Resultado pronto', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Recuperar áudio deste pedido' }).click();
   await expect(
     page.getByRole('button', { name: 'Retomar restauração', exact: true }),

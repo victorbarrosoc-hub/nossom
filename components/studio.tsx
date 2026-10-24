@@ -1968,7 +1968,15 @@ export default function Studio({ account }: { account: Account }) {
                     <div className="cloud-restoration-note">
                       <strong>
                         {pendingJob
-                          ? 'Seu pedido em andamento'
+                          ? (
+                              {
+                                uploading: 'Envio incompleto',
+                                submitting: 'Confirmando envio',
+                                queued: 'Na fila',
+                                running: 'Restaurando',
+                                completed: 'Resultado pronto',
+                              } as Record<string, string>
+                            )[pendingJob.status] || 'Em andamento'
                           : cloudReady === null
                             ? 'Preparando…'
                             : cloudReady
@@ -1977,11 +1985,13 @@ export default function Studio({ account }: { account: Account }) {
                                 : 'Pronto para melhorar sua voz'
                               : 'A melhoria com IA está temporariamente indisponível'}
                       </strong>
-                      <p>
-                        {operation === 'vocals'
-                          ? 'Enviamos a música para separar os vocais. O original continua salvo para comparação. A separação pode deixar vestígios dos instrumentos.'
-                          : 'Seu áudio é enviado com segurança para o tratamento. O original fica guardado para você comparar o resultado.'}
-                      </p>
+                      {!pendingJob && (
+                        <p>
+                          {operation === 'vocals'
+                            ? 'Uma cópia vai para a IA. Pode sobrar um pouco dos instrumentos.'
+                            : 'Uma cópia vai para a IA. Seu original fica salvo.'}
+                        </p>
+                      )}
                       {!cloudReady && operation !== 'vocals' && (
                         <button
                           className="text-link"
@@ -1993,46 +2003,32 @@ export default function Studio({ account }: { account: Account }) {
                       )}
                       {pendingJob && (
                         <div className="cloud-pending">
-                          <p>
-                            <strong>
-                              {(
-                                {
-                                  uploading: 'Envio incompleto',
-                                  submitting: 'Aguardando confirmação do envio',
-                                  queued: 'Na fila de restauração',
-                                  running: 'Restaurando seu áudio',
-                                  completed: 'Resultado pronto para salvar',
-                                } as Record<string, string>
-                              )[pendingJob.status] || 'Pedido em andamento'}
-                            </strong>
-                            {pendingJob.createdAt && (
-                              <>
-                                {' '}
-                                · Enviado em{' '}
-                                {new Date(pendingJob.createdAt).toLocaleString('pt-BR', {
-                                  timeZone: 'America/Fortaleza',
-                                  dateStyle: 'short',
-                                  timeStyle: 'short',
-                                })}
-                              </>
-                            )}
-                            {pendingJob.duration && (
-                              <>
-                                {' '}
-                                · {Math.floor(pendingJob.duration / 60)}min{' '}
-                                {Math.round(pendingJob.duration % 60)}s
-                              </>
-                            )}
-                          </p>
-                          <p>
-                            {pendingJob.projectId === project.id
-                              ? 'Este é o áudio do pedido. Clique em Retomar restauração.'
-                              : pendingJob.projectId
-                                ? 'O pedido está vinculado a outro projeto neste dispositivo.'
-                                : 'Este pedido foi iniciado em outro navegador ou no app. Recupere o original aqui para acompanhar e salvar o resultado.'}
-                            {pendingJob.status === 'submitting' &&
-                              ' Ainda não recebemos confirmação de que o tratamento começou.'}
-                          </p>
+                          {(pendingJob.createdAt || pendingJob.duration) && (
+                            <p className="cloud-pending-meta">
+                              {[
+                                pendingJob.createdAt &&
+                                  new Date(pendingJob.createdAt).toLocaleString('pt-BR', {
+                                    timeZone: 'America/Fortaleza',
+                                    dateStyle: 'short',
+                                    timeStyle: 'short',
+                                  }),
+                                pendingJob.duration &&
+                                  `${Math.floor(pendingJob.duration / 60)}min ${Math.round(pendingJob.duration % 60)}s`,
+                              ]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
+                          )}
+                          {pendingJob.projectId !== project.id && (
+                            <p>
+                              {pendingJob.projectId
+                                ? 'Este pedido é de outro projeto.'
+                                : 'Pedido iniciado em outro aparelho. Recupere o original para acompanhar.'}
+                            </p>
+                          )}
+                          {pendingJob.status === 'submitting' && (
+                            <p>Ainda sem confirmação de que o tratamento começou.</p>
+                          )}
                           {pendingJob.projectId && pendingJob.projectId !== project.id && (
                             <StudioLink
                               className="text-link"
@@ -2059,45 +2055,44 @@ export default function Studio({ account }: { account: Account }) {
                               ainda não foi enviado por completo.
                             </p>
                           )}
-                          <button
-                            className="text-link"
-                            disabled={!!busy}
-                            onClick={async () => {
-                              try {
-                                const cancellation = await cancelCloudJob(pendingJob.id);
-                                if (cancellation.status === 'submitting')
-                                  throw new Error(
-                                    'O envio ainda está sem confirmação. Não foi possível confirmar o cancelamento; verifique o andamento novamente.',
-                                  );
-                                const r = await fetch(`/api/audio/jobs?id=${pendingJob.id}`, {
-                                  cache: 'no-store',
-                                });
-                                const data = await r.json();
-                                if (['failed', 'cancelled', 'completed'].includes(data.status))
-                                  await releaseCloudJob(pendingJob.id);
-                                await refreshCloud();
-                                await refreshUsage();
-                                notify(
-                                  'Cancelamento solicitado. Seu áudio original continua salvo.',
-                                );
-                              } catch (error) {
-                                setError(
-                                  error instanceof Error
-                                    ? error.message
-                                    : 'Não foi possível confirmar o cancelamento. Tente novamente.',
-                                );
-                              }
-                            }}
-                          >
-                            Cancelar restauração
-                          </button>
-                          <button
-                            className="text-link"
-                            disabled={!!busy}
-                            onClick={() => void refreshCloud()}
-                          >
-                            Verificar andamento
-                          </button>
+                          {!busy && (
+                            <div className="cloud-pending-actions">
+                              <button
+                                className="text-link"
+                                onClick={async () => {
+                                  try {
+                                    const cancellation = await cancelCloudJob(pendingJob.id);
+                                    if (cancellation.status === 'submitting')
+                                      throw new Error(
+                                        'O envio ainda está sem confirmação. Não foi possível confirmar o cancelamento; verifique o andamento novamente.',
+                                      );
+                                    const r = await fetch(`/api/audio/jobs?id=${pendingJob.id}`, {
+                                      cache: 'no-store',
+                                    });
+                                    const data = await r.json();
+                                    if (['failed', 'cancelled', 'completed'].includes(data.status))
+                                      await releaseCloudJob(pendingJob.id);
+                                    await refreshCloud();
+                                    await refreshUsage();
+                                    notify(
+                                      'Cancelamento solicitado. Seu áudio original continua salvo.',
+                                    );
+                                  } catch (error) {
+                                    setError(
+                                      error instanceof Error
+                                        ? error.message
+                                        : 'Não foi possível confirmar o cancelamento. Tente novamente.',
+                                    );
+                                  }
+                                }}
+                              >
+                                Cancelar
+                              </button>
+                              <button className="text-link" onClick={() => void refreshCloud()}>
+                                Atualizar
+                              </button>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -2716,17 +2711,16 @@ export default function Studio({ account }: { account: Account }) {
                     {!busy && <ArrowRight size={15} />}
                   </button>
                   {!usage?.unlimited && (
-                    <p className="usage-apply-hint">
-                      Este tratamento usa seus minutos de IA (mínimo de 1 minuto). Outros ajustes e
-                      downloads não descontam minutos.
-                    </p>
+                    <p className="usage-apply-hint">Usa seus minutos de IA (mínimo 1 min).</p>
                   )}
-                  <span className="treatment-footnote">
-                    <ShieldCheck size={12} />{' '}
-                    {cloudOperation || autoEnabled
-                      ? 'Sempre a partir do original. Suas versões continuam salvas.'
-                      : 'Uma nova versão. Seu original intacto.'}
-                  </span>
+                  {!cloudOperation && (
+                    <span className="treatment-footnote">
+                      <ShieldCheck size={12} />{' '}
+                      {autoEnabled
+                        ? 'Sempre a partir do original. Suas versões continuam salvas.'
+                        : 'Uma nova versão. Seu original intacto.'}
+                    </span>
+                  )}
                   <div className="panel-help">
                     <AudioLines size={21} />
                     <h3>Não sabe por onde começar?</h3>

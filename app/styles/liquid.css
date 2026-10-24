@@ -561,3 +561,29 @@
 .chrome-site .sound-toggle[aria-pressed='false'] {
   opacity: 0.7;
 }
+
+/* Compact cloud status: one line of meta and inline actions. */
+.cloud-pending-meta {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-3);
+}
+.cloud-pending-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 6px;
+}
+.cloud-pending-actions .text-link {
+  min-height: 36px;
+  padding: 0;
+}
+.cloud-restoration-note .cloud-pending {
+  border-top: 0;
+  margin-top: 4px;
+  padding-top: 0;
+}
+.cloud-pending .cloud-pending-actions .text-link {
+  display: inline-flex;
+  margin-top: 0;
+}
