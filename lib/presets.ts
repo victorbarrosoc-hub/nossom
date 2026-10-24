@@ -61,7 +61,7 @@ export const operations: { id: Operation; label: string; description: string }[]
   {
     id: 'auto',
     label: 'Restaurar com IA',
-    description: 'Deixe sua voz mais limpa e clara. Depois, ajuste o som do seu jeito.',
+    description: 'Voz mais limpa e clara, pronta para ajustar.',
   },
   {
     id: 'denoise',
