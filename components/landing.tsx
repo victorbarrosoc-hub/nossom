@@ -4,7 +4,8 @@ import { useState, type ReactNode } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import {
   AudioLines,
-  Layers,
+  Mic2,
+  SlidersHorizontal,
   ArrowRight,
   ArrowUpRight,
   Play,
@@ -18,6 +19,7 @@ import {
   Paperclip,
 } from 'lucide-react';
 import CinematicRibbon from './cinematic-ribbon';
+import SignalField from './signal-field';
 import { Brand } from './brand';
 import DemoPlayer from './demo-player';
 import PlanCards from './plan-cards';
@@ -109,6 +111,7 @@ export default function Landing() {
         </div>
       </header>
       <main id="conteudo">
+        <SignalField />
         <section className="home-hero">
           <div className="home-hero-atmosphere" aria-hidden="true" />
           <div className="ns-wrap home-hero-grid">
@@ -142,17 +145,29 @@ export default function Landing() {
             className="home-intents chrome-intents ns-wrap"
             aria-label="Escolha o que fazer com seu áudio"
           >
-            <Link href="/studio/automatico" data-intent="auto">
-              <Sparkles size={18} />
-              Limpar fala
+            <Link href="/studio/automatico" data-intent="auto" aria-label="Limpar fala">
+              <AudioLines size={32} />
+              <span>
+                <strong>Limpar fala</strong>
+                <small>Reduza ruídos da gravação</small>
+              </span>
+              <ArrowRight size={18} />
             </Link>
-            <Link href="/studio/isolar-voz" data-intent="vocals">
-              <AudioLines size={18} />
-              Isolar cantor
+            <Link href="/studio/isolar-voz" data-intent="vocals" aria-label="Isolar cantor">
+              <Mic2 size={32} />
+              <span>
+                <strong>Isolar cantor</strong>
+                <small>Separe a voz dos instrumentos</small>
+              </span>
+              <ArrowRight size={18} />
             </Link>
-            <Link href="/studio/efeitos" data-intent="effects">
-              <Layers size={18} />
-              Criar efeitos
+            <Link href="/studio/efeitos" data-intent="effects" aria-label="Criar efeitos">
+              <SlidersHorizontal size={32} />
+              <span>
+                <strong>Criar efeitos</strong>
+                <small>Transforme seu som</small>
+              </span>
+              <ArrowRight size={18} />
             </Link>
           </nav>
         </section>

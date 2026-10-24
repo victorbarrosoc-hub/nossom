@@ -27,7 +27,7 @@ export function appIcon(size: number) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: 'radial-gradient(circle at 65% 20%, #253b53, #080e16 75%)',
+        background: 'radial-gradient(circle at 65% 20%, #267cae, #05142b 75%)',
       }}
     >
       <BrandMark width={size * 0.68} height={size * 0.35} />

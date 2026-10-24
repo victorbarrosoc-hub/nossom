@@ -61,7 +61,7 @@ test('manifest, Apple icon and social metadata serve real correctly sized images
   );
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute(
     'href',
-    '/pwa/icon-180.png?v=3',
+    '/pwa/icon-180.png?v=4',
   );
   await expect(page.locator('meta[property="og:image"]')).toHaveAttribute(
     'content',
