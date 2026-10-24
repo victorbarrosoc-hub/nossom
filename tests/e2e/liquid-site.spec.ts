@@ -1,4 +1,5 @@
-import { test, expect } from './fixtures';
+// Public homepage only: no account is needed.
+import { test, expect } from '@playwright/test';
 
 test('glass navigation follows the pointer and the section, shrinks on scroll and keeps interface sounds optional', async ({
   page,
