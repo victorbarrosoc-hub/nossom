@@ -143,7 +143,7 @@ test('email confirmation does not issue a login cookie and an expired session re
       });
     };
     const refreshed = await refreshAccount(encodeSession(session));
-    assert.ok(refreshed);
+    assert.ok(refreshed && refreshed !== 'unavailable');
     assert.equal(decodeSession(refreshed.token)?.access, 'new-access');
     assert.equal(
       accountSessionOwner(
@@ -176,4 +176,32 @@ test('input validation rejects unsafe returns and weak credentials before provid
   ])
     assert.equal(safeReturnPath(value), '/studio');
   assert.equal(safeReturnPath('/studio/efeitos?project=123'), '/studio/efeitos?project=123');
+});
+test('a transient Auth outage keeps the session while a rejected refresh ends it', async () => {
+  const restore = authEnvironment(),
+    oldFetch = globalThis.fetch;
+  try {
+    const session = sessionFromProvider({
+      user: testUser,
+      access_token: 'old-access',
+      refresh_token: 'old-refresh',
+      expires_in: 3600,
+    });
+    session.expires = Date.now() - 1000;
+    const token = encodeSession(session);
+    globalThis.fetch = async () => {
+      throw new TypeError('fetch failed');
+    };
+    assert.equal(await refreshAccount(token), 'unavailable');
+    globalThis.fetch = async () => Response.json({ message: 'down' }, { status: 503 });
+    assert.equal(await refreshAccount(token), 'unavailable');
+    globalThis.fetch = async () => Response.json({ error_code: 'too_many' }, { status: 429 });
+    assert.equal(await refreshAccount(token), 'unavailable');
+    globalThis.fetch = async () =>
+      Response.json({ error_code: 'refresh_token_not_found' }, { status: 400 });
+    assert.equal(await refreshAccount(token), null);
+  } finally {
+    globalThis.fetch = oldFetch;
+    restore();
+  }
 });

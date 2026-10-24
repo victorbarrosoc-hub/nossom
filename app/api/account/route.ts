@@ -12,7 +12,13 @@ import {
   currentAccount,
   sessionCookie,
 } from '@/lib/server/account';
-import { allowRequest, privateHeaders, sameOrigin, requestOrigin } from '@/lib/server/ai-access';
+import {
+  allowRequest,
+  privateHeaders,
+  publicError,
+  sameOrigin,
+  requestOrigin,
+} from '@/lib/server/ai-access';
 import { supabase, SupabaseError } from '@/lib/server/supabase';
 import { restorationAvailable } from '@/lib/server/restoration';
 export const runtime = 'nodejs';
@@ -108,7 +114,7 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     return Response.json(
-      { error: error instanceof Error ? error.message : 'Não foi possível entrar.' },
+      { error: publicError(error, 'Não foi possível entrar.') },
       { status: 400, headers: privateHeaders },
     );
   }
@@ -222,9 +228,7 @@ export async function PATCH(request: Request) {
         error:
           error instanceof SupabaseError
             ? 'Não foi possível alterar os dados. Confira sua conta e tente novamente.'
-            : error instanceof Error
-              ? error.message
-              : 'Não foi possível salvar.',
+            : publicError(error, 'Não foi possível salvar.'),
       },
       { status: 400, headers: privateHeaders },
     );

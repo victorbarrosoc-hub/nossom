@@ -1,0 +1,560 @@
+/* Liquid glass layer: translucent material, light rims and a pointer-led specular.
+   Loaded last; scoped to the public site so the studio keeps its own surfaces. */
+.chrome-site {
+  --lg-rim: linear-gradient(
+    140deg,
+    rgb(255 255 255 / 52%),
+    rgb(255 255 255 / 6%) 32%,
+    rgb(150 205 255 / 10%) 62%,
+    rgb(220 238 255 / 36%)
+  );
+  --lg-fill: linear-gradient(
+    165deg,
+    rgb(220 236 255 / 11%),
+    rgb(150 190 240 / 4%) 42%,
+    rgb(90 160 255 / 6%)
+  );
+  --lg-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 20%), inset 0 -10px 24px rgb(120 180 255 / 5%),
+    0 22px 60px rgb(0 6 20 / 42%);
+}
+.chrome-site .lg {
+  position: relative;
+  isolation: isolate;
+  background: var(--lg-fill);
+  border: 0;
+  box-shadow: var(--lg-shadow);
+  backdrop-filter: blur(18px) saturate(170%);
+  -webkit-backdrop-filter: blur(18px) saturate(170%);
+}
+.chrome-site .lg::before,
+.chrome-site .lg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.chrome-site .lg::before {
+  z-index: 1;
+  padding: 1px;
+  background: var(--lg-rim);
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  -webkit-mask-composite: xor;
+}
+.chrome-site .lg::after {
+  z-index: -1;
+  background: radial-gradient(
+    320px circle at var(--mx, 22%) var(--my, -30%),
+    rgb(225 242 255 / 15%),
+    transparent 62%
+  );
+  opacity: 0.55;
+  transition: opacity 0.35s var(--ease);
+}
+.chrome-site .lg:hover::after,
+.chrome-site .lg.is-lit::after {
+  opacity: 1;
+}
+
+/* Floating capsule navigation, in the spirit of the Apple Music tab bar. */
+.chrome-site .ns-header {
+  top: 10px;
+  padding-top: 10px;
+  margin-top: -10px;
+  background: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border: 0;
+  pointer-events: none;
+  /* The capsule floats over the hero light instead of sitting on a dark band. */
+  margin-bottom: -80px;
+}
+.chrome-site main {
+  padding-top: 80px;
+}
+.chrome-site .ns-nav {
+  pointer-events: auto;
+  position: relative;
+  height: 60px;
+  padding: 0 8px 0 22px;
+  border-radius: 999px;
+  width: min(1180px, calc(100% - 40px));
+  transition:
+    width 0.5s var(--spring),
+    height 0.5s var(--spring),
+    background 0.3s var(--ease);
+}
+.chrome-site .ns-header.is-scrolled .ns-nav {
+  width: min(980px, calc(100% - 40px));
+  height: 54px;
+  background: var(--lg-fill), rgb(6 18 34 / 62%);
+}
+.chrome-site .ns-nav > a:first-child {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+.chrome-site .ns-nav nav {
+  position: relative;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 999px;
+}
+.chrome-site .ns-nav nav a {
+  position: relative;
+  z-index: 0;
+  padding: 9px 16px;
+  border-radius: 999px;
+  color: #c9d8e8;
+  font-weight: 560;
+}
+.chrome-site .ns-nav nav a:hover,
+.chrome-site .ns-nav nav a[aria-current='true'] {
+  color: #fff;
+}
+.chrome-site .nav-lens {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: 999px;
+  background:
+    radial-gradient(ellipse at 50% 0, rgb(255 255 255 / 26%), transparent 70%),
+    rgb(170 214 255 / 13%);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 35%),
+    inset 0 -1px 0 rgb(255 255 255 / 6%),
+    0 4px 16px rgb(60 150 255 / 18%);
+}
+.chrome-site .ns-nav-actions {
+  gap: 10px;
+}
+.chrome-site .ns-nav-actions .button.primary.small {
+  border-radius: 999px;
+  min-height: 42px;
+  padding-inline: 18px;
+}
+/* Scroll progress as a thin light line along the capsule (no script). */
+.chrome-site .nav-progress {
+  position: absolute;
+  left: 26px;
+  right: 26px;
+  bottom: 0;
+  height: 1px;
+  transform-origin: left;
+  transform: scaleX(0);
+  background: linear-gradient(90deg, transparent, #9fdcff, #ffffff 60%, transparent);
+  opacity: 0;
+  pointer-events: none;
+}
+@supports (animation-timeline: scroll()) {
+  .chrome-site .nav-progress {
+    opacity: 0.8;
+    animation: nav-progress linear both;
+    animation-timeline: scroll(root);
+  }
+}
+@keyframes nav-progress {
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* Buttons: a pressed glass feel. */
+.chrome-site .button {
+  transition:
+    transform 0.25s var(--spring),
+    box-shadow 0.25s var(--ease),
+    background 0.25s var(--ease);
+}
+.chrome-site .button:active,
+.chrome-site .chrome-intents a:active,
+.chrome-site .home-listen-link:active {
+  transform: scale(0.97);
+}
+.chrome-site .button.primary {
+  background:
+    radial-gradient(ellipse 80% 120% at 30% 0, #ffffff, transparent 70%),
+    linear-gradient(115deg, #f4f9ff, #bcd7f0 55%, #e8f3ff);
+  box-shadow:
+    inset 0 1px #fff,
+    inset 0 -2px 6px rgb(90 150 210 / 25%),
+    0 8px 30px rgb(110 190 255 / 22%);
+}
+.chrome-site .button.primary:hover {
+  box-shadow:
+    inset 0 1px #fff,
+    inset 0 -2px 6px rgb(90 150 210 / 25%),
+    0 10px 38px rgb(120 200 255 / 38%);
+}
+.chrome-site .button.secondary {
+  border-radius: 999px;
+}
+
+/* Intent cards become glass tiles with a lit icon well. */
+.chrome-site .chrome-intents a.lg {
+  min-height: 74px;
+  border-radius: 22px;
+  background: var(--lg-fill);
+  padding-inline: 18px;
+  transition:
+    transform 0.35s var(--spring),
+    box-shadow 0.35s var(--ease);
+}
+.chrome-site .chrome-intents a.lg:hover {
+  transform: translateY(-3px);
+  background: var(--lg-fill);
+  box-shadow:
+    var(--lg-shadow),
+    0 0 0 1px rgb(160 215 255 / 18%),
+    0 18px 48px rgb(70 160 255 / 16%);
+}
+.chrome-site .chrome-intents a.lg > svg:first-child {
+  box-sizing: content-box;
+  padding: 9px;
+  width: 26px;
+  height: 26px;
+  border-radius: 14px;
+  color: #e8f6ff;
+  background:
+    radial-gradient(ellipse at 40% 0, rgb(255 255 255 / 40%), transparent 70%),
+    linear-gradient(150deg, #5ab4ff, #2f6fd6);
+  box-shadow:
+    inset 0 1px rgb(255 255 255 / 45%),
+    0 6px 18px rgb(50 140 255 / 35%);
+}
+.chrome-site .chrome-intents a.lg[data-intent='vocals'] > svg:first-child {
+  background:
+    radial-gradient(ellipse at 40% 0, rgb(255 255 255 / 45%), transparent 70%),
+    linear-gradient(150deg, #b9c7d6, #5f7389);
+}
+.chrome-site .chrome-intents a.lg[data-intent='effects'] > svg:first-child {
+  background:
+    radial-gradient(ellipse at 40% 0, rgb(255 255 255 / 40%), transparent 70%),
+    linear-gradient(150deg, #7fd8ff, #2e8fc6);
+}
+.chrome-site .chrome-intents a.lg > svg:last-child {
+  transition: transform 0.35s var(--spring);
+}
+.chrome-site .chrome-intents a.lg:hover > svg:last-child {
+  transform: translateX(3px);
+}
+
+/* Demo player sits on glass. */
+.chrome-site .voice-player.lg {
+  border-radius: 28px;
+  background:
+    radial-gradient(ellipse at 80% 0, rgb(90 170 255 / 14%), transparent 60%),
+    linear-gradient(125deg, rgb(13 43 71 / 55%), rgb(7 19 33 / 72%) 75%);
+}
+
+/* Continuous atmosphere below the fold, so the page never drops to flat black. */
+.chrome-site main::after {
+  content: '';
+  position: absolute;
+  z-index: -3;
+  inset: 1000px 0 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 420px at 12% 18%, rgb(40 120 220 / 22%), transparent 70%),
+    radial-gradient(ellipse 45% 380px at 92% 42%, rgb(110 190 255 / 16%), transparent 70%),
+    radial-gradient(ellipse 60% 460px at 40% 72%, rgb(48 98 190 / 20%), transparent 70%),
+    radial-gradient(ellipse 50% 300px at 85% 96%, rgb(170 210 245 / 10%), transparent 70%);
+}
+
+/* Steps: three glass tiles with a small animated illustration each. */
+.chrome-site .home-quick {
+  text-align: center;
+}
+.chrome-site .home-quick h2 {
+  font-size: clamp(30px, 3.4vw, 44px);
+  letter-spacing: -0.045em;
+  font-weight: 650;
+}
+.chrome-site .home-quick-steps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-block: 26px 28px;
+}
+.chrome-site .home-quick-steps > p.lg {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 6px;
+  margin: 0;
+  padding: 22px 18px 20px;
+  border-radius: 24px;
+  color: #b9c9da;
+  font-size: 14px;
+  text-align: center;
+}
+.chrome-site .home-quick-steps > p.lg strong {
+  display: block;
+  color: #f4f9ff;
+  font-size: 18px;
+  font-weight: 650;
+}
+.step-art {
+  display: block;
+  width: 100%;
+  max-width: 190px;
+  height: 56px;
+  margin-bottom: 6px;
+}
+.step-art .bar {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: step-bar 1.8s var(--ease) infinite alternate;
+  animation-play-state: paused;
+}
+.step-art .chip {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: step-float 2.6s var(--ease) infinite alternate;
+  animation-play-state: paused;
+}
+.step-art .arrow {
+  animation: step-drop 1.8s var(--ease) infinite;
+  animation-play-state: paused;
+}
+.home-quick.is-visible .step-art * {
+  animation-play-state: running;
+}
+@keyframes step-bar {
+  from {
+    transform: scaleY(var(--from, 1));
+  }
+  to {
+    transform: scaleY(var(--to, 0.4));
+  }
+}
+@keyframes step-float {
+  from {
+    transform: translateY(3px);
+  }
+  to {
+    transform: translateY(-3px);
+  }
+}
+@keyframes step-drop {
+  0% {
+    transform: translateY(-6px);
+    opacity: 0.35;
+  }
+  35%,
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(6px);
+    opacity: 0.35;
+  }
+}
+
+/* Plans: glass cards; the featured plan glows. */
+.chrome-site .plans-intro h2 {
+  font-size: clamp(30px, 3.4vw, 44px);
+  letter-spacing: -0.045em;
+  font-weight: 650;
+}
+.chrome-site .plan-choice.lg {
+  border-radius: 28px;
+  background: var(--lg-fill);
+  transition:
+    transform 0.4s var(--spring),
+    box-shadow 0.4s var(--ease);
+}
+.chrome-site .plan-choice.lg:hover {
+  transform: translateY(-4px);
+}
+.chrome-site .plan-choice.lg.featured {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgb(110 195 255 / 26%), transparent 62%), var(--lg-fill);
+  box-shadow:
+    var(--lg-shadow),
+    0 0 0 1px rgb(150 210 255 / 22%),
+    0 24px 70px rgb(50 140 255 / 20%);
+}
+.chrome-site .plan-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  color: #071a2e;
+  background: linear-gradient(130deg, #e3f6ff, #8fd2ff);
+}
+.chrome-site .plans-terms {
+  max-width: 760px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #9fb2c6;
+}
+
+/* FAQ: glass rows that open with a short settle. */
+.chrome-site .ns-faq-item {
+  border-color: rgb(190 220 255 / 12%);
+}
+.chrome-site .ns-faq-item button {
+  min-height: 56px;
+  font-weight: 560;
+}
+.chrome-site .ns-faq-item button svg {
+  transition: transform 0.35s var(--spring);
+}
+.chrome-site .ns-faq-item button[aria-expanded='true'] svg {
+  transform: rotate(180deg);
+}
+.chrome-site .ns-faq-item > div:not([hidden]) p {
+  animation: faq-open 0.4s var(--ease) both;
+}
+@keyframes faq-open {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* Mobile: the menu becomes a glass sheet and plans become a swipeable row. */
+@media (max-width: 800px) {
+  .chrome-site .ns-nav {
+    width: calc(100% - 24px);
+    height: 56px;
+    padding-left: 16px;
+  }
+  .chrome-site .ns-header.is-scrolled .ns-nav {
+    width: calc(100% - 24px);
+    height: 52px;
+  }
+  .chrome-site .ns-nav nav.open {
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    gap: 4px;
+    padding: 10px;
+    border-radius: 26px;
+    background: var(--lg-fill), rgb(7 20 37 / 97%);
+    backdrop-filter: blur(24px) saturate(170%);
+    -webkit-backdrop-filter: blur(24px) saturate(170%);
+    border: 1px solid rgb(190 225 255 / 18%);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 18%),
+      0 24px 60px rgb(0 6 20 / 55%);
+    transform-origin: top right;
+    animation: sheet-in 0.42s var(--spring) both;
+  }
+  .chrome-site .ns-nav nav.open a {
+    width: 100%;
+    padding: 14px 16px;
+    font-size: 17px;
+    font-weight: 620;
+    border-radius: 18px;
+    animation: sheet-item 0.4s var(--spring) both;
+  }
+  .chrome-site .ns-nav nav.open a:nth-child(2) {
+    animation-delay: 0.05s;
+  }
+  .chrome-site .ns-nav nav.open a:hover {
+    background: rgb(170 214 255 / 10%);
+  }
+  .chrome-site .nav-lens {
+    display: none;
+  }
+}
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+}
+@keyframes sheet-item {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+@media (max-width: 680px) {
+  .chrome-site .home-quick-steps {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+  .chrome-site .home-quick-steps > p.lg {
+    grid-template-columns: 88px 1fr;
+    justify-items: start;
+    align-items: center;
+    text-align: left;
+    padding: 12px 16px 12px 10px;
+    gap: 2px 12px;
+    border-radius: 20px;
+  }
+  .chrome-site .home-quick-steps > p.lg .step-art {
+    grid-row: span 2;
+    height: 44px;
+    margin: 0;
+  }
+  .chrome-site .home-quick-steps > p.lg strong {
+    font-size: 16px;
+  }
+  .chrome-site .plans-grid {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 84%;
+    grid-template-columns: none;
+    gap: 12px;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 24px;
+    margin-inline: -24px;
+    padding: 6px 24px 18px;
+    scrollbar-width: none;
+  }
+  .chrome-site .plans-grid::-webkit-scrollbar {
+    display: none;
+  }
+  .chrome-site .plans-grid > .plan-choice {
+    scroll-snap-align: start;
+  }
+  .chrome-site .plan-choice.lg:hover {
+    transform: none;
+  }
+}
+@media (hover: none) {
+  .chrome-site .lg::after {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .chrome-site .ns-nav,
+  .chrome-site .button,
+  .chrome-site .chrome-intents a.lg,
+  .chrome-site .plan-choice.lg {
+    transition: none;
+  }
+  .chrome-site .nav-progress,
+  .step-art *,
+  .chrome-site .ns-nav nav.open,
+  .chrome-site .ns-nav nav.open a,
+  .chrome-site .ns-faq-item > div:not([hidden]) p {
+    animation: none !important;
+  }
+  .chrome-site .nav-progress {
+    opacity: 0;
+  }
+}
+.chrome-site .sound-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  color: inherit;
+  font-size: inherit;
+}
+.chrome-site .sound-toggle[aria-pressed='false'] {
+  opacity: 0.7;
+}

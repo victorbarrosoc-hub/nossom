@@ -5,6 +5,7 @@
 @import './styles/home.css';
 @import './styles/refinement.css';
 @import './styles/cinematic.css';
+@import './styles/liquid.css';
 * {
   box-sizing: border-box;
 }

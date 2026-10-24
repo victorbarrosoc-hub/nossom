@@ -87,7 +87,7 @@ export default function DemoPlayer() {
     setPosition(value);
   }
   return (
-    <div className={`voice-player ${playing ? 'is-playing' : ''}`} data-version={version}>
+    <div className={`voice-player lg ${playing ? 'is-playing' : ''}`} data-version={version}>
       {(['original', 'treated'] as const).map((key) => (
         <audio
           key={key}

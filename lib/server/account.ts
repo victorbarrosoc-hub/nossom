@@ -154,9 +154,19 @@ export function accountSessionOwner(request: Request) {
 export function accessToken(request: Request) {
   return decodeSession(accountToken(request))?.access;
 }
+// Only a definitive rejection from Auth ends the session; outages and timeouts keep the cookie.
+function sessionRejected(error: unknown) {
+  return (
+    error instanceof SupabaseError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 429
+  );
+}
 export async function refreshAccount(
   token: string | undefined,
-): Promise<{ account: Account; token: string } | null> {
+): Promise<{ account: Account; token: string } | null | 'unavailable'> {
   const session = decodeSession(token);
   if (!session || !accountConfigured()) return null;
   try {
@@ -172,8 +182,8 @@ export async function refreshAccount(
       account: accountFromUser(data.user),
       token: encodeSession(sessionFromProvider(data, session.sid)),
     };
-  } catch {
-    return null;
+  } catch (error) {
+    return sessionRejected(error) ? null : 'unavailable';
   }
 }
 export async function authenticate(
