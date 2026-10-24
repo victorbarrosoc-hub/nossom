@@ -52,7 +52,7 @@ test('verified administrator has no monthly minute limit and normal users cannot
     expect(login.status()).toBe(200);
   }
   await page.goto('/studio');
-  await expect(page.getByText('ADM · restaurações ilimitadas', { exact: true })).toBeVisible();
+  await expect(page.locator('.workspace-label .account-plan')).toHaveText('ADM · Ilimitado');
   for (let i = 0; i < 12; i++)
     expect(
       (
