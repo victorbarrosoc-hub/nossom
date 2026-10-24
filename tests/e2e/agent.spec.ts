@@ -43,7 +43,7 @@ test('the platform agent is connected automatically, continues a private convers
     });
   });
   await page.goto('/studio/ia');
-  await expect(page.getByText('IA NOSSOM · pronta para conversar', { exact: true })).toBeVisible();
+  await expect(page.getByText('Pronta para ajudar', { exact: true })).toBeVisible();
   for (const label of [
     'IA da plataforma',
     'Agent ID',
@@ -57,9 +57,7 @@ test('the platform agent is connected automatically, continues a private convers
   await page.goto('/studio');
   await page.locator('.assistant-top').click();
   const dialog = page.getByRole('dialog');
-  await expect(
-    dialog.getByText('IA NOSSOM · pronta para conversar', { exact: true }),
-  ).toBeVisible();
+  await expect(dialog.getByText('Pronta para ajudar', { exact: true })).toBeVisible();
   await dialog.getByLabel('Descreva seu objetivo').fill('Mais presença na voz.');
   await dialog.getByRole('button', { name: 'Encontrar tratamento', exact: true }).click();
   await expect(page.getByText('Sugestão 1: mais presença.', { exact: true })).toBeVisible();

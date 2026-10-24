@@ -284,7 +284,7 @@ test('studio themes persist, responsive layouts fit and reduced motion pauses de
     // Audit settled colors, after the existing 200 ms theme transition.
     await expect(page.locator('.studio-sidebar nav > button').nth(1)).toHaveCSS(
       'color',
-      theme === 'light' ? 'rgb(101, 101, 107)' : 'rgb(161, 172, 189)',
+      theme === 'light' ? 'rgb(101, 101, 107)' : 'rgb(176, 190, 208)',
     );
     for (const width of [1440, 1000, 390]) {
       await page.setViewportSize({ width, height: 900 });
@@ -307,7 +307,7 @@ test('studio themes persist, responsive layouts fit and reduced motion pauses de
   await expect(page.locator('.chrome-hero-art')).toBeVisible();
   expect(
     await page
-      .locator('.chrome-hero-art .ribbon-sculpture')
+      .locator('.chrome-hero-art .ribbon-canvas')
       .first()
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe('none');

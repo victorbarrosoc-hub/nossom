@@ -102,7 +102,7 @@ test('immersive homepage fits desktop and mobile, respects reduced motion and re
   }
   expect(
     await page
-      .locator('.chrome-hero-art .ribbon-sculpture')
+      .locator('.chrome-hero-art .ribbon-canvas')
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe('none');
   await page.getByRole('button', { name: 'Abrir menu', exact: true }).click();

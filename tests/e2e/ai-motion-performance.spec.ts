@@ -13,10 +13,10 @@ test('wave moves without DOM path morphing, pauses offscreen and respects reduce
   const firstLines = await field
     .locator('.signal-bundle')
     .evaluate((el) => getComputedStyle(el).transform);
-  const canvas = wave.locator('img');
-  const first = await canvas.evaluate((el) => getComputedStyle(el).transform);
+  const canvas = wave.locator('canvas');
+  const first = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
   await page.waitForTimeout(250);
-  expect(await canvas.evaluate((el) => getComputedStyle(el).transform)).not.toBe(first);
+  expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).not.toBe(first);
   expect(
     await field.locator('.signal-bundle').evaluate((el) => getComputedStyle(el).transform),
   ).not.toBe(firstLines);
@@ -33,9 +33,9 @@ test('wave moves without DOM path morphing, pauses offscreen and respects reduce
   expect(mutations).toBe(0);
   await page.evaluate(() => scrollTo({ top: document.body.scrollHeight, behavior: 'instant' }));
   await expect(wave).not.toHaveClass(/is-running/);
-  const paused = await canvas.evaluate((el) => getComputedStyle(el).transform);
+  const paused = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
   await page.waitForTimeout(300);
-  expect(await canvas.evaluate((el) => getComputedStyle(el).transform)).toBe(paused);
+  expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(paused);
   await wave.scrollIntoViewIfNeeded();
   await expect(wave).toHaveClass(/is-running/);
   await page.evaluate(() => {
@@ -44,11 +44,11 @@ test('wave moves without DOM path morphing, pauses offscreen and respects reduce
   });
   await expect(wave).not.toHaveClass(/is-running/);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(wave.locator('img')).toHaveCSS('animation-name', 'none');
+  await expect(wave.locator('canvas')).toHaveCSS('animation-name', 'none');
   await expect(field.locator('.signal-bundle')).toHaveCSS('animation-name', 'none');
   await expect(field.locator('.signal-pulse').first()).toHaveCSS('animation-name', 'none');
   await page.waitForTimeout(100);
-  const reduced = await canvas.evaluate((el) => getComputedStyle(el).transform);
+  const reduced = await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL());
   await page.waitForTimeout(300);
-  expect(await canvas.evaluate((el) => getComputedStyle(el).transform)).toBe(reduced);
+  expect(await canvas.evaluate((el: HTMLCanvasElement) => el.toDataURL())).toBe(reduced);
 });
