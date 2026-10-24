@@ -325,3 +325,66 @@ test('admin alone assigns paid plans, changes catalog, views charts; expired mem
     /permission denied/,
   );
 });
+
+sql(readFileSync('supabase/migrations/202610240001_ai_allowance_and_orphan_sweep.sql', 'utf8'));
+function aiSession(user: string) {
+  return JSON.parse(
+    sql(
+      `begin; set local role authenticated; set local "request.jwt.claim.sub"='${user}'; select public.nossom_ai_session(); commit;`,
+    )
+      .split('\n')
+      .find((x) => x.startsWith('{'))!,
+  );
+}
+test('assistant sessions are capped per account per day; the confirmed admin is not', () => {
+  for (let i = 1; i <= 40; i++)
+    assert.deepEqual(aiSession(bob), { allowed: true, used: i, limit: 40 });
+  assert.equal(aiSession(bob).allowed, false);
+  assert.equal(aiSession(alice).used, 1);
+  assert.equal(aiSession(admin).allowed, true);
+  assert.equal(aiSession(unconfirmed).used, 1);
+  assert.throws(
+    () => sql(`set role anon; select public.nossom_ai_session();`),
+    /permission denied/,
+  );
+});
+test('released jobs stay listed for an orphan sweep and repeated prepares are bounded per day', () => {
+  const user = '66666666-6666-4666-8666-666666666666';
+  sql(
+    `insert into auth.users(id,email,email_confirmed_at) values ('${user}','sweep@example.test',now());`,
+  );
+  const id = randomUUID();
+  cloud('prepare', id, user, { input_bytes: 1000, input_parts: 1, duration: 1 });
+  cloud('fail', id, user);
+  cloud('release', id, user);
+  sql(
+    `update nossom_private.restoration_jobs set updated_at=now()-interval '4 hours' where id='${id}';`,
+  );
+  const before = sql(`select updated_at from nossom_private.restoration_jobs where id='${id}';`);
+  cloud('release', id, user);
+  assert.equal(
+    sql(`select updated_at from nossom_private.restoration_jobs where id='${id}';`),
+    before,
+  );
+  const orphans = JSON.parse(
+    sql(`set role service_role; select public.nossom_restoration_job('orphans',null);`)
+      .split('\n')
+      .find((x) => x.startsWith('{'))!,
+  );
+  assert.ok(orphans.jobs.some((j: { id: string }) => j.id === id));
+  for (let i = 0; i < 39; i++) {
+    const next = randomUUID();
+    assert.equal(
+      cloud('prepare', next, user, { input_bytes: 1000, input_parts: 1, duration: 1 }).job.id,
+      next,
+    );
+    cloud('fail', next, user);
+  }
+  const blocked = cloud('prepare', randomUUID(), user, {
+    input_bytes: 1000,
+    input_parts: 1,
+    duration: 1,
+  });
+  assert.equal(blocked.job, null);
+  assert.equal(blocked.limited, true);
+});

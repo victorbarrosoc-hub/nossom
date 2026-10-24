@@ -6,6 +6,7 @@ import {
   sameOrigin,
 } from '@/lib/server/ai-access';
 import { currentAccount } from '@/lib/server/account';
+import { aiSessionAllowed } from '@/lib/server/usage';
 import {
   agentConnection,
   askManagedAgent,
@@ -42,6 +43,11 @@ export async function POST(request: Request) {
     for (const key of ['lufs', 'truePeak', 'lra', 'duration', 'channels'])
       if (typeof body.context?.[key] === 'number' && Number.isFinite(body.context[key]))
         context[key] = body.context[key];
+    if (body.conversation == null && !(await aiSessionAllowed(request)))
+      return Response.json(
+        { error: 'Você chegou ao limite de conversas de hoje. Volte amanhã.' },
+        { status: 429, headers: privateHeaders },
+      );
     const signal = AbortSignal.any([request.signal, AbortSignal.timeout(100000)]);
     const config = await agentConnection(request);
     if (!config) throw new Error('Entre novamente para conversar com o assistente.');

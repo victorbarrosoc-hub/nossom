@@ -25,7 +25,19 @@ export async function GET(request: Request) {
       await clearJob(job);
       deleted++;
     }
-    return Response.json({ deleted }, { headers: privateHeaders });
+    // Uploads can still land through signed URLs issued before a release: sweep recent
+    // released/failed jobs again by prefix. Skipped quietly until the migration exists.
+    let swept = 0;
+    const started = Date.now();
+    try {
+      const { jobs: orphans } = await jobAction('orphans', null);
+      for (const job of orphans ?? []) {
+        if (Date.now() - started > 40000) break;
+        await clearJob(job);
+        swept++;
+      }
+    } catch {}
+    return Response.json({ deleted, swept }, { headers: privateHeaders });
   } catch {
     return Response.json(
       { error: 'Limpeza temporariamente indisponível.' },

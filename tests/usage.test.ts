@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GET, POST } from '../app/api/usage/route';
 import { testCookie, testUser, authEnvironment } from './helpers/auth';
+import { aiSessionAllowed } from '../lib/server/usage';
 test('local finishing requires verified identity but never spends GPU minutes or grants cloud authorization', async () => {
   const restore = authEnvironment(),
     old = globalThis.fetch;
@@ -64,6 +65,31 @@ test('local finishing requires verified identity but never spends GPU minutes or
     globalThis.fetch = async () =>
       Response.json({ error_code: 'session_revoked' }, { status: 401 });
     assert.equal((await POST(request({ operation: 'auto' }))).status, 401);
+  } finally {
+    globalThis.fetch = old;
+    restore();
+  }
+});
+test('new assistant conversations follow the database daily cap and tolerate only a missing function', async () => {
+  const restore = authEnvironment(),
+    old = globalThis.fetch;
+  let reply: () => Response = () => Response.json({ allowed: true, used: 1, limit: 40 });
+  globalThis.fetch = async (input, init) => {
+    assert.match(String(input), /\/rest\/v1\/rpc\/nossom_ai_session$/);
+    assert.equal(new Headers(init?.headers).get('Authorization'), 'Bearer test-access-placeholder');
+    return reply();
+  };
+  try {
+    const request = new Request('https://nossom.test/api/ai/assistant', {
+      headers: { cookie: testCookie() },
+    });
+    assert.equal(await aiSessionAllowed(request), true);
+    reply = () => Response.json({ allowed: false, used: 40, limit: 40 });
+    assert.equal(await aiSessionAllowed(request), false);
+    reply = () => Response.json({ code: 'PGRST202' }, { status: 404 });
+    assert.equal(await aiSessionAllowed(request), true);
+    reply = () => Response.json({ message: 'down' }, { status: 503 });
+    assert.equal(await aiSessionAllowed(request), false);
   } finally {
     globalThis.fetch = old;
     restore();

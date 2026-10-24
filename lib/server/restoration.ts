@@ -136,6 +136,11 @@ export async function prepareJob(user: string, bytes: number, duration: number) 
     input_parts: Math.ceil(bytes / CLOUD_PART_BYTES),
   });
   const job = result.job;
+  if (!job && (result as { limited?: boolean }).limited)
+    throw new RestorationError(
+      'Você atingiu o limite de envios de hoje. Tente novamente amanhã.',
+      429,
+    );
   if (!job)
     throw new RestorationError(
       'Você já tem um áudio em processamento. Aguarde a conclusão ou cancele o pedido anterior.',
