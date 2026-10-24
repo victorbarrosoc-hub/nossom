@@ -62,19 +62,22 @@
 
 /* Floating capsule navigation, in the spirit of the Apple Music tab bar. */
 .chrome-site .ns-header {
-  top: 10px;
-  padding-top: 10px;
-  margin-top: -10px;
+  /* With viewport-fit=cover the page runs under the iPhone status bar, where iOS blurs
+     content; the capsule always starts below the safe area. */
+  --safe-top: env(safe-area-inset-top, 0px);
+  top: 0;
+  padding-top: calc(var(--safe-top) + 10px);
+  margin-top: 0;
   background: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
   border: 0;
   pointer-events: none;
   /* The capsule floats over the hero light instead of sitting on a dark band. */
-  margin-bottom: -80px;
+  margin-bottom: calc(-80px - var(--safe-top));
 }
 .chrome-site main {
-  padding-top: 80px;
+  padding-top: calc(80px + env(safe-area-inset-top, 0px));
 }
 .chrome-site .ns-nav {
   pointer-events: auto;
@@ -91,7 +94,7 @@
 .chrome-site .ns-header.is-scrolled .ns-nav {
   width: min(980px, calc(100% - 40px));
   height: 54px;
-  background: var(--lg-fill), rgb(6 18 34 / 62%);
+  background: var(--lg-fill), rgb(6 18 34 / 82%);
 }
 .chrome-site .ns-nav > a:first-child {
   display: inline-flex;
