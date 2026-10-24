@@ -82,3 +82,27 @@ test('the floating capsule stays below the iPhone status bar safe area, at rest 
   await expect(page.locator('.ns-header')).toHaveClass(/is-scrolled/);
   expect(await top()).toBeGreaterThanOrEqual(59 + 8);
 });
+test('the opening animation plays once per session, never blocks taps and respects reduced motion', async ({
+  page,
+}) => {
+  // Automation skips the intro; present a regular browser for this check.
+  await page.addInitScript(() =>
+    Object.defineProperty(navigator, 'webdriver', { get: () => false }),
+  );
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('data-intro', 'play');
+  const intro = page.locator('.brand-intro');
+  expect(await intro.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe('none');
+  await page.getByRole('link', { name: 'Limpar fala' }).click({ trial: true });
+  await expect(intro).toBeHidden({ timeout: 4000 });
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('data-intro', 'skip');
+  const reduced = await page.context().newPage();
+  await reduced.emulateMedia({ reducedMotion: 'reduce' });
+  await reduced.addInitScript(() =>
+    Object.defineProperty(navigator, 'webdriver', { get: () => false }),
+  );
+  await reduced.goto('/');
+  await expect(reduced.locator('html')).toHaveAttribute('data-intro', 'skip');
+  await expect(reduced.locator('.brand-intro')).toBeHidden();
+});

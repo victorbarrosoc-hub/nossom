@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import BrandIntro from '@/components/brand-intro';
 export const metadata: Metadata = {
   metadataBase: new URL('https://nossom-teal.vercel.app'),
   title: { default: 'NOSSOM — O som em outra escala.', template: '%s · NOSSOM' },
@@ -37,8 +38,10 @@ export const viewport: Viewport = {
 };
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    // The intro script marks <html> before hydration.
+    <html lang="pt-BR" suppressHydrationWarning>
       <body>
+        <BrandIntro />
         <noscript>
           <style>{'.ns-reveal { opacity: 1 !important; transform: none !important; }'}</style>
         </noscript>

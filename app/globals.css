@@ -6,6 +6,7 @@
 @import './styles/refinement.css';
 @import './styles/cinematic.css';
 @import './styles/liquid.css';
+@import './styles/intro.css';
 * {
   box-sizing: border-box;
 }
