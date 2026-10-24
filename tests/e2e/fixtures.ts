@@ -4,7 +4,12 @@ export type { Page } from '@playwright/test';
 export const test = base.extend({
   page: async ({ page }, use) => {
     const response = await page.request.post('/api/account', {
-      headers: { Origin: 'http://localhost:3000' },
+      // Each test registers from its own address so the per-IP sign-up limit (kept intact)
+      // does not throttle a growing suite. Only the local server honours this header.
+      headers: {
+        Origin: 'http://localhost:3000',
+        'X-Forwarded-For': `10.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250)}.${Math.floor(Math.random() * 250) + 1}`,
+      },
       data: {
         action: 'register',
         name: 'Pessoa de teste',
