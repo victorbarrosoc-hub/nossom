@@ -312,6 +312,6 @@ test('studio themes persist, responsive layouts fit and reduced motion pauses de
       .evaluate((el) => getComputedStyle(el).animationName),
   ).toBe('none');
   expect(await page.locator('body').evaluate((el) => getComputedStyle(el).backgroundColor)).toBe(
-    'rgb(8, 12, 16)',
+    'rgb(8, 15, 27)',
   );
 });

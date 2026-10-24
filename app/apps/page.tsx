@@ -15,12 +15,12 @@ function download(value: string | undefined) {
     return null;
   }
 }
-const releaseTag = 'desktop-v0.2.1';
+const releaseTag = 'desktop-v0.2.2';
 const releaseBase = `https://github.com/victorbarrosoc-hub/nossom/releases/download/${releaseTag}/`;
 const installerNames = {
-  macArm64: 'NOSSOM-0.2.1-mac-arm64.dmg',
-  macX64: 'NOSSOM-0.2.1-mac-x64.dmg',
-  windows: 'NOSSOM-0.2.1-win-x64.exe',
+  macArm64: 'NOSSOM-0.2.2-mac-arm64.dmg',
+  macX64: 'NOSSOM-0.2.2-mac-x64.dmg',
+  windows: 'NOSSOM-0.2.2-win-x64.exe',
 };
 // These versioned installer assets were built by Actions and anonymously
 // verified before enabling the links. Environment URLs override the previews.
@@ -78,7 +78,7 @@ export default function Apps() {
                   <Download size={17} />
                   Baixar para {build.title}
                 </a>
-                {build.preview && <small>Versão de teste · 0.1.1</small>}
+                {build.preview && <small>Versão de teste · 0.2.2</small>}
               </>
             ) : (
               <>
@@ -113,7 +113,7 @@ export default function Apps() {
           </p>
           <p>
             Se você baixou a versão 0.1.0 e viu “aplicativo danificado”, substitua o aplicativo pela
-            versão 0.1.1 disponível acima. Seus projetos não precisam ser apagados.
+            versão 0.2.2 disponível acima. Seus projetos não precisam ser apagados.
           </p>
           <p>
             Se a prévia continuar bloqueada, confirme que o arquivo veio desta página e que o NOSSOM

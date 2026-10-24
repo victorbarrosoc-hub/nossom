@@ -597,3 +597,91 @@
     animation: none !important;
   }
 }
+/* Keep the light behind the sculpture and preserve contrast below it. */
+.chrome-site main::before {
+  height: 1100px;
+  background:
+    linear-gradient(180deg, #03102200 20%, #040f2255 50%, #050d18 95%),
+    url('/brand/blue-atmosphere.webp') center top / cover no-repeat;
+}
+.signal-field {
+  mask-image:
+    linear-gradient(#000 70%, transparent),
+    radial-gradient(ellipse 420px 170px at 20% 27%, transparent 40%, #000 100%);
+  mask-composite: intersect;
+}
+.ai-motion {
+  overflow: clip;
+}
+.assistant-panel::before {
+  inset: 0;
+}
+@media (max-width: 680px) {
+  .chrome-site main::before {
+    height: 1150px;
+    background:
+      linear-gradient(180deg, #03102200 6%, #06162c65 24%, #051326e8 49%, #050d18 86%),
+      url('/brand/blue-atmosphere.webp') 64% top / auto 800px no-repeat;
+    opacity: 1;
+  }
+  .signal-field {
+    mask-image:
+      linear-gradient(#000 70%, transparent),
+      radial-gradient(ellipse 230px 150px at 50% 34%, transparent 30%, #000 100%);
+  }
+}
+/* Tighter framing and focused light give the chrome a place in the scene. */
+.chrome-site .home-hero-grid {
+  padding: 14px 0 20px;
+  min-height: 420px;
+}
+.chrome-site .home-hero-copy {
+  padding: 12px 0;
+}
+.chrome-site .chrome-hero-art {
+  height: 380px;
+}
+.chrome-site .chrome-hero-art .ribbon-halo {
+  inset: 0 -4%;
+  background:
+    radial-gradient(ellipse at 42% 42%, #d0f1ff42, transparent 44%),
+    radial-gradient(ellipse at 65% 53%, #4dbaff59, transparent 68%);
+}
+.chrome-site .chrome-hero-art .ribbon-ground {
+  inset: 74% 17% 4%;
+  background: radial-gradient(ellipse, #a8dfff3d, #409bea1c 35%, transparent 70%);
+}
+@media (max-width: 680px) {
+  .chrome-site .home-hero-grid {
+    padding: 0;
+    min-height: 0;
+  }
+  .chrome-site .home-hero-copy {
+    padding: 0;
+  }
+  .chrome-site .chrome-hero-art {
+    height: 200px;
+  }
+}
+/* Bold establishes the hierarchy; supporting copy stays light and compact. */
+.chrome-site .home-hero-copy h1 {
+  font-weight: 650;
+  letter-spacing: -0.055em;
+}
+.chrome-site h2 {
+  font-weight: 620;
+}
+.chrome-site .chrome-intents strong {
+  font-weight: 650;
+}
+.chrome-site .button.primary,
+.studio-shell .process-button,
+.studio-shell .assistant-panel .suggestion-chips strong {
+  font-weight: 650;
+}
+.chrome-site .ns-nav nav {
+  font-weight: 500;
+}
+.assistant-embedded .assistant-panel h1 {
+  font-weight: 620;
+}
