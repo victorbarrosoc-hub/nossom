@@ -1,51 +1,64 @@
 # NOSSOM para Mac e Windows
 
-Wrapper Electron com sandbox, isolamento de contexto e sem Node no renderer. Abre o domínio NOSSOM em uma janela própria; usa a mesma conta/IA/cota do site. Não há servidor de áudio embutido nem promessa de funcionamento offline. Projetos IndexedDB pertencem ao perfil do aplicativo e não são copiados automaticamente do Safari/Chrome.
+Estado em 24/10/2026: prévia pública **0.2.2**, release [`desktop-v0.2.2`](https://github.com/victorbarrosoc-hub/nossom/releases/tag/desktop-v0.2.2). Leia também [operação](../docs/handoff/OPERATIONS.md).
 
-## Gerar
+## Como funciona
 
-O workflow **Build NOSSOM installers** (`.github/workflows/desktop.yml`) é iniciado manualmente em GitHub → Actions → Run workflow. Gera DMG Apple Silicon, DMG Intel e instalador NSIS `.exe` x64 em runners Mac/Windows. O lockfile é próprio: `npm ci` dentro de `desktop/`.
+Electron com sandbox, isolamento de contexto e sem Node no renderer. A janela carrega o domínio NOSSOM; a conta, IA e franquia são as mesmas do site. Os arquivos IndexedDB ficam no perfil próprio do aplicativo, não são copiados automaticamente do Safari/Chrome e não há servidor de áudio embutido/offline completo.
 
-Localmente, em cada sistema suportado:
+O app limita navegação interna à origem autorizada, abre HTTPS externo no navegador e restringe permissões/IPC. Não exponha chaves de servidor ou acesso arbitrário ao sistema de arquivos no renderer.
+
+## Distribuição atual
+
+Existem três arquivos públicos verificados sem login, disponíveis em `/apps`:
+
+- `NOSSOM-0.2.2-mac-arm64.dmg`.
+- `NOSSOM-0.2.2-mac-x64.dmg`.
+- `NOSSOM-0.2.2-win-x64.exe`.
+
+A prévia Mac tem assinatura **ad-hoc de integridade**, não Developer ID nem notarização Apple. O titular ainda não possui Apple Developer pago. A prévia não deve ser descrita como distribuição Apple/Microsoft assinada e homologada. O empacotamento foi validado em runners, não em todas as máquinas físicas.
+
+A 0.1.0 tinha assinatura inválida/ausente e foi substituída; não oriente reinstalar essa versão. Não sobrescreva assets antigos de releases. As instruções de Gatekeeper/quarentena limitadas ao app de origem confiável estão em `/apps`; não desative proteções globais do macOS.
+
+Os ícones vêm de `../public/pwa/icon-512.png`, gerados pelo script da marca. Atualizar a interface online não troca o ícone nativo de um binário já instalado.
+
+## Gerar uma prévia
+
+No GitHub, execute **Build NOSSOM installers** (`.github/workflows/desktop.yml`) com `platform=all`, `publish_preview=true`, `publish_signed=false`. O workflow usa macOS e Windows para empacotar as arquiteturas corretas, verificar os bundles e publicar assets de teste.
+
+Antes de uma nova distribuição, incremente `desktop/package.json` e `desktop/package-lock.json`. O nome da release/arquivos deve seguir a versão efetivamente construída. Aguarde os três arquivos publicados e verifique os links HTTPS antes de alterar `/apps`.
+
+Localmente, dentro de `desktop/`, em cada sistema compatível:
 
 ```sh
 npm ci
 npm run dist -- --mac --arm64
-# Ou --mac --x64, no Mac; --win --x64 no Windows.
+# No Mac Intel: npm run dist -- --mac --x64
+# No Windows: npm run dist -- --win --x64
 ```
 
-Os arquivos aparecem em `desktop/dist/` e nos artefatos privados do workflow. Esta configuração não contém certificados de assinatura ou notarização. Não equivale a distribuição assinada pela Apple/Microsoft. Para uma distribuição final assinada, valide os binários em cada sistema, configure certificados do distribuidor e faça a assinatura/notarização. A prévia pública é identificada como versão de teste. A janela limita navegação interna ao domínio da NOSSOM, abre HTTPS externo no navegador e só permite solicitações de microfone da origem autorizada. A permissão do sistema operacional continua necessária.
+Saída em `desktop/dist/`, fora do Git. Os overrides de URLs em `/apps` são `NOSSOM_DOWNLOAD_MAC_ARM64_URL`, `NOSSOM_DOWNLOAD_MAC_X64_URL` e `NOSSOM_DOWNLOAD_WINDOWS_URL`; são lidos no build da aplicação web. Assets de Actions podem exigir login; os assets da release pública devem funcionar anonimamente.
 
-## Distribuir
+## Dois tipos diferentes de atualização
 
-O repositório está público. Artefatos de Actions ainda podem exigir login, por isso os instaladores de teste são publicados como assets da release pública `desktop-v0.1.0`. Publique os instaladores aprovados em um armazenamento HTTPS público, como um bucket público dedicado no Supabase Storage, sem incluir credenciais. A página `/apps` lê estas variáveis da Vercel no build:
+**Interface online:** `components/desktop-updates.tsx` consulta `/api/desktop/version` ao abrir, retomar o foco e periodicamente. Uma mudança de SHA é carregada apenas depois do trabalho terminar, 30 segundos sem interação, campos sem foco e diálogos fechados. Não deve interromper gravação/tratamento. Isso não instala outro Electron.
 
-- `NOSSOM_DOWNLOAD_MAC_ARM64_URL`: arquivo DMG Apple Silicon.
-- `NOSSOM_DOWNLOAD_MAC_X64_URL`: arquivo DMG Intel.
-- `NOSSOM_DOWNLOAD_WINDOWS_URL`: instalador Windows `.exe`.
+**Binário nativo:** `desktop/updates.cjs`, `preload.cjs`, `main.cjs` e o renderer implementam consulta, download e instalação coordenados. O canal nativo permanece **desabilitado nas prévias atuais**. Não habilitar um feed sem os requisitos de assinatura. Testes usam doubles; não ocorreu uma atualização real entre dois instaladores assinados.
 
-As URLs acima substituem os downloads de teste. Os links da prévia 0.1.1 foram habilitados somente após a publicação e verificação HTTP anônima dos três instaladores. A prévia Mac 0.1.1 possui assinatura ad-hoc de integridade, sem certificado Developer ID ou notarização Apple; atualizações automáticas permanecem desabilitadas. O workflow verifica a assinatura completa e a integridade do DMG e testa a abertura quando a arquitetura coincide com o runner. A versão 0.1.0 tinha assinatura inválida/ausente e foi substituída por uma nova versão, sem sobrescrever os arquivos antigos. As instruções de instalação, autorização pelo macOS e remoção do atributo de quarentena somente deste app estão em `/apps`. Depois de alterar variáveis, faça um deploy. Sem um arquivo publicado, o cartão informa **Instalador em preparação** e não oferece um link falso. A aplicação web/PWA permanece disponível. O bloqueio anterior de minutos privados foi contornado com o repositório público. Windows e as duas arquiteturas Mac foram compilados com sucesso em runners padrão e publicados em Releases.
+A numeração `0.1.0` no `package.json` da raiz não é a versão do instalador. A versão do desktop fica no seu próprio package; o deploy web é identificado por Git SHA.
 
-## Atualizações automáticas
+## Publicação assinada futura
 
-A próxima distribuição assinada é a 0.2.0. Ao abrir e a cada quatro horas, o programa consulta atualizações estáveis e baixa uma versão nova automaticamente. A instalação espera o término de gravações/tratamentos e 30 segundos sem interação com o aplicativo. Se o programa for encerrado, uma atualização já baixada também pode ser instalada ao sair. Falhas preservam a versão atual e permitem nova tentativa. Não há downgrade nem atualização para prévias.
+Use uma nova versão superior à prévia, por exemplo após planejamento de release; não reutilize silenciosamente `0.2.2`. O usuário precisará instalar a primeira distribuição assinada uma vez para migrar de uma prévia sem canal.
 
-A prévia pública 0.1.1 não tem canal de atualização nativo habilitado. Para migrar, o usuário precisará instalar a primeira distribuição assinada uma vez. As melhorias do estúdio também chegam ao app 0.1.1 sem trocar o DMG: a tela compara o identificador público de deploy com `/api/desktop/version` ao abrir, retomar o foco e a cada minuto. Ao detectar uma publicação, espera o término de gravação/tratamento, 30 segundos sem interação, campos sem foco e diálogos fechados antes de recarregar. A consulta não envia chaves, áudio nem URLs de instaladores. Falhas de conexão preservam a versão atual. Isso atualiza o estúdio online, separadamente da troca do binário Electron.
+No GitHub Actions, os segredos necessários são:
 
-### Publicar a distribuição assinada
+- Mac: `MAC_CSC_LINK`, `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`.
+- Windows: `WIN_CSC_LINK`, `WIN_CSC_KEY_PASSWORD`.
+- Variável `NOSSOM_WINDOWS_PUBLISHER` correspondente ao titular do certificado.
 
-No GitHub → Settings → Secrets and variables → Actions, configure:
+Não enviar certificados, senhas ou chaves pelo Git/chat. Configure nos gerenciadores de segredos, com autorização do titular.
 
-- Secrets `MAC_CSC_LINK` (certificado Developer ID Application .p12 em base64), `MAC_CSC_KEY_PASSWORD`, `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, `APPLE_TEAM_ID`.
-- Secrets `WIN_CSC_LINK` (certificado de assinatura de código .pfx em base64), `WIN_CSC_KEY_PASSWORD`.
-- Variable `NOSSOM_WINDOWS_PUBLISHER` correspondente ao titular do certificado Windows.
+Execute `platform=all`, `publish_signed=true`, `publish_preview=false`. O workflow exige todas as plataformas, verifica assinatura/notarização no Mac e Authenticode no Windows. Publica feeds `latest-mac.yml` e `latest.yml`, hashes e arquivos reais numa release estável versionada, sem habilitar Latest antes do upload completo.
 
-Não envie certificados, chaves ou senhas pelo chat ou pelo Git. A disponibilidade de certificados não pôde ser confirmada nesta sessão: a API de secrets/variables do repositório retornou 403. As prévias publicadas até aqui são ad-hoc no Mac e não têm o canal habilitado.
-
-Execute **Build NOSSOM installers**, `platform=all`, `publish_signed=true`, `publish_preview=false`. O build exige certificados e notarização, valida a assinatura completa e o DMG no Mac, a aprovação do Gatekeeper/notarização e a assinatura Authenticode no Windows. Uma falha em qualquer plataforma impede a publicação estável.
-
-O job monta os feeds `latest-mac.yml` (ZIPs arm64 e Intel) e `latest.yml` (Windows) com SHA-512 e tamanho dos arquivos realmente gerados. Publica todos os instaladores e manifestos em uma release draft `v0.2.0`, ativando-a como Latest somente depois do upload completo. O endereço HTTPS embutido é `https://github.com/victorbarrosoc-hub/nossom/releases/latest/download/`. Não precisa configurar outro armazenamento ou feeds manualmente. Versões existentes não são sobrescritas: incremente `desktop/package.json` e o lockfile para cada atualização.
-
-Para distribuição em armazenamento próprio, `NOSSOM_UPDATE_BASE_URL` continua disponível nos builds sem `publish_signed`, com feeds separados por `mac-arm64/`, `mac-x64/` e `win-x64/`. Envie binários antes dos manifestos. Os mesmos requisitos de assinatura/notarização se aplicam.
-
-O fluxo de download e instalação foi testado com doubles do atualizador e bridge de navegador, incluindo a espera durante gravação. Não foi realizada uma atualização nativa entre dois instaladores assinados, pois os certificados ainda não estão acessíveis nesta sessão.
+O feed padrão assinado usa `https://github.com/victorbarrosoc-hub/nossom/releases/latest/download/`. Builds próprios podem configurar `NOSSOM_UPDATE_BASE_URL` e `NOSSOM_UPDATE_FLAT_FEED`, mantendo verificação, ausência de downgrade e rejeição de prerelease. Não contornar essas garantias para evitar a exigência de certificados.

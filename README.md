@@ -1,130 +1,92 @@
 # NOSSOM
 
-**Tudo acontece no som.** Estúdio de áudio para criadores, editores e equipes de audiovisual.
+Estúdio de áudio para criadores, com aplicação web responsiva, instalação pelo navegador e aplicativo Electron para Mac/Windows.
 
-Esta entrega implementa um MVP local funcional e a página pública com a identidade NOSSOM: preto profundo, prata, azul, superfícies translúcidas e ondas animadas. O símbolo foi reconstruído em SVG a partir da prancha visual fornecida. Não é um arquivo vetorial oficial extraído do anexo.
+**Produção:** <https://nossom-teal.vercel.app> · **Downloads:** <https://nossom-teal.vercel.app/apps>
+
+## Continuar no Claude Code
+
+Comece pelo **[handoff completo](docs/handoff/README.md)** e pelo **[prompt pronto para copiar](docs/handoff/PROMPT-CLAUDE-CODE.md)**. O arquivo [CLAUDE.md](CLAUDE.md) na raiz orienta a leitura automática do projeto. Leia também [AGENTS.md](AGENTS.md), especialmente antes de alterar APIs do Next.js.
+
+O handoff registra o estado publicado, as preferências visuais aprovadas, a arquitetura, as configurações, os testes e as pendências reais. Não contém credenciais ou gravações privadas.
 
 ## Executar
 
-Requisitos: Node.js 22.9+ (validado em Node 24), npm e navegador moderno com Web Audio, WebAssembly, Workers e IndexedDB.
+Requisitos: Node >=22.9 (Node 24 no CI), npm e navegador moderno com Web Audio, WebAssembly, Workers e IndexedDB.
 
 ```sh
 npm ci
+cp .env.example .env.local
+# Configure as integrações necessárias fora do Git.
 npm run dev
 ```
 
-Produção:
+Para o build de produção:
 
 ```sh
 npm run build
 npm run start
 ```
 
-Os comandos `predev` e `prebuild` copiam o motor FFmpeg instalado pelo lockfile para `public/ffmpeg` e os modelos locais RNNoise (aproximadamente 4,6 MB) e DeepFilterNet3 (aproximadamente 33 MB) para `public/audio`. Desenvolvimento e build usam Webpack para compatibilidade com o worker FFmpeg. O motor (~31 MB) é carregado na primeira operação de áudio. O estúdio exige login Supabase e autorização de tratamento; configure as variáveis e aplique a migração descrita em [docs/supabase-setup.md](docs/supabase-setup.md). O core e os workers são servidos pelo próprio domínio, com verificação de integridade de pacotes durante `npm ci` e sem CDNs de runtime.
+`predev` e `prebuild` preparam FFmpeg/WASM, RNNoise e DeepFilterNet a partir dos pacotes instalados. Os assets gerados ficam fora do Git. Desenvolvimento/build usam Webpack por compatibilidade com os workers. A aplicação exige login; os testes de navegador possuem servidor Supabase simulado, sem precisar de contas da produção.
 
-## O que funciona
+## Funcionalidades atuais
 
-- Homepage imersiva com IA em motion, prévia interativa do fluxo atual e player de voz humana em português: waveform medido, A/B com posição preservada, busca e volume. Créditos CC BY 4.0 no player e em `public/demo/README.txt`.
-- Navegação com quatro destinos: Início (assistente com anexo de áudio), Meus projetos, Estúdio e Minha conta. Menu recolhível no desktop e drawer com fechamento explícito no celular. O seletor no topo agrupa ferramentas em Tratar, Ajustar, Criar e Entregar; trocar de ferramenta mantém o projeto e o histórico.
-- Instalação pelo Safari: Compartilhar → Adicionar à Tela de Início → Adicionar. Manifest em modo standalone, entrada `/studio`, ícones PNG 180/192/512 e metadados Apple. Há ajuda de instalação no rodapé da homepage e na lateral do estúdio; em modo instalado, o botão some. Não há promessa de funcionamento offline nem service worker de cache.
-- Open Graph e Twitter Card com imagem própria de 1.200 × 630, logo NOSSOM, prata/azul sobre fundo escuro e URLs absolutas do domínio de produção. A imagem é gerada estaticamente no build em `/opengraph-image`. Para regenerar os ícones: `npx tsx scripts/generate-brand-assets.tsx`.
-- Tratamento completo automático como entrada padrão em `/studio/automatico`: restauração neural com preservação de fase/estéreo, timbre e dinâmica adaptados à gravação e finalização Transmissão + Limite −3 dB. Um botão, sem definir intensidade.
-- Rotas próprias para limpeza, voz, equalização, vento, nivelamento, masterização, efeitos e mixagem. O layout preserva o projeto durante a navegação; ajustes manuais continuam disponíveis.
-- Destinos Podcast, Redes sociais/vídeo de conteúdo, YouTube, TV EBU R128, TV ATSC A/85 e referência Netflix para diálogo isolado. Metas verificadas após normalização em duas passagens; não são certificações de entrega. Disponíveis também no Tratamento completo.
-- Efeitos com intensidade e remoção em `/studio/efeitos`: Sala de estúdio, Capela, Igreja, Auditório, Rádio vintage, Rádio FM e Telefone. Ambientes exportam a cauda; trocar um efeito mantém a mesma versão de origem, sem acumular reverberação.
-- Tratamento completo reconstrói picos digitais identificáveis por predição autorregressiva antes da limpeza. Intermediários float32 preservam headroom. O relatório distingue reconstrução, ausência de detecção e saturação extensa limitada. Não é ressíntese generativa de fala; distorção de captação pode permanecer.
-- EQ em cinco bandas, presets editáveis, biblioteca de presets pessoais por ferramenta e presets de voz com de-esser/hum 50 ou 60 Hz.
-- Preset Transmissão + Limite −3 dB, baseado nas duas capturas Premiere fornecidas; implementação documentada em docs/audio-engine.md.
-- Desfazer, refazer e restaurar original com histórico e versão ativa persistidos. Novos ajustes podem formar ramificações sem apagar as versões anteriores.
-- Importação de WAV, MP3, M4A, FLAC, OGG e áudio de MP4/MOV conforme codec. O conteúdo é decodificado e validado, independentemente da extensão. Máximo de 100 MB, 10 minutos, mono ou estéreo.
-- Gravação por microfone, mediante permissão. Máximo de 10 minutos.
-- NOSSOM Voice Natural 3: DeepFilterNet3 estima a fala; ganhos espectrais vinculados preservam a fase da gravação e a relação entre canais. A análise automática adapta a supressão, protege fala e verifica volume/picos. RNNoise é a opção de compatibilidade. O modo espectral atende áudio geral.
-- Controles de 0–100%, redução máxima/piso de ruído, presença, compressão, corte de graves, volume final, teto de pico e ducking. Estimativa de piso por análise das janelas silenciosas.
-- FFmpeg WebAssembly executado em worker local: redução espectral de ruído contínuo, EQ de presença, passa-altas para vento, compressão, normalização de loudness e mixagem com sidechain ducking.
-- Waveform real, busca de posição, seleção de trecho, reprodução A/B sincronizada e compensação de loudness na escuta.
-- Preservação do arquivo originalmente enviado. O editor utiliza uma cópia de trabalho WAV PCM 16-bit/48 kHz. Cada tratamento cria uma versão, sem sobrescrever o original.
-- Projetos, versões, renomeação, busca e exclusão em IndexedDB. Até 20 projetos e 8 versões processadas por projeto; capacidade real depende da cota do navegador.
-- Medição integrada de LUFS, true peak e LRA pelo filtro FFmpeg `loudnorm`, sobre o arquivo resultante. Contagem objetiva de amostras perto da saturação.
-- Exportação WAV PCM 16-bit e MP3 320 kbps em 48 kHz, download do arquivo original e relatório JSON com histórico e medições.
-- Assistente local por regras de intenção que propõe uma operação, com revisão e aplicação explícita. Não executa comandos livres e não se apresenta como IA generativa.
-- Adaptador de conversa ElevenLabs com resposta por voz, estado visual de fala, permissão de microfone e encerramento de sessão ao fechar o painel. Precisa de agente configurado.
+- Homepage com azul luminoso, prata/cromo, linhas fluidas em movimento, títulos mais fortes e demonstração real A/B, sem autoplay.
+- Estúdio com assistente/anexo, projetos, conta, navegação recolhível e ferramentas agrupadas. Trocar de ferramenta mantém projeto, histórico e áudio.
+- **Restauração remota de fala:** Resemble Enhance D, em RunPod Serverless; preserva o original e cria resultado mono float32/44,1 kHz.
+- **Separação musical:** HTDemucs em `/studio/isolar-voz`, para obter o stem vocal estéreo float32/44,1 kHz. Precisa de worker atualizado; qualidade de uma música real na GPU ainda requer homologação.
+- **Processamento local:** limpeza DeepFilterNet3/RNNoise/espectral, reconstrução de clipping identificável, EQ, de-esser, dinâmica, efeitos, mixagem/ducking e finalização.
+- Waveform real, seleção por mouse/toque/teclado, A/B com posição preservada, volume de comparação, versões, desfazer/refazer, exportação WAV/MP3 e relatório de medições.
+- Importação/gravação de até 100 MiB e 10 minutos, com validação do conteúdo. Originais e versões ficam em IndexedDB por conta/perfil, sem sincronização automática entre aparelhos.
+- Contas Supabase, planos mensais, reservas/devoluções atômicas de minutos e painel ADM protegido. O assistente Anthropic recebe texto e medições; não recebe o arquivo de áudio.
+- Manifesto/ícones de instalação e Open Graph PNG 1200 × 630. PWA sem promessa de funcionamento offline completo.
+- Instaladores públicos **0.2.2** para Mac arm64/Intel e Windows x64. São prévias; atualização da interface online é separada da atualização nativa do binário.
 
-## Limites técnicos
+## Planos e infraestrutura
 
-A limpeza padrão usa o modelo neural aberto DeepFilterNet3; RNNoise continua disponível para compatibilidade. A cadeia, os presets e a interface são NOSSOM; os modelos de aprendizado não foram treinados do zero por este projeto. O modo geral usa redução espectral adaptativa. Não é o motor do Adobe Podcast v2, e não há comprovação de qualidade igual ou superior ao Adobe. Nenhum dos modos garante reconstrução de fala ausente, remoção total de reverberação ou resultado igual ao Adobe, Resolve ou RX em todas as gravações. Vento combina passa-altas e redução espectral; não se promete recuperar fala ausente. O ducking reage ao sinal da faixa principal e não distingue semanticamente fala de ruído. A trilha de música se repete até a duração da faixa principal. Mixagem multicanal e stems ainda não estão disponíveis.
+Grátis: 5 min/mês; Essencial: 2 h/R$39; Studio: 6 h/R$99. Ativação manual pelo administrador, sem cobrança automática de cartão. Restauração e separação compartilham a franquia, com mínimo de um minuto por job. Edição/acabamento locais não gastam minutos GPU. ADM confirmado não tem limite de franquia NOSSOM; custos dos provedores continuam existindo.
 
-Todos os tratamentos são serializados para um único motor por aba. A UI apresenta progresso reportado pelo motor quando disponível, pode cancelar a operação e preserva versões salvas em caso de falha. Em dispositivos com pouca memória, use arquivos menores. Original e versões ficam apenas no navegador, sem backup ou sincronização dos arquivos. Contas e cotas estão no Supabase; os espaços locais são separados por conta, sem criptografia contra acesso físico ao mesmo perfil do navegador.
+Backend Next.js/Vercel, Supabase Auth/PostgreSQL/Storage privado, Anthropic e RunPod Serverless. Não coloque chaves de servidor no cliente. A integração GitHub–Vercel publica `main`; publicar código web não comprova que o worker GPU foi atualizado. Consulte [operação e variáveis](docs/handoff/OPERATIONS.md).
 
-O volume A/B é igualado atenuando o arquivo mais alto para a menor leitura de LUFS. O ganho de reprodução não altera arquivos exportados. LUFS/LRA podem não ser significativos em sinais muito curtos ou silenciosos. Não há certificação automática de conformidade: os perfis são referências editoriais. TV exige confirmação das especificações do cliente; cinema e ATSC não recebem alvos universais. O relatório mede o WAV renderizado; não certifica o MP3 codificado, cujos picos podem diferir.
+## Documentação
 
-Cada versão recebe a operação, o perfil, os controles e o identificador de sua versão de origem. A versão ativa e a trilha de refazer ficam no projeto, sem reprocessamento para desfazer/refazer. A entrega usa loudnorm em duas passagens, medição do resultado e correção final limitada pela margem de true peak. Se o teto de pico impedir a meta de loudness, o relatório mantém a medição real. Em trechos selecionados, não se aplica correção global que alteraria o restante do arquivo. Ao processar um trecho, a linha do tempo e o restante do áudio são preservados. A mixagem requer o áudio inteiro.
+| Documento                                           | Conteúdo                                                          |
+| --------------------------------------------------- | ----------------------------------------------------------------- |
+| [Handoff](docs/handoff/README.md)                   | Contexto para continuar o projeto, decisões e referências visuais |
+| [Arquitetura](docs/architecture.md)                 | Fluxos, dados, mapa de código, contratos e limites                |
+| [Operação](docs/handoff/OPERATIONS.md)              | Setup, variáveis, migrações, diagnósticos, deploy e releases      |
+| [Validação](docs/validation.md)                     | Evidências verificadas e comandos reproduzíveis                   |
+| [Identidade e motion](docs/homepage-performance.md) | Direção aprovada e desempenho da animação atual                   |
+| [Motor local](docs/audio-engine.md)                 | DSP, presets, medições e exportação                               |
+| [Supabase](docs/supabase-setup.md)                  | Auth, migrações, planos e isolamento                              |
+| [Anthropic](docs/claude-setup.md)                   | IA compartilhada, permissões e limites                            |
+| [Worker](workers/restoration/README.md)             | Contratos e configuração do processamento remoto                  |
+| [Desktop](desktop/README.md)                        | Empacotamento, distribuição e atualização nativa                  |
 
-## ElevenLabs
+Arquivos `*-history.md` são registros anteriores, não instruções de configuração atual.
 
-Copie `.env.example` para `.env.local` e preencha apenas `NEXT_PUBLIC_ELEVENLABS_AGENT_ID` com o ID público de um agente de Conversational AI. Reinicie o desenvolvimento ou gere um novo build. Esta variável é pública por projeto; nunca coloque uma API key nela.
-
-No painel ElevenLabs, configure o agente para português, restrinja as origens ao domínio da aplicação e defina limites de custo. A voz envia o microfone ao provedor somente quando o usuário inicia a conversa. Sem o ID, a interface oferece a IA por texto e não exibe uma configuração de voz para usuários. Não há custo de API nos tratamentos locais. A conversa pode consumir a conta ElevenLabs; nenhum agente foi provisionado ou crédito gasto nesta entrega. A integração de voz só pode ser validada de ponta a ponta com um agente autorizado.
-
-## Vercel
-
-O projeto usa Next.js e pode ser importado diretamente na Vercel. Build: `npm run build`; instalação: `npm ci`. As configurações de headers em `next.config.ts` são necessárias ao worker, à mídia local e à política de recursos.
-
-A aplicação está publicada em **https://nossom-teal.vercel.app**. A integração GitHub–Vercel publica novos commits de `main`. O arquivo `vercel.json` declara explicitamente Next.js, comandos de instalação/build e saída `.next`; isso corrigiu o HTTP 404 observado após o primeiro deploy de um projeto originalmente vazio.
-
-A página inicial, `/studio`, `/privacidade` e o motor WASM foram verificados por HTTPS em produção, com HTTP 200 e os headers esperados. Os fluxos completos de áudio foram validados no Chromium local com o build de produção. A navegação automatizada contra o domínio público não foi concluída devido à configuração de confiança do proxy no navegador do ambiente.
-
-Não é necessário um token Vercel adicional para publicar pela integração existente. Acesso autenticado à CLI/API só é necessário para gerenciar configurações da conta/projeto fora do Git. Nunca imprima tokens ou os coloque no repositório.
-
-## Validação
+## Verificar
 
 ```sh
+npm run format:check
 npm run typecheck
 npm test
 npm run build
-# O Playwright inicia e encerra o servidor local de teste automaticamente:
+npx playwright install chromium
 npm run test:e2e
-# Opcional, com Docker:
+# Com Docker:
 npm run test:quota
 ```
 
-`CHROMIUM_PATH` permite indicar outro Chromium. Os testes E2E usam arquivos WAV reais sintetizados no teste, mono/estéreo, e verificam importação inválida, ruído, seleção, mixagem, medições pós-masterização, downloads WAV/MP3/JSON, persistência, renomeação, exclusão, navegação e layout móvel. Capturas e traces ficam em `test-results/`, fora do Git.
+Não rode duas suítes/servidores nas mesmas portas. Testes usam contratos simulados e referências públicas/sintéticas; o cenário de áudio privado é opcional. Não confundem render válido, métricas de sinal ou viewport com qualidade perceptual, GPU em produção ou homologação em dispositivos físicos.
 
-## Estrutura
+## Distribuição e limites
 
-- `app/`: páginas, metadados, tema e estilos responsivos.
-- `components/landing.tsx`: experiência pública e demonstração sonora.
-- `components/studio.tsx`: jornada de projetos, gravação, processamento e exportação.
-- `components/wave-player.tsx`: waveform, seleção, A/B e compensação de volume.
-- `components/assistant.tsx`: interpretação local e adaptador ElevenLabs.
-- `lib/audio.ts`: validação, FFmpeg, medições, codecs e exportação.
-- `lib/presets.ts`: operações permitidas e perfis versionados.
-- `lib/storage.ts`: repositório local IndexedDB.
-- `docs/architecture.md`: decisões e continuação das fases do PRD.
+O Mac 0.2.2 tem assinatura ad-hoc de integridade, sem Developer ID/notarização Apple. As prévias não têm canal nativo de atualização automática habilitado. A infraestrutura para uma distribuição assinada existe, mas requer certificados, nova versão e homologação real. As orientações de instalação estão em `/apps`.
 
-## Licenças
+Projetos não são backup na nuvem e não são transferidos pelo Git. A cópia temporária de processamento remoto é privada e limpa após salvar o resultado, com limpeza adicional por cron. Nunca apague IndexedDB ou originais como correção genérica de interface.
 
-As dependências permanecem sujeitas às respectivas licenças. FFmpeg core inclui componentes sob GPL; revise `THIRD_PARTY_NOTICES.md` antes de redistribuir uma versão modificada do motor. O SDK ElevenLabs não concede direitos sobre vozes. Esta entrega não utiliza gravações, depoimentos, métricas comerciais ou logotipos de terceiros como prova social.
+## Licenças e materiais
 
-## Estrutura e identidade visual
-
-O guia SOBEDESCE orienta a hierarquia de telas, peças reutilizáveis, navegação móvel e ritmos de movimento. A identidade é NOSSOM: grafite, prata, luz azul/violeta e ondas fluidas. Os estilos estão separados em tokens, kit, estúdio e site. O estúdio tem tema escuro inicial, claro e automático; a escolha fica no navegador. Reduzir movimento desativa loops e deslocamentos. Demos decorativas só animam visíveis.
-
-## Modelo neural e licenças
-
-DeepFilterNet3 via `@lofcz/deepfilternet-web@0.1.0` (MIT/Apache-2.0), com licença servida em `/audio/DEEPFILTER-LICENSE.txt`; detalhes em [docs/audio-engine.md](docs/audio-engine.md). RNNoise via `@shiguredo/rnnoise-wasm@2025.1.5` (Apache-2.0); núcleo RNNoise (BSD, em `public/licenses/rnnoise.txt`). A licença do wrapper é servida em `/audio/RNNOISE-WASM-LICENSE.txt`. Processamento local, sem nova chave nem cobrança por API. O fixture de regressão usa voz sintética Flite, não gravação de uma pessoa; detalhes em `tests/fixtures/README.md`.
-
-## Contas, IA compartilhada e minutos mensais
-
-Login/cadastro por e-mail e senha no Supabase. A conversa usa o Managed Agent Anthropic do servidor, recebendo texto e medições. A restauração automática usa Resemble Enhance, candidato D escolhido pelo titular: lambda 0,5, tau 0,1, Midpoint/NFE 64. Pode alterar fonemas; não equivale ao Adobe. A versão original permanece no dispositivo e a finalização com EQ, Premiere e efeitos é opcional, local e não gasta GPU.
-
-Planos iniciais aprovados: Grátis 5 minutos/mês; Essencial 2 horas/mês por R$ 39; Studio 6 horas/mês por R$ 99. Ativação manual pelo ADM, sem cobrança automática. Cada restauração reserva a duração inteira do arquivo com mínimo de 1 minuto; falha/cancelamento confirmado devolve os minutos. A franquia renova no dia 1 à 0h de Brasília. ADM confirmado permanece ilimitado. O painel `/studio/admin` permite alterar planos, franquias e acessos e consultar usuários, uso e estimativas de custo. A proteção também é aplicada no banco.
-
-Ativação: [workers/restoration/README.md](workers/restoration/README.md) e [docs/supabase-setup.md](docs/supabase-setup.md). Execute as duas novas migrações por `public/setup/cloud-restoration.sql`. A RunPod precisa de endpoint Serverless Queue com workers Flex mínimo zero; o Pod manual não é desligado pelo endpoint. A imagem e o ciclo real GPU ainda precisam ser homologados no serviço. Credenciais administrativas ficam no servidor; somente URLs temporárias limitadas chegam ao navegador/worker.
-
-Testes reais de banco isolado: `npm run test:quota` (Docker/PostgreSQL 17). E2E usam Supabase/RunPod simulados sem usuários nem gastos reais. Testar localmente não aplica migração em produção nem prova o desligamento da GPU.
-
-## Conta, leitura e aplicativos
-
-Menu de login/conta animado em Motion, formulários reutilizáveis e painel `/studio/conta` para nome, e-mail, senha e tema. O início permite conversar e anexar áudio antes de revisar a ferramenta sugerida. Textos maiores e campos de 16 px melhoram a leitura no celular/desktop. A instalação abre em portal centralizado, independente do menu lateral.
-
-A página `/apps` apresenta as opções Mac/Windows. O wrapper e os builds DMG/EXE estão em `desktop/`; detalhes e limites de assinatura/distribuição em [desktop/README.md](desktop/README.md). Os três instaladores de teste 0.1.0 estão publicados na release pública e disponíveis em `/apps`. Builds Mac Apple Silicon/Intel e Windows x64 passaram nos runners; os arquivos foram verificados com HTTP 200 sem login. A prévia ainda não tem assinatura digital/notarização nem atualização automática habilitada.
+Veja [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), as licenças dos workers/modelos e os créditos em `public/demo/README.txt` e `tests/fixtures/README.md`. Os modelos não foram treinados do zero pela NOSSOM. Não se afirma equivalência a Adobe/RX/Resolve, separação perfeita ou recuperação garantida de fala ausente. Referências editoriais de loudness não são certificações de entrega.

@@ -1,3 +1,5 @@
+> Este documento descreve o **motor local** e seus limites. O padrão `auto` remoto e a separação musical atuais estão em [architecture.md](architecture.md) e [handoff/OPERATIONS.md](handoff/OPERATIONS.md); não confundir essas cadeias.
+
 # Motor NOSSOM e preset de transmissão
 
 NOSSOM Voice combina processamento neural local e estágios de DSP controláveis. O núcleo de restauração padrão é o modelo aberto DeepFilterNet3, distribuído por `@lofcz/deepfilternet-web@0.1.0` (MIT/Apache-2.0). A alternativa leve usa RNNoise. NOSSOM não reivindica ter treinado esses modelos nem reproduzir o código proprietário de Adobe, Blackmagic ou iZotope.

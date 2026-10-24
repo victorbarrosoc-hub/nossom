@@ -1,70 +1,106 @@
-# Arquitetura e escopo da primeira entrega
+# Arquitetura atual da NOSSOM
 
-## Contas, restauração e planos mensais
+Estado documentado em 24/10/2026 UTC. Comece por [handoff/README.md](handoff/README.md). O código e os contratos testados prevalecem sobre textos históricos.
 
-Supabase Auth autentica a conta; cookies HttpOnly criptografados guardam a sessão. IndexedDB separa projetos e versões por usuário. Restauração automática D envia uma cópia temporária ao bucket privado e à RunPod Serverless, preservando o original float32. EQ, limpeza local, efeitos e masterização continuam no navegador.
+## Componentes e fronteiras de dados
 
-O servidor reserva um job por conta, assina partes de até 20 MiB, cobra minutos mensais atomicamente no PostgreSQL e despacha uma única vez. Não repete automaticamente um despacho de resultado ambíguo. O worker recebe URLs limitadas, verifica duração e gera WAV float32 mono 44,1 kHz; não recebe chaves administrativas. O resultado é salvo no dispositivo antes da limpeza temporária. Cron diário tenta remover objetos abandonados. Falhas confirmadas devolvem minutos.
+```mermaid
+flowchart LR
+  UI[Web / PWA / Electron] --> Local[Web Audio / FFmpeg WASM / modelos locais]
+  UI --> DBLocal[IndexedDB por conta e perfil]
+  UI --> API[Next.js na Vercel]
+  API --> Auth[Supabase Auth e PostgreSQL]
+  API --> Claude[Anthropic: texto e medições]
+  API --> Queue[RunPod Serverless Queue]
+  UI -->|partes com URLs temporárias| Storage[Supabase Storage privado]
+  Queue -->|URLs limitadas de entrada e saída| Storage
+  UI -->|salvar resultado e pedir limpeza| API
+```
 
-Grátis 5 min/mês; Essencial 2 h por R$ 39; Studio 6 h por R$ 99, mínimo de um minuto por restauração e renovação mensal. Ativação manual pelo painel ADM, sem cobrança automática. Somente o e-mail ADM confirmado pode gerenciar contas e planos, tanto na API quanto no SQL. Estimativas de GPU usam tempo de execução informado e taxa editável, excluindo inicialização/ociosidade/armazenamento/tráfego.
+A aplicação tem três caminhos de áudio, que não devem ser confundidos:
 
-Ativação do banco e do endpoint: `workers/restoration/README.md`. A descrição abaixo registra decisões históricas do motor inicial, anteriores à integração na nuvem.
+| Caminho                    | Execução                            | Dados enviados                                  | Resultado                                                        |
+| -------------------------- | ----------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------- |
+| Ferramentas locais         | Navegador, workers/WASM             | Não enviam o arquivo ao servidor para processar | Limpeza local, EQ, dinâmica, efeitos, mixagem, medição e entrega |
+| Restauração de fala `auto` | RunPod, preset `resemble-d-v1`      | Cópia temporária privada do original            | WAV float32 mono, 44,1 kHz                                       |
+| Separação musical `vocals` | RunPod, preset `htdemucs-vocals-v1` | Cópia temporária privada do original            | Stem `vocals`, WAV float32 estéreo, 44,1 kHz                     |
 
-## Decisões
+A conversa Anthropic recebe pedido e medições, **não o áudio**. Voz ao vivo ElevenLabs é opcional e usa o microfone apenas quando iniciada pelo usuário. Nenhum modo promete funcionamento offline completo.
 
-O repositório inicialmente continha somente um README. Não havia autenticação, banco, bucket, worker externo, projeto Vercel vinculado ou credenciais de ElevenLabs disponíveis. Por isso, a implementação vertical começa por um estúdio local real e preserva a direção do PRD sem simular serviços externos.
+## Aplicação e navegação
 
-Next.js/React/TypeScript entregam a aplicação. FFmpeg WebAssembly roda em um Web Worker: o processo é isolado da interface, com um job por vez por aba. O original é arquivado como Blob; o editor opera sobre WAV PCM 16-bit/48 kHz e preserva mono/estéreo. IndexedDB mantém projetos e versões. `next.config.ts` define headers para o carregamento do motor e restringe câmera, mídia, workers e destinos de conexão.
+Next.js 16, React 19 e TypeScript. O lockfile define a versão exata; Node 24 é a referência do CI. Builds usam Webpack por compatibilidade com os workers de áudio. Leia as instruções locais da versão do Next em `AGENTS.md` antes de mudar APIs/framework.
 
-## Matriz de capacidade
+O layout do estúdio mantém `Studio` montado ao trocar a ferramenta. `lib/studio-navigation.ts`, `lib/studio-routes.ts` e `components/studio-link.tsx` usam a History API integrada ao Next para navegação local, incluindo voltar/avançar. Não trocar indiscriminadamente por remount de página, requests RSC ou estado perdido. `project` na URL deve continuar preservado.
 
-| Área                 | Implementado                                                   | Continuação                                                 |
-| -------------------- | -------------------------------------------------------------- | ----------------------------------------------------------- |
-| Início e projetos    | Upload/drag-and-drop, gravação, busca, renomeação, exclusão    | Contas, equipes e sincronização                             |
-| Editor               | Waveform real, A/B, loudness matching, trecho, versões         | Fade de bordas e edição multitrecho                         |
-| Voz                  | DeepFilterNet3/RNNoise, FFT adaptativo, EQ, de-esser, dinâmica | De-reverb dedicado, de-click adaptativo                     |
-| Mixagem              | Voz + música com sidechain ducking, nível da trilha            | Multitrilha, efeitos, automação e VAD                       |
-| Entrega              | Loudnorm, LUFS, dBTP, LRA, relatório JSON, WAV/MP3             | Perfis por cliente, PDF e homologação por especificação     |
-| Assistente           | Regras de intenção e adaptador de conversa ElevenLabs          | Planejador generativo autorizado e ferramentas do agente    |
-| Separação            | Identificada como futura                                       | Avaliação de provedor/modelo, licenças, privacidade e custo |
-| Plataforma comercial | Acesso local gratuito                                          | Auth, nuvem, créditos, assinaturas, admin e lote            |
+Rotas principais:
 
-## Garantias e limites
+- `/`: homepage, demonstração real A/B e planos.
+- `/entrar`, `/auth/confirm`: acesso e confirmação Supabase.
+- `/studio`, `/studio/ia`: assistente com anexo e atalhos para ferramentas reais.
+- `/studio/projetos`, `/studio/conta`, `/studio/admin`: projetos locais, conta e administração restrita.
+- `/studio/automatico`, `/studio/isolar-voz`: restauração remota e separação musical.
+- As demais ferramentas são mapeadas em `lib/studio-routes.ts` e agrupadas em `lib/workflow.ts`.
+- `/apps`, `/privacidade`: distribuição e explicação de armazenamento/envio.
 
-Nenhuma operação de texto livre se transforma em comando. `inferPlan` só retorna IDs de uma allowlist, e a aplicação exige revisão e clique em Aplicar. Filtros usam parâmetros enumerados ou números limitados pela UI. O navegador não envia o arquivo a um backend. O único envio de áudio a terceiro ocorre na conversa ElevenLabs iniciada pelo usuário.
+## Mapa do código
 
-As medições pós-processamento vêm de nova análise do WAV final; a saída estimada do primeiro filtro não é usada como medição final. Relatórios representam esse WAV e não certificam formatos derivados. LRA para sinais curtos é apenas informativa. Limiter de pico amostral nos módulos voz/mix não equivale a limitador de true peak; por isso, o resultado é medido novamente.
+| Área                      | Arquivos de entrada                                                                                                                                      |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Homepage, planos e demo   | `components/landing.tsx`, `components/demo-player.tsx`, `components/plan-cards.tsx`                                                                      |
+| Estúdio e projetos        | `components/studio.tsx`, `components/assistant-home.tsx`, `lib/storage.ts`, `lib/history.ts`                                                             |
+| Waveform, A/B e seleção   | `components/wave-player.tsx`                                                                                                                             |
+| Motor local               | `lib/audio.ts`, `lib/neural.ts`, `lib/declip.ts`, `lib/voice-restoration.mjs`                                                                            |
+| Controles e presets       | `lib/presets.ts`, `lib/equalizer.ts`, `lib/broadcast.ts`, `lib/effects.ts`, `lib/voice-presets.ts`, `lib/saved-presets.ts`                               |
+| Cliente de jobs           | `lib/cloud-audio.ts`, `lib/restoration.ts`                                                                                                               |
+| Orquestração remota       | `app/api/audio/jobs/route.ts`, `lib/server/restoration.ts`                                                                                               |
+| Worker e modelo musical   | `Dockerfile`, `workers/restoration/handler.py`, `workers/restoration/vocals.py`                                                                          |
+| Conta e sessão            | `app/api/account/route.ts`, `lib/server/account.ts`, `lib/server/supabase.ts`, `proxy.ts`                                                                |
+| Planos, cota e ADM        | `lib/server/usage.ts`, `lib/plans.ts`, `app/api/usage/`, `app/api/admin/`, `components/admin-dashboard.tsx`                                              |
+| IA de texto               | `components/assistant.tsx`, `app/api/ai/`, `lib/server/managed-agent.ts`, `lib/server/claude.ts`                                                         |
+| Saldos externos           | `lib/server/provider-balances.ts`, `app/api/admin/billing/route.ts`                                                                                      |
+| Desktop e atualizações    | `desktop/`, `components/desktop-updates.tsx`, `lib/desktop.ts`, `app/api/desktop/version/route.ts`                                                       |
+| Marca e motion            | `components/brand.tsx`, `components/cinematic-ribbon.tsx`, `components/signal-field.tsx`, `components/use-ambient-motion.ts`, `app/styles/cinematic.css` |
+| Ícones e compartilhamento | `scripts/generate-brand-assets.tsx`, `public/pwa/`, `app/layout.tsx`, `app/manifest.ts`, `app/opengraph-image.tsx`                                       |
 
-A reprodução original usa a cópia de trabalho decodificada. O download “Original” recupera os bytes enviados, sem alterações. Nenhuma operação remove esse arquivo. Seleção regional concatena início preservado, trecho tratado e final preservado; regiões não têm crossfade nesta primeira entrega e podem apresentar transições audíveis em tratamentos fortes.
+## Arquivos e motor local
 
-## Custos
+O original é guardado como Blob; não deve ser sobrescrito por tratamentos. A cópia de trabalho local e os resultados têm formatos diferentes conforme o caminho: não assumir que toda versão é PCM16/48 kHz. Resultados remotos preservam WAV float32/44,1 kHz e o tipo mono/estéreo reportado.
 
-| Módulo                                  | Custo de API por minuto                                           |
-| --------------------------------------- | ----------------------------------------------------------------- |
-| Tratamento, análise e exportação locais | Nenhum; consomem CPU/memória do dispositivo                       |
-| Armazenamento de projetos local         | Nenhum; limitado pela cota do navegador                           |
-| Hospedagem                              | Depende do plano e do tráfego; primeira carga do motor tem ~31 MB |
-| Conversa ElevenLabs                     | Conforme agente/plano do provedor; não configurado nem mensurado  |
-| Restauração avançada e nuvem            | Não provisionadas; preço não definido                             |
+IndexedDB guarda projetos, originais, versões e estado do histórico por ID de conta. Navegador, outro dispositivo e perfil Electron possuem espaços diferentes. Não há backup/sincronização automática dos arquivos. O acesso físico ao mesmo perfil/DevTools não é protegido por criptografia dos blobs.
 
-## Próxima etapa de infraestrutura
+Importação limitada a 100 MiB e 600 segundos, mono/estéreo, com validação por decodificação. O motor local é serializado por aba; cancelamento termina o processamento em workers e preserva versões salvas. O processamento regional mantém o restante da linha do tempo. Mixagem exige o arquivo inteiro.
 
-Quando houver um projeto Supabase autorizado, introduzir um adaptador de persistência autenticado sem alterar o motor local. As entidades do PRD deverão incluir organizations, memberships, projects, media_assets, asset_versions, processing_jobs, delivery_presets, measurements, subscriptions e usage_ledger. Todas as tabelas de usuário/equipe devem ter RLS com testes de isolamento reais antes de disponibilizar a nuvem.
+A/B iguala o volume de escuta sem alterar o export. As medições devem ser do WAV realmente renderizado; MP3, sinais curtos e alvos de entrega não equivalem a certificação. Detalhes em [audio-engine.md](audio-engine.md).
 
-O armazenamento será privado, com URLs assinadas curtas e autorização no servidor. Jobs de longa duração devem ir para workers CPU/GPU fora de funções Vercel, com idempotência, retries, timeouts, quotas e controle de custo. A chave de service role permanece somente no backend; o cliente jamais recebe privilégios administrativos. Uploads terão validação de conteúdo, duração e tamanho no backend, não apenas na interface.
+## Job remoto: contrato que precisa permanecer íntegro
 
-Migrações, políticas RLS e contratos de worker devem ser implementados e validados contra essa infraestrutura quando disponibilizada. Não há SQL não testado ou fila fictícia nesta entrega. Nenhuma migração de produção, alteração destrutiva ou criação de recurso pago foi realizada.
+1. A API valida identidade, origem, tamanho/duração e operação permitida.
+2. Um job por conta é reservado atomicamente no PostgreSQL; cota e idempotência ficam no servidor.
+3. Entrada e saída são divididas em partes de até 20 MiB. O cliente/worker recebe apenas URLs temporárias limitadas ao armazenamento privado permitido.
+4. A submissão envia um preset validado. O worker não recebe service role nem aceita URL/modelo arbitrário do cliente.
+5. O provedor retorna um ID. Despacho ambíguo não é repetido automaticamente.
+6. A consulta reconcilia o estado com o provedor. `queued` não ganha porcentagem inventada.
+7. Relatório de saída é validado por preset, canais, taxa, frames, bytes e partes. D usa até 6 partes; vocais estéreo, até 11. O limite de entrada não aumenta.
+8. O resultado vira versão local antes da limpeza dos objetos temporários. Retomar um job não deve submeter outra GPU.
+9. Cancelamento/falha confirmados devolvem a reserva. Falha de comunicação não autoriza liberar/repetir um job ainda ambíguo.
 
-## Validação manual com fala
+Estados: `uploading`, `submitting`, `queued`, `running`, `completed`, `failed`, `cancelled`, `released`. O preset confirmado é persistido no `report`; o caminho musical usa esse campo existente, sem nova migração dedicada.
 
-Os testes automatizados validam processamento e medições com sinais determinísticos. Antes de lançar uma oferta comercial, avaliar entrevistas, podcasts, vento, reverberação e gravações com diferentes microfones; comparar artefatos e inteligibilidade com escuta em loudness igualado. Nenhuma avaliação perceptual de fala real foi alegada com base no sinal de teste.
+## Autenticação, autorização e IA
 
-## Revisão de áudio e interface
+Sessão Supabase em cookie HttpOnly criptografado AES-256-GCM; Secure em produção e SameSite=Lax. As APIs revalidam identidade. `user_metadata`, nome, query string e corpo de requisição não concedem ADM. O e-mail administrativo precisa estar confirmado; veja a regra efetiva no servidor e nas migrações.
 
-RNNoise roda em worker separado; mantém estado independente por canal, usa PCM 48 kHz, processa quadros de 480 amostras e compensa um quadro de atraso. O mix original/tratado implementa intensidade contínua; 0% faz bypass. Regiões recebem transição de 5 ms e mantêm o restante original. Cancelamento termina ambos os workers. O resultado segue para FFmpeg e medição pós-renderização.
+A IA compartilhada usa Managed Agents, modelo/capacidades verificados e esforço alto. O backend restringe a resposta a operações enumeradas. Tokens de conversa são vinculados ao usuário/login e têm expiração; ferramentas externas do agente ficam desativadas nessa sessão. Não enviar IDs, segredos ou mensagens brutas do provedor à UI. A proposta exige revisão do usuário antes de aplicar.
 
-O modo espectral estima piso por percentil inferior de RMS em janelas de 20 ms quando há contraste de nível suficiente. Sem pausas claras, informa incerteza; não apresenta estimativa como identificação garantida de ruído.
+## Planos e custos
 
-A normalização usa análise e render de loudnorm, seguida por ajuste constante apenas quando há margem de true peak medida. A correção final não se aplica a tratamento regional. `Version.processing` e o relatório guardam os controles e motor.
+Grátis: 5 min/mês; Essencial: 2 h por R$39/mês; Studio: 6 h por R$99/mês. Ativação manual pelo ADM, sem checkout/cobrança automática. Restauração e separação musical compartilham a franquia, com mínimo de 60 segundos por job. Renovação mensal no fuso `America/Fortaleza`; a migração inicial com nome semanal é histórica.
 
-A revisão atual usa DeepFilterNet3 como padrão e RNNoise como compatibilidade. As rotas `/studio/[tool]` preservam o projeto no layout; histórico, presets pessoais e a cadeia multibanda são descritos em [audio-engine.md](audio-engine.md). A integração opcional Sonnet 5.5/high, com acesso privado e retorno estruturado, está em [claude-setup.md](claude-setup.md). Os presets de voz agora incluem de-esser e hum de rede; isso não constitui equivalência a RX/Ozone.
+ADM confirmado tem franquia NOSSOM ilimitada, mas isso não remove custos/limites dos provedores. DSP local não consome minutos GPU. Estimativas de custo de execução não são fatura completa: cold start, idle, armazenamento e tráfego podem estar fora delas. O saldo RunPod é consultado quando permitido; o saldo Claude é indisponível pela integração atual.
+
+## Segurança e compatibilidade
+
+Mantenha as políticas e headers de `next.config.ts`: workers, WASM, áudio, blobs e isolamento dependem deles. Não abra `connect-src`/origens sem analisar a necessidade. Não coloque segredos no prefixo `NEXT_PUBLIC_`, no renderer Electron, em URLs de download ou em logs públicos.
+
+Preserve licenças de FFmpeg, DeepFilterNet, RNNoise, Resemble Enhance, Demucs e dos materiais demonstrativos. Não alegue equivalência ao Adobe, separação perfeita, compreensão auditiva pelo Claude ou qualidade musical homologada apenas por mocks/sinais sintéticos.
