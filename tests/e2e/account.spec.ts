@@ -1,7 +1,13 @@
 import { test, expect, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
+async function openAccess(page: Page) {
+  const open = page.getByRole('button', { name: 'Acessar minha conta', exact: true });
+  if (await open.isVisible()) await open.click();
+  await expect(page.locator('.account-form-wrap')).toHaveClass(/is-expanded/);
+}
 async function create(page: Page, name: string, email: string) {
   await page.goto('/entrar');
+  await openAccess(page);
   await page.getByRole('button', { name: 'Criar conta', exact: true }).click();
   await page.getByLabel('Nome', { exact: true }).fill(name);
   await page.getByLabel('E-mail', { exact: true }).fill(email);
@@ -16,6 +22,7 @@ test('every studio route and the paid assistant require an account; public shari
 }) => {
   await page.goto('/studio/efeitos');
   await expect(page).toHaveURL(/\/entrar\?next=/);
+  await openAccess(page);
   await expect(page.getByRole('button', { name: 'Entrar no estúdio', exact: true })).toBeVisible();
   const ai = await request.post('/api/ai/assistant', {
     headers: { Origin: 'http://localhost:3000' },
@@ -54,6 +61,7 @@ test('Supabase accounts can sign up, sign out and sign in from another browser w
     .getByRole('button', { name: 'Sair da conta', exact: true })
     .click();
   await expect(page).toHaveURL(/\/entrar$/);
+  await openAccess(page);
   await expect(page.getByRole('button', { name: 'Entrar no estúdio', exact: true })).toBeVisible();
   await page.getByLabel('E-mail', { exact: true }).fill('pessoa.ficticia@example.test');
   await page.getByLabel('Senha', { exact: true }).fill('senha-errada');
@@ -68,6 +76,7 @@ test('Supabase accounts can sign up, sign out and sign in from another browser w
   const another = await page.context().browser()!.newContext();
   const elsewhere = await another.newPage();
   await elsewhere.goto('http://localhost:3000/entrar');
+  await openAccess(elsewhere);
   await elsewhere.getByLabel('E-mail', { exact: true }).fill('pessoa.ficticia@example.test');
   await elsewhere.getByLabel('Senha', { exact: true }).fill('senha-de-teste');
   await elsewhere.getByRole('button', { name: 'Entrar no estúdio', exact: true }).click();
@@ -91,6 +100,7 @@ test('accounts keep separate project spaces and logging back in restores the fir
     .getByRole('button', { name: 'Sair da conta', exact: true })
     .click();
   await expect(page).toHaveURL(/\/entrar$/);
+  await openAccess(page);
   await create(page, 'Bob de teste', 'bob.demo@example.test');
   await page.goto('/studio/projetos');
   await expect(page.getByText('synthetic-speech', { exact: true })).toHaveCount(0);
@@ -103,6 +113,7 @@ test('accounts keep separate project spaces and logging back in restores the fir
     .getByRole('button', { name: 'Sair da conta', exact: true })
     .click();
   await expect(page).toHaveURL(/\/entrar$/);
+  await openAccess(page);
   await page.getByRole('button', { name: 'Entrar', exact: true }).click();
   await page.getByLabel('E-mail', { exact: true }).fill('alice.demo@example.test');
   await page.getByLabel('Senha', { exact: true }).fill('senha-de-teste');
@@ -115,6 +126,7 @@ test('account access is responsive and accessible with email and no per-user API
   page,
 }) => {
   await page.goto('/entrar');
+  await openAccess(page);
   await page.getByRole('button', { name: 'Criar conta', exact: true }).click();
   await expect(page.getByLabel('Nome', { exact: true })).toBeVisible();
   await expect(page.getByLabel('E-mail', { exact: true })).toBeVisible();

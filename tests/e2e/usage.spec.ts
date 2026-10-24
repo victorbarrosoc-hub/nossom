@@ -69,6 +69,8 @@ test('verified administrator has no monthly minute limit and normal users cannot
 test('email confirmation cannot create an authenticated session', async ({ page }) => {
   await page.request.delete('/api/account', { headers: { Origin: 'http://localhost:3000' } });
   await page.goto('/entrar');
+  const open = page.getByRole('button', { name: 'Acessar minha conta', exact: true });
+  if (await open.isVisible()) await open.click();
   await page.getByRole('button', { name: 'Criar conta', exact: true }).click();
   await page.getByLabel('Nome', { exact: true }).fill('Confirmar conta');
   await page.getByLabel('E-mail', { exact: true }).fill('confirm.new@example.test');
